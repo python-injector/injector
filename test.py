@@ -23,7 +23,7 @@ class TestBasicInjection(object):
             pass
 
         class A(object):
-            @inject(B)
+            @inject(b=B)
             def __init__(self, b):
                 """Construct a new A."""
                 self.b = b
@@ -98,7 +98,7 @@ def test_inject_named_interface():
 
     def configure(binder):
         binder.bind(A)
-        binder.bind(B, annotation='b')
+        binder.bind(B)
 
     injector = Injector(configure)
     a = injector.get(A)
@@ -112,12 +112,12 @@ class TestTransitiveInjection(object):
             pass
 
         class B(object):
-            @inject(C)
+            @inject(c=C)
             def __init__(self, c):
                 self.c = c
 
         class A(object):
-            @inject(B)
+            @inject(b=B)
             def __init__(self, b):
                 self.b = b
 
@@ -154,7 +154,7 @@ def test_inject_singleton():
         pass
 
     class A(object):
-        @inject(B)
+        @inject(b=B)
         def __init__(self, b):
             self.b = b
 
@@ -179,7 +179,7 @@ def test_inject_decorated_singleton_class():
         pass
 
     class A(object):
-        @inject(B)
+        @inject(b=B)
         def __init__(self, b):
             self.b = b
 
@@ -210,7 +210,7 @@ class TestCustomScope(object):
             pass
 
         class A(object):
-            @inject(B)
+            @inject(b=B)
             def __init__(self, b):
                 self.b = b
 
@@ -222,7 +222,7 @@ class TestCustomScope(object):
             pass
 
         class A(object):
-            @inject(B)
+            @inject(b=B)
             def __init__(self, b):
                 self.b = b
 
@@ -254,7 +254,7 @@ def test_injecting_interface_implementation():
         pass
 
     class A(object):
-        @inject(Interface)
+        @inject(i=Interface)
         def __init__(self, i):
             self.i = i
 
@@ -272,12 +272,12 @@ def test_cyclic_dependencies():
         pass
 
     class A(object):
-        @inject(Interface)
+        @inject(i=Interface)
         def __init__(self, i):
             self.i = i
 
     class B(object):
-        @inject(A)
+        @inject(a=A)
         def __init__(self, a):
             self.a = a
 
@@ -294,14 +294,14 @@ def test_avoid_circular_dependency_with_method_injection():
         pass
 
     class A(object):
-        @inject(Interface)
+        @inject(i=Interface)
         def __init__(self, i):
             self.i = i
 
     # Even though A needs B (via Interface) and B.method() needs A, they are
     # resolved at different times, avoiding circular dependencies.
     class B(object):
-        @inject(A)
+        @inject(a=A)
         def method(self, a):
             self.a = a
 
@@ -326,7 +326,7 @@ def test_that_injection_is_lazy():
             Interface.constructed = True
 
     class A(object):
-        @inject(Interface)
+        @inject(i=Interface)
         def __init__(self, i):
             self.i = i
 
@@ -397,7 +397,7 @@ def test_inject_and_provide_coexist_happily():
 
         # TODO(alec) Make provides/inject order independent.
         @provides(str)
-        @inject(int, float)
+        @inject(age=int, weight=float)
         def provide_description(self, age, weight):
             return 'Bob is %d and weighs %0.1fkg' % (age, weight)
 

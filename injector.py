@@ -101,11 +101,9 @@ class Key(tuple):
     'Bob'
     """
 
-    def __new__(cls, interface, annotation=None):
-        if type(interface) is list:
-            interface = tuple(interface)
-        t = tuple.__new__(cls, [interface, annotation])
-        return t
+    def __new__(cls, *args):
+        assert len(args) == 2
+        return tuple.__new__(cls, args)
 
     @property
     def interface(self):
@@ -120,6 +118,7 @@ class Binding(tuple):
     """A binding from an (interface, annotation) to a provider in a scope."""
 
     def __new__(cls, *args):
+        assert len(args) == 4
         return tuple.__new__(cls, args)
 
     @property
@@ -160,7 +159,7 @@ class Binder(object):
     def bind(self, interface, to=None, annotation=None, scope=None):
         """Bind an interface to an implementation.
 
-        :param interface: Interface, Key, or list of interfaces, to bind.
+        :param interface: Interface or Key to bind.
         :param to: Instance or class to bind to.
         :param annotation: Optional global annotation of interface.
         :param scope: Optional Scope in which to bind.
@@ -168,12 +167,7 @@ class Binder(object):
         if type(interface) is Key:
             interface, annotation = interface.interface, interface.annotation
         to = to or interface
-        if isinstance(interface, (list, tuple)):
-            interface = tuple(interface)
-            provider = ListOfProviders([self._provider_for(i, interface[0])
-                                        for i in to])
-        else:
-            provider = self._provider_for(to, interface)
+        provider = self._provider_for(to, interface)
         if scope is None:
             scope = getattr(to, '__scope__', no_scope)
         binding = Binding(interface, annotation, provider, scope)
@@ -205,7 +199,7 @@ class Scope(object):
         raise NotImplementedError
 
     def __call__(self, cls):
-        """Scopes may be used as a class decorator."""
+        """Scopes may be used as class decorators."""
         cls.__scope__ = self
         return cls
 
@@ -315,32 +309,28 @@ def provides(what, annotation=None, scope=None):
     return wrapper
 
 
-def inject(*anonymous_bindings, **named_bindings):
+def inject(**bindings):
     """Decorator declaring parameters to be injected.
-
-    Bindings can be anonymous, corresponding to positional arguments to
-    inject(), or annotation, corresponding to keyword arguments to inject().
-
-    Bound values can be in two forms: a class, or a one-element
-    list of a type (eg. [str]).
 
     eg.
 
+    >>> Sizes = Key(list, 'sizes')
+    >>> Names = Key(list, 'names')
     >>> class A(object):
-    ...     @inject(int, name=str, sizes=[int])
+    ...     @inject(number=int, name=str, sizes=Sizes)
     ...     def __init__(self, number, name, sizes):
     ...         print number, name, sizes
     ...
-    ...     @inject(names=[str])
+    ...     @inject(names=Names)
     ...     def friends(self, names):
     ...       return ', '.join(names)
 
     >>> def configure(binder):
     ...     binder.bind(A)
     ...     binder.bind(int, to=123)
-    ...     binder.bind(str, annotation='name', to='Bob')
-    ...     binder.bind([int], annotation='sizes', to=[1, 2, 3])
-    ...     binder.bind([str], annotation='names', to=['Fred', 'Barney'])
+    ...     binder.bind(str, to='Bob')
+    ...     binder.bind(Sizes, to=[1, 2, 3])
+    ...     binder.bind(Names, to=['Fred', 'Barney'])
 
     Use the Injector to get a new instance of A:
 
@@ -354,18 +344,16 @@ def inject(*anonymous_bindings, **named_bindings):
     """
 
     def wrapper(f):
-        bindings = [Key(to) for to in anonymous_bindings] + \
-                   [Key(to, annotation)
-                    for annotation, to in named_bindings.items()]
+        for key, value in bindings.iteritems():
+            if not isinstance(value, Key):
+                value = Key(value, None)
+            bindings[key] = value
 
         @functools.wraps(f)
         def inject(self_, *args, **kwargs):
             injector = getattr(self_, '__injector__', None)
             if injector is None:
                 return f(self_, *args, **kwargs)
-            else:
-                assert not args and not kwargs
-            anonymous_dependencies = []
             dependencies = {}
             key = (self_.__class__, f)
 
@@ -380,22 +368,20 @@ def inject(*anonymous_bindings, **named_bindings):
 
             injector._stack.append(key)
             try:
-                for key in bindings:
+                for arg, key in bindings.iteritems():
                     try:
-                        instance = injector.get(
-                                key.interface, annotation=key.annotation)
+                        instance = injector.get(key.interface,
+                                annotation=key.annotation)
                     except UnsatisfiedRequirement, e:
                         if not e.args[0]:
                             e = UnsatisfiedRequirement(self_.__class__,
                                                         e.args[1])
                         raise e
-                    if key.annotation is None:
-                        anonymous_dependencies.append(instance)
-                    else:
-                        dependencies[key.annotation] = instance
+                    dependencies[arg] = instance
             finally:
                 injector._stack.pop()
-            return f(self_, *anonymous_dependencies, **dependencies)
+            dependencies.update(kwargs)
+            return f(self_, *args, **dependencies)
         if hasattr(f, '__binding__'):
             inject.__binding__ = f.__binding__
         return inject
