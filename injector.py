@@ -11,12 +11,14 @@
 """Dependency injection framework.
 
 This is based heavily on snake-guice, but is hopefully much simplified.
+
+:copyright: (c) 2010 by Alec Thomas
+:license: BSD
 """
 
-import sys
-
-from collections import namedtuple
-from functools import wraps
+import functools
+import inspect
+import types
 
 
 class Error(Exception):
@@ -29,7 +31,7 @@ class UnsatisfiedRequirement(Error):
     def __str__(self):
         on = '%s has an ' % _describe(self.args[0]) if self.args[0] else ''
         return '%sunsatisfied requirement on %s%s' % (
-                on, self.args[1].name + '=' if self.args[1].name else '',
+                on, self.args[1].annotation + '=' if self.args[1].annotation else '',
                 _describe(self.args[1].interface))
 
 
@@ -45,7 +47,8 @@ class Provider(object):
 
 
 class ClassProvider(Provider):
-    """Provides instances from a given class, created using an Injector."""
+    """Provides instances from a given class, created using an Injector.
+    """
 
     def __init__(self, cls, injector):
         self._cls = cls
@@ -67,6 +70,7 @@ class CallableProvider(Provider):
 
 class InstanceProvider(Provider):
     """Provide a specific instance."""
+
     def __init__(self, instance):
         self._instance = instance
 
@@ -76,6 +80,7 @@ class InstanceProvider(Provider):
 
 class ListOfProviders(Provider):
     """Provide a list of instances via other Providers."""
+
     def __init__(self, providers):
         self._providers = list(providers)
 
@@ -85,10 +90,21 @@ class ListOfProviders(Provider):
 
 # These classes are used internally by the Binder.
 class Key(tuple):
-    def __new__(cls, interface, name=None):
+    """A key mapping to a Binding.
+
+    Keys can be used directly when bind()ing, as a convenience:
+
+    >>> Name = Key(str, 'name')
+    >>> def configure(binder):
+    ...   binder.bind(Name, to='Bob')
+    >>> Injector(configure).get(Name)
+    'Bob'
+    """
+
+    def __new__(cls, interface, annotation=None):
         if type(interface) is list:
             interface = tuple(interface)
-        t = tuple.__new__(cls, [interface, name])
+        t = tuple.__new__(cls, [interface, annotation])
         return t
 
     @property
@@ -96,10 +112,31 @@ class Key(tuple):
         return self[0]
 
     @property
-    def name(self):
+    def annotation(self):
         return self[1]
 
-Binding = namedtuple('Binding', 'interface name provider scope')
+
+class Binding(tuple):
+    """A binding from an (interface, annotation) to a provider in a scope."""
+
+    def __new__(cls, *args):
+        return tuple.__new__(cls, args)
+
+    @property
+    def interface(self):
+        return self[0]
+
+    @property
+    def annotation(self):
+        return self[1]
+
+    @property
+    def provider(self):
+        return self[2]
+
+    @property
+    def scope(self):
+        return self[3]
 
 
 class Binder(object):
@@ -109,14 +146,27 @@ class Binder(object):
         self._injector = injector
         self._bindings = {}
 
-    def bind(self, interface, to=None, named=None, scope=None):
+    #def install(self, module):
+        #"""Install bindings from another :class:`Module`."""
+        ## TODO(alec) Confirm this is sufficient...
+        #self._bindings.update(module._bindings)
+
+    def mapbind(self, interface, key, to, annotation=None, scope=None):
+        """Bind """
+
+    def multibind(self, interface, to, annotation=None, scope=None):
+        pass
+
+    def bind(self, interface, to=None, annotation=None, scope=None):
         """Bind an interface to an implementation.
 
-        :param interface: Interface, or list of interfaces, to bind.
+        :param interface: Interface, Key, or list of interfaces, to bind.
         :param to: Instance or class to bind to.
-        :param named: Optional global name of interface.
+        :param annotation: Optional global annotation of interface.
         :param scope: Optional Scope in which to bind.
         """
+        if type(interface) is Key:
+            interface, annotation = interface.interface, interface.annotation
         to = to or interface
         if isinstance(interface, (list, tuple)):
             interface = tuple(interface)
@@ -126,8 +176,8 @@ class Binder(object):
             provider = self._provider_for(to, interface)
         if scope is None:
             scope = getattr(to, '__scope__', no_scope)
-        binding = Binding(interface, named, provider, scope)
-        self._bindings[Key(interface, named)] = binding
+        binding = Binding(interface, annotation, provider, scope)
+        self._bindings[Key(interface, annotation)] = binding
 
     def _provider_for(self, to, interface):
         if isinstance(to, Provider):
@@ -185,39 +235,22 @@ singleton = SingletonScope()
 class Module(object):
     """Configures injector and providers."""
 
-    __bindings__ = []
-
     def __call__(self, binder):
         """Configure the binder."""
-        for what, provider, named, scope in self.__bindings__:
+        self.__injector__ = binder._injector
+        bindings = []
+        for unused_name, function in inspect.getmembers(self, inspect.ismethod):
+            if hasattr(function, '__binding__'):
+                bindings.append(function.__binding__)
+        for what, provider, annotation, scope in bindings:
             binder.bind(what,
-                        to=CallableProvider(lambda: provider(self)),
-                        named=named,
+                        to=types.MethodType(provider, self, self.__class__),
+                        annotation=annotation,
                         scope=scope)
         self.configure(binder)
 
     def configure(self, binder):
-        """Override to custom configure binder."""
-
-
-def provides(what, named=None, scope=None):
-    """Register a provider of a type.
-
-    This decorator should be applied to Module subclass methods.
-
-    >>> class MyModule(Module):
-    ...   @provides(str, named='name')
-    ...   def provide_name(self):
-    ...     return 'Bob'
-    """
-    module = sys._getframe(1).f_locals
-
-    def wrapper(provider):
-        module.setdefault('__bindings__', []).append( \
-                (what, provider, named, scope))
-        return provider
-
-    return wrapper
+        """Override to configure bindings."""
 
 
 class Injector(object):
@@ -242,15 +275,18 @@ class Injector(object):
         for module in self._modules:
             module(self._binder)
 
-    def get_instance(self, interface, named=None, scope=None):
+    def get(self, interface, annotation=None, scope=None):
         """Get an instance of the given interface.
 
         :param interface: Interface whose implementation we want.
-        :param named: Optional name of the specific implementation.
+        :param annotation: Optional annotation of the specific implementation.
         :param scope: Instance scope.
         :returns: An implementation of interface.
         """
-        key = Key(interface, named)
+        if type(interface) is Key:
+            key = interface
+        else:
+            key = Key(interface, annotation)
         binding = self._binder._get_binding(None, key)
         return (scope or binding.scope).get(key, binding.provider).get()
 
@@ -262,11 +298,28 @@ class Injector(object):
         return instance
 
 
+def provides(what, annotation=None, scope=None):
+    """Register a provider of a type.
+
+    This decorator should be applied to Module subclass methods.
+
+    >>> class MyModule(Module):
+    ...   @provides(str, annotation='annotation')
+    ...   def provide_name(self):
+    ...     return 'Bob'
+    """
+    def wrapper(provider):
+        provider.__binding__ = (what, provider, annotation, scope)
+        return provider
+
+    return wrapper
+
+
 def inject(*anonymous_bindings, **named_bindings):
     """Decorator declaring parameters to be injected.
 
     Bindings can be anonymous, corresponding to positional arguments to
-    inject(), or named, corresponding to keyword arguments to inject().
+    inject(), or annotation, corresponding to keyword arguments to inject().
 
     Bound values can be in two forms: a class, or a one-element
     list of a type (eg. [str]).
@@ -277,6 +330,7 @@ def inject(*anonymous_bindings, **named_bindings):
     ...     @inject(int, name=str, sizes=[int])
     ...     def __init__(self, number, name, sizes):
     ...         print number, name, sizes
+    ...
     ...     @inject(names=[str])
     ...     def friends(self, names):
     ...       return ', '.join(names)
@@ -284,13 +338,13 @@ def inject(*anonymous_bindings, **named_bindings):
     >>> def configure(binder):
     ...     binder.bind(A)
     ...     binder.bind(int, to=123)
-    ...     binder.bind(str, named='name', to='Bob')
-    ...     binder.bind([int], named='sizes', to=[1, 2, 3])
-    ...     binder.bind([str], named='names', to=['Fred', 'Barney'])
+    ...     binder.bind(str, annotation='name', to='Bob')
+    ...     binder.bind([int], annotation='sizes', to=[1, 2, 3])
+    ...     binder.bind([str], annotation='names', to=['Fred', 'Barney'])
 
     Use the Injector to get a new instance of A:
 
-    >>> a = Injector(configure).get_instance(A)
+    >>> a = Injector(configure).get(A)
     123 Bob [1, 2, 3]
 
     Call a method with arguments satisfied by the Injector:
@@ -300,11 +354,11 @@ def inject(*anonymous_bindings, **named_bindings):
     """
 
     def wrapper(f):
-        bindings = \
-                [Key(to) for to in anonymous_bindings] + \
-                [Key(to, named) for named, to in named_bindings.items()]
+        bindings = [Key(to) for to in anonymous_bindings] + \
+                   [Key(to, annotation)
+                    for annotation, to in named_bindings.items()]
 
-        @wraps(f)
+        @functools.wraps(f)
         def inject(self_, *args, **kwargs):
             injector = getattr(self_, '__injector__', None)
             if injector is None:
@@ -328,23 +382,37 @@ def inject(*anonymous_bindings, **named_bindings):
             try:
                 for key in bindings:
                     try:
-                        instance = injector.get_instance(key.interface,
-                                                        named=key.name)
+                        instance = injector.get(
+                                key.interface, annotation=key.annotation)
                     except UnsatisfiedRequirement, e:
                         if not e.args[0]:
                             e = UnsatisfiedRequirement(self_.__class__,
                                                         e.args[1])
                         raise e
-                    if key.name is None:
+                    if key.annotation is None:
                         anonymous_dependencies.append(instance)
                     else:
-                        dependencies[key.name] = instance
+                        dependencies[key.annotation] = instance
             finally:
                 injector._stack.pop()
             return f(self_, *anonymous_dependencies, **dependencies)
-
+        if hasattr(f, '__binding__'):
+            inject.__binding__ = f.__binding__
         return inject
     return wrapper
+
+
+class Annotation(object):
+    """Annotation base type."""
+
+
+def annotation(name):
+    """Create a new :class:`Annotation` subclass.
+
+    :param name: Name of the annotation type.
+    :returns: Newly created unique type.
+    """
+    return type(name, (Annotation,), {})
 
 
 def _describe(c):

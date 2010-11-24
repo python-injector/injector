@@ -10,10 +10,11 @@
 
 """Functional tests for the Pollute dependency injection framework."""
 
-from nose.tools import assert_true, assert_raises, assert_equal
+from nose.tools import assert_false, assert_true, assert_raises, assert_equal
 
 from injector import Binder, Injector, Scope, InstanceProvider, inject, \
-        singleton, UnsatisfiedRequirement, CircularDependency, Module, provides
+        singleton, UnsatisfiedRequirement, CircularDependency, Module, \
+        provides, Key
 
 
 class TestBasicInjection(object):
@@ -37,8 +38,8 @@ class TestBasicInjection(object):
             binder.bind(B)
 
         injector = Injector(configure)
-        assert_true(injector.get_instance(Injector) is injector)
-        assert_true(injector.get_instance(Binder) is injector._binder)
+        assert_true(injector.get(Injector) is injector)
+        assert_true(injector.get(Binder) is injector._binder)
 
     def test_instantiate_injected_method(self):
         A, _ = self.prepare()
@@ -58,7 +59,7 @@ class TestBasicInjection(object):
             binder.bind(B)
 
         injector = Injector(configure)
-        a = injector.get_instance(A)
+        a = injector.get(A)
         assert_true(isinstance(a, A))
         assert_true(isinstance(a.b, B))
 
@@ -72,7 +73,7 @@ class TestBasicInjection(object):
             binder.bind(B)
 
         injector = Injector([configure_a, configure_b])
-        a = injector.get_instance(A)
+        a = injector.get(A)
         assert_true(isinstance(a, A))
         assert_true(isinstance(a.b, B))
 
@@ -83,7 +84,7 @@ class TestBasicInjection(object):
             binder.bind(A)
 
         injector = Injector(configure)
-        assert_raises(UnsatisfiedRequirement, injector.get_instance, A)
+        assert_raises(UnsatisfiedRequirement, injector.get, A)
 
 
 def test_inject_named_interface():
@@ -97,10 +98,10 @@ def test_inject_named_interface():
 
     def configure(binder):
         binder.bind(A)
-        binder.bind(B, named='b')
+        binder.bind(B, annotation='b')
 
     injector = Injector(configure)
-    a = injector.get_instance(A)
+    a = injector.get(A)
     assert_true(isinstance(a, A))
     assert_true(isinstance(a.b, B))
 
@@ -131,7 +132,7 @@ class TestTransitiveInjection(object):
             binder.bind(C)
 
         injector = Injector(configure)
-        a = injector.get_instance(A)
+        a = injector.get(A)
         assert_true(isinstance(a, A))
         assert_true(isinstance(a.b, B))
         assert_true(isinstance(a.b.c, C))
@@ -144,8 +145,8 @@ class TestTransitiveInjection(object):
             binder.bind(B)
 
         injector = Injector(configure)
-        assert_raises(UnsatisfiedRequirement, injector.get_instance, A)
-        assert_raises(UnsatisfiedRequirement, injector.get_instance, B)
+        assert_raises(UnsatisfiedRequirement, injector.get, A)
+        assert_raises(UnsatisfiedRequirement, injector.get, B)
 
 
 def test_inject_singleton():
@@ -162,12 +163,12 @@ def test_inject_singleton():
         binder.bind(B, scope=singleton)
 
     injector1 = Injector(configure)
-    a1 = injector1.get_instance(A)
-    a2 = injector1.get_instance(A)
+    a1 = injector1.get(A)
+    a2 = injector1.get(A)
     assert_true(a1.b is a2.b)
     injector2 = Injector(configure)
-    a3 = injector2.get_instance(A)
-    a4 = injector2.get_instance(A)
+    a3 = injector2.get(A)
+    a4 = injector2.get(A)
     assert_true(a2.b is a3.b)
     assert_true(a3.b is a4.b)
 
@@ -187,8 +188,8 @@ def test_inject_decorated_singleton_class():
         binder.bind(B)
 
     injector1 = Injector(configure)
-    a1 = injector1.get_instance(A)
-    a2 = injector1.get_instance(A)
+    a1 = injector1.get(A)
+    a2 = injector1.get(A)
     assert_true(a1.b is a2.b)
 
 
@@ -234,13 +235,13 @@ class TestCustomScope(object):
             binder.bind(B)
 
         injector1 = Injector(configure)
-        a1 = injector1.get_instance(A)
-        a2 = injector1.get_instance(A)
+        a1 = injector1.get(A)
+        a2 = injector1.get(A)
         assert_true(a1 is a2)
 
         injector1 = Injector(configure)
-        a3 = injector1.get_instance(A)
-        a4 = injector1.get_instance(A)
+        a3 = injector1.get(A)
+        a4 = injector1.get(A)
         assert_true(a2 is not a3)
         assert_true(a3 is a4)
 
@@ -262,7 +263,7 @@ def test_injecting_interface_implementation():
         binder.bind(Interface, to=Implementation)
 
     injector = Injector(configure)
-    a = injector.get_instance(A)
+    a = injector.get(A)
     assert_true(isinstance(a.i, Implementation))
 
 
@@ -285,7 +286,7 @@ def test_cyclic_dependencies():
         binder.bind(A)
 
     injector = Injector(configure)
-    assert_raises(CircularDependency, injector.get_instance, A)
+    assert_raises(CircularDependency, injector.get, A)
 
 
 def test_avoid_circular_dependency_with_method_injection():
@@ -310,19 +311,94 @@ def test_avoid_circular_dependency_with_method_injection():
         binder.bind(B)
 
     injector = Injector(configure)
-    a = injector.get_instance(A)
+    a = injector.get(A)
     assert_true(isinstance(a.i, B))
-    b = injector.get_instance(B)
+    b = injector.get(B)
     b.method()
     assert_true(isinstance(b.a, A))
 
 
+def test_that_injection_is_lazy():
+    class Interface(object):
+        constructed = False
+
+        def __init__(self):
+            Interface.constructed = True
+
+    class A(object):
+        @inject(Interface)
+        def __init__(self, i):
+            self.i = i
+
+    def configure(binder):
+        binder.bind(Interface)
+        binder.bind(A)
+
+    injector = Injector(configure)
+    assert_false(Interface.constructed)
+    injector.get(A)
+    assert_true(Interface.constructed)
+
+
 def test_module_provides():
     class MyModule(Module):
-        @provides(str, named='name')
+        @provides(str, annotation='name')
         def provide_name(self):
             return 'Bob'
 
     module = MyModule()
     injector = Injector(module)
-    assert_equal(injector.get_instance(str, named='name'), 'Bob')
+    assert_equal(injector.get(str, annotation='name'), 'Bob')
+
+
+def test_bind_using_key():
+    Name = Key(str, 'name')
+    Age = Key(int, 'age')
+
+    class MyModule(Module):
+        @provides(Name)
+        def provides_name(self):
+            return 'Bob'
+
+        def configure(self, binder):
+            binder.bind(Age, to=25)
+
+    injector = Injector(MyModule())
+    assert_equal(injector.get(Age), 25)
+    assert_equal(injector.get(Name), 'Bob')
+
+
+def test_inject_using_key():
+    Name = Key(str, 'name')
+    Description = Key(str, 'description')
+
+    class MyModule(Module):
+        @provides(Name)
+        def provide_name(self):
+            return 'Bob'
+
+        @provides(Description)
+        @inject(name=Name)
+        def provide_description(self, name):
+            return '%s is cool!' % name
+
+    assert_equal(Injector(MyModule()).get(Description), 'Bob is cool!')
+
+
+def test_inject_and_provide_coexist_happily():
+    class MyModule(Module):
+        @provides(float)
+        def provide_weight(self):
+            return 50.0
+
+        @provides(int)
+        def provide_age(self, ):
+            return 25
+
+        # TODO(alec) Make provides/inject order independent.
+        @provides(str)
+        @inject(int, float)
+        def provide_description(self, age, weight):
+            return 'Bob is %d and weighs %0.1fkg' % (age, weight)
+
+    assert_equal(Injector(MyModule()).get(str), 'Bob is 25 and weighs 50.0kg')
