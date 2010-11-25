@@ -405,13 +405,15 @@ def test_inject_and_provide_coexist_happily():
 
 
 def test_multibind():
+    Names = Key('names')
+
     def configure_one(binder):
-        binder.multibind(str, 'Bob')
+        binder.multibind(Names, 'Bob')
 
     def configure_two(binder):
-        binder.multibind(str, 'Tom')
+        binder.multibind(Names, 'Tom')
 
-    assert_equal(Injector([configure_one, configure_two]).get(str),
+    assert_equal(Injector([configure_one, configure_two]).get(Names),
                  ['Bob', 'Tom'])
 
 
