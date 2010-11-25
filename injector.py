@@ -84,26 +84,19 @@ class ListOfProviders(Provider):
     def __init__(self, providers):
         self._providers = list(providers)
 
+    def append(self, provider):
+        self._providers.append(provider)
+
     def get(self):
         return [provider.get() for provider in self._providers]
 
 
 # These classes are used internally by the Binder.
-class Key(tuple):
-    """A key mapping to a Binding.
+class BindingKey(tuple):
+    """A key mapping to a Binding."""
 
-    Keys can be used directly when bind()ing, as a convenience:
-
-    >>> Name = Key(str, 'name')
-    >>> def configure(binder):
-    ...   binder.bind(Name, to='Bob')
-    >>> Injector(configure).get(Name)
-    'Bob'
-    """
-
-    def __new__(cls, *args):
-        assert len(args) == 2
-        return tuple.__new__(cls, args)
+    def __new__(cls, what, annotation):
+        return tuple.__new__(cls, (what, annotation))
 
     @property
     def interface(self):
@@ -117,9 +110,8 @@ class Key(tuple):
 class Binding(tuple):
     """A binding from an (interface, annotation) to a provider in a scope."""
 
-    def __new__(cls, *args):
-        assert len(args) == 4
-        return tuple.__new__(cls, args)
+    def __new__(cls, interface, annotation, provider, scope):
+        return tuple.__new__(cls, (interface, annotation, provider, scope))
 
     @property
     def interface(self):
@@ -150,36 +142,55 @@ class Binder(object):
         ## TODO(alec) Confirm this is sufficient...
         #self._bindings.update(module._bindings)
 
-    def mapbind(self, interface, key, to, annotation=None, scope=None):
-        """Bind """
-
-    def multibind(self, interface, to, annotation=None, scope=None):
-        pass
-
     def bind(self, interface, to=None, annotation=None, scope=None):
         """Bind an interface to an implementation.
 
         :param interface: Interface or Key to bind.
-        :param to: Instance or class to bind to.
+        :param to: Instance or class to bind to, or an explicit
+             :class:`Provider` subclass.
         :param annotation: Optional global annotation of interface.
         :param scope: Optional Scope in which to bind.
         """
-        if type(interface) is Key:
-            interface, annotation = interface.interface, interface.annotation
-        to = to or interface
-        provider = self._provider_for(to, interface)
-        if scope is None:
-            scope = getattr(to, '__scope__', no_scope)
-        binding = Binding(interface, annotation, provider, scope)
-        self._bindings[Key(interface, annotation)] = binding
+        key = BindingKey(interface, annotation)
+        self._bindings[key] = \
+                self._create_binding(interface, to, annotation, scope)
 
-    def _provider_for(self, to, interface):
+    def multibind(self, interface, to, annotation=None, scope=None):
+        """Creates or extends a multi-binding.
+
+        A multi-binding is a mapping from an interface or Key to 
+
+        See :meth:`bind` for argument descriptions.
+        """
+        key = BindingKey(interface, annotation)
+        if key not in self._bindings:
+            provider = ListOfProviders([])
+            binding = self._create_binding(
+                    interface, provider, annotation, scope)
+            self._bindings[key] = binding
+        else:
+            provider = self._bindings[key].provider
+            assert isinstance(provider, ListOfProviders)
+        provider.append(self._provider_for(key.interface, to))
+
+    def _create_binding(self, interface, to, annotation, scope):
+        to = to or interface
+        provider = self._provider_for(interface, to)
+        if scope is None:
+            scope = getattr(to, '__scope__', noscope)
+        return Binding(interface, annotation, provider, scope)
+
+    def _provider_for(self, interface, to):
         if isinstance(to, Provider):
             return to
         elif isinstance(to, interface):
             return InstanceProvider(to)
         elif type(to) is type:
             return ClassProvider(to, self._injector)
+        elif type(interface) is type and issubclass(interface, BaseKey):
+            if callable(to):
+                return CallableProvider(to)
+            return InstanceProvider(to)
         else:
             return CallableProvider(to)
 
@@ -205,7 +216,12 @@ class Scope(object):
 
 
 class NoScope(Scope):
-    def get(self, key, provider):
+    """A binding without scope.
+
+    This is the default. Every :meth:`Injector.get` results in a new instance
+    being created.
+    """
+    def get(self, unused_key, provider):
         return provider
 
 
@@ -222,7 +238,7 @@ class SingletonScope(Scope):
             return provider
 
 
-no_scope = NoScope()
+noscope = NoScope()
 singleton = SingletonScope()
 
 
@@ -232,15 +248,17 @@ class Module(object):
     def __call__(self, binder):
         """Configure the binder."""
         self.__injector__ = binder._injector
-        bindings = []
         for unused_name, function in inspect.getmembers(self, inspect.ismethod):
             if hasattr(function, '__binding__'):
-                bindings.append(function.__binding__)
-        for what, provider, annotation, scope in bindings:
-            binder.bind(what,
+                what, provider, annotation, scope = function.__binding__
+                binder.bind(what,
                         to=types.MethodType(provider, self, self.__class__),
-                        annotation=annotation,
-                        scope=scope)
+                        annotation=annotation, scope=scope)
+            elif hasattr(function, '__multibinding__'):
+                what, provider, annotation, scope = function.__multibinding__
+                binder.multibind(what,
+                        to=types.MethodType(provider, self, self.__class__),
+                        annotation=annotation, scope=scope)
         self.configure(binder)
 
     def configure(self, binder):
@@ -277,10 +295,7 @@ class Injector(object):
         :param scope: Instance scope.
         :returns: An implementation of interface.
         """
-        if type(interface) is Key:
-            key = interface
-        else:
-            key = Key(interface, annotation)
+        key = BindingKey(interface, annotation)
         binding = self._binder._get_binding(None, key)
         return (scope or binding.scope).get(key, binding.provider).get()
 
@@ -292,18 +307,35 @@ class Injector(object):
         return instance
 
 
-def provides(what, annotation=None, scope=None):
-    """Register a provider of a type.
-
-    This decorator should be applied to Module subclass methods.
+def provides(interface, annotation=None, scope=None):
+    """Decorator for :class:`Module` methods, registering a provider of a type.
 
     >>> class MyModule(Module):
     ...   @provides(str, annotation='annotation')
     ...   def provide_name(self):
     ...     return 'Bob'
+
+    :param interface: Interface to provide.
+    :param annotation: Optional annotation value.
+    :param scope: Optional scope of provided value.
     """
     def wrapper(provider):
-        provider.__binding__ = (what, provider, annotation, scope)
+        provider.__binding__ = (interface, provider, annotation, scope)
+        return provider
+
+    return wrapper
+
+
+def extends(interface, annotation=None, scope=None):
+    """A decorator for :class:`Module` methods, extending a
+    :meth:`Module.multibind`.
+
+    :param interface: Interface to provide.
+    :param annotation: Optional annotation value.
+    :param scope: Optional scope of provided value.
+    """
+    def wrapper(provider):
+        provider.__multibinding__ = (interface, provider, annotation, scope)
         return provider
 
     return wrapper
@@ -314,8 +346,9 @@ def inject(**bindings):
 
     eg.
 
-    >>> Sizes = Key(list, 'sizes')
-    >>> Names = Key(list, 'names')
+    >>> Sizes = Key('sizes')
+    >>> Names = Key('names')
+
     >>> class A(object):
     ...     @inject(number=int, name=str, sizes=Sizes)
     ...     def __init__(self, number, name, sizes):
@@ -345,9 +378,7 @@ def inject(**bindings):
 
     def wrapper(f):
         for key, value in bindings.iteritems():
-            if not isinstance(value, Key):
-                value = Key(value, None)
-            bindings[key] = value
+            bindings[key] = BindingKey(value, None)
 
         @functools.wraps(f)
         def inject(self_, *args, **kwargs):
@@ -388,17 +419,43 @@ def inject(**bindings):
     return wrapper
 
 
-class Annotation(object):
+class BaseAnnotation(object):
     """Annotation base type."""
 
 
-def annotation(name):
-    """Create a new :class:`Annotation` subclass.
+def Annotation(name):
+    """Create a new annotation type.
+
+    Useful for declaring a unique annotation type.
 
     :param name: Name of the annotation type.
     :returns: Newly created unique type.
     """
-    return type(name, (Annotation,), {})
+    return type(name, (BaseAnnotation,), {})
+
+
+class BaseKey(object):
+    """Base type for binding keys."""
+
+
+def Key(name):
+    """Create a new type key.
+
+    Keys are a convenient alternative to binding to (type, annotation) pairs,
+    particularly when non-unique types such as str or int are being bound.
+
+    eg. if using @provides(str), chances of collision are almost guaranteed.
+    One solution is to use @provides(str, annotation='unique') everywhere
+    you wish to inject the value, but this is verbose and error prone. Keys
+    solve this problem:
+
+    >>> Age = Key('Age')
+    >>> def configure(binder):
+    ...   binder.bind(Age, to=90)
+    >>> Injector(configure).get(Age)
+    90
+    """
+    return type(name, (BaseKey,), {})
 
 
 def _describe(c):

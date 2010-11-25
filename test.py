@@ -14,7 +14,7 @@ from nose.tools import assert_false, assert_true, assert_raises, assert_equal
 
 from injector import Binder, Injector, Scope, InstanceProvider, inject, \
         singleton, UnsatisfiedRequirement, CircularDependency, Module, \
-        provides, Key
+        provides, Key, extends
 
 
 class TestBasicInjection(object):
@@ -352,8 +352,8 @@ def test_module_provides():
 
 
 def test_bind_using_key():
-    Name = Key(str, 'name')
-    Age = Key(int, 'age')
+    Name = Key('name')
+    Age = Key('age')
 
     class MyModule(Module):
         @provides(Name)
@@ -369,8 +369,8 @@ def test_bind_using_key():
 
 
 def test_inject_using_key():
-    Name = Key(str, 'name')
-    Description = Key(str, 'description')
+    Name = Key('name')
+    Description = Key('description')
 
     class MyModule(Module):
         @provides(Name)
@@ -392,7 +392,7 @@ def test_inject_and_provide_coexist_happily():
             return 50.0
 
         @provides(int)
-        def provide_age(self, ):
+        def provide_age(self):
             return 25
 
         # TODO(alec) Make provides/inject order independent.
@@ -402,3 +402,30 @@ def test_inject_and_provide_coexist_happily():
             return 'Bob is %d and weighs %0.1fkg' % (age, weight)
 
     assert_equal(Injector(MyModule()).get(str), 'Bob is 25 and weighs 50.0kg')
+
+
+def test_multibind():
+    def configure_one(binder):
+        binder.multibind(str, 'Bob')
+
+    def configure_two(binder):
+        binder.multibind(str, 'Tom')
+
+    assert_equal(Injector([configure_one, configure_two]).get(str),
+                 ['Bob', 'Tom'])
+
+
+def test_extends_decorator():
+    Names = Key('names')
+
+    class MyModule(Module):
+        @extends(Names)
+        def bob(self):
+            return 'Bob'
+
+        @extends(Names)
+        def tom(self):
+            return 'Tom'
+
+    assert_equal(Injector(MyModule()).get(Names), ['Bob', 'Tom'])
+
