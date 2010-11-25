@@ -4,10 +4,12 @@ Injector - Python dependency injection framework, inspired by Guice
 This framework is also similar to snake-guice, but aims for simplification.
 
 While being inspired by Guice, it does not slavishly replicate its API.
-Providing a Pythonic API trumps faithful replication.
+Providing a Pythonic API trumps faithfulness.
 
 An Example
 ----------
+
+*TODO: Write a more useful example.*
 
 Here's a brief, completely contrived, example from the unit tests::
 
@@ -15,6 +17,7 @@ Here's a brief, completely contrived, example from the unit tests::
 
   Weight = Key('Weight')
   Age = Key('Age')
+  Description = Key('Description')
 
   class MyModule(Module):
       @provides(Weight)
@@ -25,10 +28,10 @@ Here's a brief, completely contrived, example from the unit tests::
       def provide_age(self):
           return 25
 
-      # TODO(alec) Make provides/inject order independent.
-      @provides(str)
+      @provides(Description)
       @inject(age=Age, weight=Weight)
       def provide_description(self, age, weight):
           return 'Bob is %d and weighs %0.1fkg' % (age, weight)
 
-  assert_equal(Injector(MyModule()).get(str), 'Bob is 25 and weighs 50.0kg')
+  injector = Injector(MyModule())
+  assert_equal(injector.get(Description), 'Bob is 25 and weighs 50.0kg')
