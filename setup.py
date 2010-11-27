@@ -5,7 +5,10 @@ except ImportError:
 
 import sys
 sys.path.insert(0, '.')
-version = __import__('injector').__version__
+import injector
+
+version = injector.__version__
+version_tag = injector.__version_tag__
 long_description = open('README.rst').read()
 description = long_description.splitlines()[0].strip()
 
@@ -15,6 +18,7 @@ setup(
     url='http://github.com/alecthomas/injector',
     download_url='http://pypi.python.org/pypi/injector',
     version=version,
+    options=dict(egg_info=dict(tag_build=version_tag)),
     description=description,
     long_description=long_description,
     license='BSD',

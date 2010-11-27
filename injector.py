@@ -180,6 +180,50 @@ Or transitively::
     >>> user.description
     'Sherlock is a man of astounding insight'
 
+Implementing new Scopes
+=======================
+In the above description of scopes, we glossed over a lot of detail. In
+particular, how one would go about implementing their own scopes.
+
+A web request has a transient lifetime. Additionally, there may be related
+objects created from the request, such as session, a user, and so on. To deal
+with this, new transient Injectors can be created by extending an existing
+Injector with new modules.
+
+We'll mark the 
+
+First, we create our scope. Each :meth:`Scope.get` method is passed the current
+:class:`Injector`. We can use this to both obtain the current Request object
+
+    >>> class RequestScope(Scope):
+    ...   def get(self, key, provider, injector):
+    ...     request = injector.get(Request)
+    ...     context = injector.context(request)
+    ...     try:
+    ...         return context[key]
+    ...     except KeyError:
+    ...         provider = InstanceProvider(provider.get())
+    ...         context[key] = provider
+    ...         return provider
+
+    >>> request = RequestScope()
+
+    >>> @request
+    ... class Request(object): pass
+
+    >>> class RequestModule(Module):
+    ...   def __init__(self, request):
+    ...     self.request = request
+    ...
+    ...   def configure(self, binder):
+    ...     binder.bind(Request, to=self.request)
+
+First, we create our normal 
+
+    >>> injector = Injector([UserModule(), UserAttributeModule()])
+    >>> request = Request()
+    >>> injector = Injector([RequestModule(request)])
+
 Footnote
 ========
 This framework is similar to snake-guice, but aims for simplification.
@@ -194,7 +238,8 @@ import types
 
 
 __author__ = 'Alec Thomas <alec@swapoff.org>'
-__version__ = '0.1'
+__version__ = '0.2'
+__version_tag__ = 'dev'
 
 
 class Error(Exception):
@@ -309,14 +354,14 @@ class Binding(tuple):
 class Binder(object):
     """Bind interfaces to implementations."""
 
-    def __init__(self, injector):
-        self._injector = injector
-        self._bindings = {}
+    def __init__(self, injector, extend=None):
+        """Create a new Binder.
 
-    #def install(self, module):
-        #"""Install bindings from another :class:`Module` ."""
-        ## TODO(alec) Confirm this is sufficient...
-        #self._bindings.update(module._bindings)
+        :param injector: Injector we are binding for.
+        :param extend: Optional Binder to extend.
+        """
+        self._injector = injector
+        self._bindings = extend._bindings.copy() if extend else {}
 
     def bind(self, interface, to=None, annotation=None, scope=None):
         """Bind an interface to an implementation.
@@ -325,7 +370,7 @@ class Binder(object):
         :param to: Instance or class to bind to, or an explicit
              :class:`Provider` subclass.
         :param annotation: Optional global annotation of interface.
-        :param scope: Optional Scope in which to bind.
+        :param scope: Optional :class:`Scope` in which to bind.
         """
         key = BindingKey(interface, annotation)
         self._bindings[key] = \
@@ -388,7 +433,14 @@ class Scope(object):
     By default (ie. :class:`NoScope` ) this simply returns the default
     :class:`Provider` .
     """
-    def get(self, key, provider):
+    def get(self, key, provider, injector):
+        """Get a :class:`Provider` for a key.
+
+        :param key: The key to return a provider for.
+        :param provider: The default Provider associated with the key.
+        :param injector: Injector instance.
+        :returns: A Provider instance that can provide an instance of key.
+        """
         raise NotImplementedError
 
     def __call__(self, cls):
@@ -405,32 +457,35 @@ class NoScope(Scope):
 
     The global instance :mvar:`noscope` can be used as a convenience.
     """
-    def get(self, unused_key, provider):
+    def get(self, unused_key, provider, unused_injector):
         return provider
 
 
 class SingletonScope(Scope):
     """A :class:`Scope` that returns a single instance for a particular key.
 
-    The global instance :mvar:`singleton` can be used as a convenience.
+    Provides per-Injector singletons.
+
+    :mvar:`singleton` can be used as a convenience class decorator.
 
     >>> class A(object): pass
     >>> injector = Injector()
     >>> provider = ClassProvider(A, injector)
-    >>> a = singleton.get(A, provider)
-    >>> b = singleton.get(A, provider)
+    >>> a = singleton.get(A, provider, injector)
+    >>> b = singleton.get(A, provider, injector)
     >>> a is b
     True
     """
     def __init__(self):
-        self._cache = {}
+        self._cache = None
 
-    def get(self, key, provider):
+    def get(self, key, provider, injector):
+        context = injector.context(self)
         try:
-            return self._cache[key]
+            return context[key]
         except KeyError:
             provider = InstanceProvider(provider.get())
-            self._cache[key] = provider
+            context[key] = provider
             return provider
 
 
@@ -462,43 +517,70 @@ class Module(object):
 
 
 class Injector(object):
-    """Initialise the object dependency graph from a set of :class:`Module` s,
-    and allow consumers to create instances from the graph.
-    """
+    """Initialise and use an object dependency graph."""
 
-    def __init__(self, modules=None):
+    def __init__(self, modules=None, binder=None):
         """Construct a new Injector.
 
         :param modules: A callable, or list of callables, used to configure the
                         Binder associated with this Injector. Typically these
                         callables will be subclasses of :class:`Module` .
                         Signature is ``configure(binder)``.
+        :param binder: An optional :class:`Binder` instance to use.
         """
         # Stack of keys currently being injected. Used to detect circular
         # dependencies.
         self._stack = []
-        self._binder = Binder(self)
+
+        # Binder
+        self._binder = binder or Binder(self)
+
         if not modules:
             modules = []
         elif not hasattr(modules, '__iter__'):
             modules = [modules]
-        self._modules = modules
+
+        # Initialise modules
         self._binder.bind(Injector, to=self)
         self._binder.bind(Binder, to=self._binder)
-        for module in self._modules:
+        for module in modules:
             module(self._binder)
+        self._modules = modules
+        self._contexts = {}
+
+    def extend(self, modules=None):
+        """Create a new Injector by extending this one.
+
+        :param modules: See :meth:`__init__` for details.
+        :returns: A new Injector instance.
+        """
+        binder = Binder(self, extend=self._binder)
+        injector = Injector(modules, binder=binder)
+        injector._modules.extend(self._modules)
+        for key, value in self._contexts.iteritems():
+            injector._contexts.setdefault(key, value)
+        return injector
 
     def get(self, interface, annotation=None, scope=None):
         """Get an instance of the given interface.
 
         :param interface: Interface whose implementation we want.
         :param annotation: Optional annotation of the specific implementation.
-        :param scope: Instance scope.
+        :param scope: Scope in which to resolve.
         :returns: An implementation of interface.
         """
         key = BindingKey(interface, annotation)
         binding = self._binder._get_binding(None, key)
-        return (scope or binding.scope).get(key, binding.provider).get()
+        scope = scope or binding.scope
+        return (scope or binding.scope).get(key, binding.provider, self).get()
+
+    def context(self, key):
+        """Return a unique context for a key.
+
+        :param key: A unique key.
+        :returns: A dictionary.
+        """
+        return self._contexts.setdefault(key, {})
 
     def _create_object(self, cls):
         """Create a new instance, satisfying any dependencies on cls."""

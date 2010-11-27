@@ -166,11 +166,6 @@ def test_inject_singleton():
     a1 = injector1.get(A)
     a2 = injector1.get(A)
     assert_true(a1.b is a2.b)
-    injector2 = Injector(configure)
-    a3 = injector2.get(A)
-    a4 = injector2.get(A)
-    assert_true(a2.b is a3.b)
-    assert_true(a3.b is a4.b)
 
 
 def test_inject_decorated_singleton_class():
@@ -198,7 +193,7 @@ class TestCustomScope(object):
         def __init__(self):
             self._cache = {}
 
-        def get(self, key, provider):
+        def get(self, key, provider, context):
             try:
                 return self._cache[key]
             except KeyError:
