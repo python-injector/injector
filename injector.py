@@ -240,7 +240,7 @@ import types
 
 
 __author__ = 'Alec Thomas <alec@swapoff.org>'
-__version__ = '0.2'
+__version__ = '0.3'
 __version_tag__ = ''
 
 
@@ -262,6 +262,10 @@ class CircularDependency(Error):
     """Circular dependency detected."""
 
 
+class UnknownProvider(Error):
+    """Tried to bind to a type whose provider couldn't be determined."""
+
+
 class Provider(object):
     """Provides class instances."""
 
@@ -270,8 +274,7 @@ class Provider(object):
 
 
 class ClassProvider(Provider):
-    """Provides instances from a given class, created using an Injector.
-    """
+    """Provides instances from a given class, created using an Injector."""
 
     def __init__(self, cls, injector):
         self._cls = cls
@@ -316,18 +319,36 @@ class ListOfProviders(Provider):
 
 class MultiBindProvider(ListOfProviders):
     """Used by :meth:`Binder.multibind` to flatten results of providers that
-    return sequences.
-    """
+    return sequences."""
 
     def get(self):
         return [i for provider in self._providers for i in provider.get()]
 
+
+class MapBindProvider(ListOfProviders):
+    """A provider for map bindings."""
+
+    def get(self):
+        map = {}
+        for provider in self._providers:
+            map.update(provider.get())
+        return map
 
 # These classes are used internally by the Binder.
 class BindingKey(tuple):
     """A key mapping to a Binding."""
 
     def __new__(cls, what, annotation):
+        if isinstance(what, list):
+            if len(what) != 1:
+                raise Error('list bindings must have a single interface '
+                            'element')
+            what = (list, BindingKey(what[0], None))
+        elif isinstance(what, dict):
+            if len(what) != 1:
+                raise Error('dictionary bindings must have a single interface '
+                            'key and value')
+            what = (dict, BindingKey(what.items()[0], None))
         return tuple.__new__(cls, (what, annotation))
 
     @property
@@ -408,7 +429,10 @@ class Binder(object):
         """
         key = BindingKey(interface, annotation)
         if key not in self._bindings:
-            provider = MultiBindProvider()
+            if isinstance(interface, dict):
+                provider = MapBindProvider()
+            else:
+                provider = MultiBindProvider()
             binding = self.create_binding(
                     interface, provider, annotation, scope)
             self._bindings[key] = binding
@@ -416,6 +440,10 @@ class Binder(object):
             provider = self._bindings[key].provider
             assert isinstance(provider, ListOfProviders)
         provider.append(self.provider_for(key.interface, to))
+
+    def install(self, module):
+        """Install a module into this binder."""
+        module(self)
 
     def create_binding(self, interface, to=None, annotation=None, scope=None):
         to = to or interface
@@ -429,16 +457,20 @@ class Binder(object):
     def provider_for(self, interface, to=None):
         if isinstance(to, Provider):
             return to
-        elif isinstance(to, interface):
-            return InstanceProvider(to)
+        elif isinstance(to, (types.FunctionType, types.LambdaType,
+                             types.MethodType)):
+            return CallableProvider(to)
         elif type(to) is type:
             return ClassProvider(to, self.injector)
         elif type(interface) is type and issubclass(interface, BaseKey):
             if callable(to):
                 return CallableProvider(to)
             return InstanceProvider(to)
+        elif isinstance(to, interface):
+            return InstanceProvider(to)
         else:
-            return CallableProvider(to)
+            raise UnknownProvider('couldn\'t determine provider for %r to %r' %
+                                  (interface, to))
 
     def get_binding(self, cls, key):
         try:
@@ -585,7 +617,6 @@ class Injector(object):
         # Initialise modules
         for module in modules:
             module(self.binder)
-        self._modules = modules
 
     def get(self, interface, annotation=None, scope=None):
         """Get an instance of the given interface.

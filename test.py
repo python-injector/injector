@@ -440,3 +440,47 @@ def test_custom_scope():
         assert_true(handler.request is request)
 
     assert_raises(UnsatisfiedRequirement, injector.get, Handler)
+
+
+def test_bind_interface_of_list_of_types():
+
+    def configure(binder):
+        binder.multibind([int], to=[1, 2, 3])
+        binder.multibind([int], to=[4, 5, 6])
+
+    injector = Injector(configure)
+    assert_equal(injector.get([int]), [1, 2, 3, 4, 5, 6])
+
+
+def test_map_binding_and_extends():
+
+    def configure(binder):
+        binder.multibind({str: int}, to={'one': 1})
+        binder.multibind({str: int}, to={'two': 2})
+
+    class MyModule(Module):
+        @extends({str: int})
+        def provide_numbers(self):
+            return {'three': 3}
+
+        @extends({str: int})
+        def provide_more_numbers(self):
+            return {'four': 4}
+
+    injector = Injector([configure, MyModule()])
+    assert_equal(injector.get({str: int}),
+                 {'one': 1, 'two': 2, 'three': 3, 'four': 4})
+
+
+def test_binder_install():
+    class ModuleA(Module):
+        def configure(self, binder):
+            binder.bind(str, to='hello world')
+
+    class ModuleB(Module):
+        def configure(self, binder):
+            binder.install(ModuleA())
+
+    injector = Injector([ModuleB()])
+    assert_equal(injector.get(str), 'hello world')
+
