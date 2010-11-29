@@ -1,5 +1,9 @@
 Injector - Python dependency injection framework, inspired by Guice
 ######################################################################
+
+Introduction
+============
+
 Dependency injection as a formal pattern is less useful in Python than in other
 languages, primarily due to its support for keyword arguments, the ease with
 which objects can be mocked, and its dynamic nature.
@@ -34,7 +38,7 @@ Scope
 -----
 By default, providers are executed each time an instance is required. Scopes
 allow this behaviour to be customised. For example, :class:`SingletonScope`
-(typically used through the class decorator :mvar:`singleton`), can be used to
+(typically used through the class decorator :data:`singleton`), can be used to
 always provide the same instance of a class.
 
 Other examples of where scopes might be a threading scope, where instances are
@@ -173,46 +177,44 @@ Or transitively::
 Implementing new Scopes
 =======================
 In the above description of scopes, we glossed over a lot of detail. In
-particular, how one would go about implementing their own scopes.
+particular, how one would go about implementing our own scopes.
 
-A web request has a transient lifetime. Additionally, there may be related
-objects created from the request, such as session, a user, and so on. To deal
-with this, new transient Injectors can be created by extending an existing
-Injector with new modules.
+Basically, there are two steps. First, subclass :class:`Scope` and implement
+:meth:`Scope.get`::
 
-We'll mark the 
+    >>> class CustomScope(Scope):
+    ...   def get(self, key, provider):
+    ...     return provider
 
-First, we create our scope. Each :meth:`Scope.get` method is passed the current
-:class:`Injector`. We can use this to both obtain the current Request object
+Then create a global instance of :class:`ScopeDecorator` to allow classes to be
+easily annotated with your scope::
 
-    >>> class RequestScope(Scope):
-    ...   def get(self, key, provider, injector):
-    ...     request = injector.get(Request)
-    ...     context = injector.context(request)
-    ...     try:
-    ...         return context[key]
-    ...     except KeyError:
-    ...         provider = InstanceProvider(provider.get())
-    ...         context[key] = provider
-    ...         return provider
+    >>> customscope = ScopeDecorator(CustomScope)
 
-    >>> request = RequestScope()
+This can be used like so:
 
-    >>> @request
-    ... class Request(object): pass
+    >>> @customscope
+    ... class MyClass(object):
+    ...   pass
 
-    >>> class RequestModule(Module):
-    ...   def __init__(self, request):
-    ...     self.request = request
-    ...
+Scopes are bound in modules with the :meth:`Binder.bind_scope` method::
+
+    >>> class MyModule(Module):
     ...   def configure(self, binder):
-    ...     binder.bind(Request, to=self.request)
+    ...     binder.bind_scope(CustomScope)
 
-First, we create our normal 
+Scopes can be retrieved from the injector, as with any other instance. They are
+singletons across the life of the injector::
 
-    >>> injector = Injector([UserModule(), UserAttributeModule()])
-    >>> request = Request()
-    >>> injector = Injector([RequestModule(request)])
+    >>> injector = Injector([MyModule()])
+    >>> injector.get(CustomScope) is injector.get(CustomScope)
+    True
+
+For scopes with a transient lifetime, such as those tied to HTTP requests, the
+usual solution is to use a thread or greenlet-local cache inside the scope. The
+scope is "entered" in some low-level code by calling a method on the scope
+instance that creates this cache. Once the request is complete, the scope is
+"left" and the cache cleared.
 
 Footnote
 ========

@@ -10,11 +10,13 @@
 
 """Functional tests for the Pollute dependency injection framework."""
 
+from contextlib import contextmanager
+
 from nose.tools import assert_false, assert_true, assert_raises, assert_equal
 
 from injector import Binder, Injector, Scope, InstanceProvider, inject, \
         singleton, UnsatisfiedRequirement, CircularDependency, Module, \
-        provides, Key, extends
+        provides, Key, extends, SingletonScope, ScopeDecorator
 
 
 class TestBasicInjection(object):
@@ -39,7 +41,7 @@ class TestBasicInjection(object):
 
         injector = Injector(configure)
         assert_true(injector.get(Injector) is injector)
-        assert_true(injector.get(Binder) is injector._binder)
+        assert_true(injector.get(Binder) is injector.binder)
 
     def test_instantiate_injected_method(self):
         A, _ = self.prepare()
@@ -160,7 +162,7 @@ def test_inject_singleton():
 
     def configure(binder):
         binder.bind(A)
-        binder.bind(B, scope=singleton)
+        binder.bind(B, scope=SingletonScope)
 
     injector1 = Injector(configure)
     a1 = injector1.get(A)
@@ -186,59 +188,6 @@ def test_inject_decorated_singleton_class():
     a1 = injector1.get(A)
     a2 = injector1.get(A)
     assert_true(a1.b is a2.b)
-
-
-class TestCustomScope(object):
-    class ModuleScope(Scope):
-        def __init__(self):
-            self._cache = {}
-
-        def get(self, key, provider, context):
-            try:
-                return self._cache[key]
-            except KeyError:
-                self._cache[key] = InstanceProvider(provider.get())
-                return self._cache[key]
-
-    def test_module_scope_does_not_leak(self):
-        class B(object):
-            pass
-
-        class A(object):
-            @inject(b=B)
-            def __init__(self, b):
-                self.b = b
-
-        self.run(A, B)
-
-    def test_scope_class_decorator(self):
-        @singleton
-        class B(object):
-            pass
-
-        class A(object):
-            @inject(b=B)
-            def __init__(self, b):
-                self.b = b
-
-        self.run(A, B)
-
-    def run(self, A, B):
-        def configure(binder):
-            module_scope = self.ModuleScope()
-            binder.bind(A, scope=module_scope)
-            binder.bind(B)
-
-        injector1 = Injector(configure)
-        a1 = injector1.get(A)
-        a2 = injector1.get(A)
-        assert_true(a1 is a2)
-
-        injector1 = Injector(configure)
-        a3 = injector1.get(A)
-        a4 = injector1.get(A)
-        assert_true(a2 is not a3)
-        assert_true(a3 is a4)
 
 
 def test_injecting_interface_implementation():
@@ -403,10 +352,10 @@ def test_multibind():
     Names = Key('names')
 
     def configure_one(binder):
-        binder.multibind(Names, 'Bob')
+        binder.multibind(Names, to=['Bob'])
 
     def configure_two(binder):
-        binder.multibind(Names, 'Tom')
+        binder.multibind(Names, to=['Tom'])
 
     assert_equal(Injector([configure_one, configure_two]).get(Names),
                  ['Bob', 'Tom'])
@@ -418,11 +367,67 @@ def test_extends_decorator():
     class MyModule(Module):
         @extends(Names)
         def bob(self):
-            return 'Bob'
+            return ['Bob']
 
         @extends(Names)
         def tom(self):
-            return 'Tom'
+            return ['Tom']
 
     assert_equal(Injector(MyModule()).get(Names), ['Bob', 'Tom'])
 
+
+def test_custom_scope():
+    class RequestScope(Scope):
+        def configure(self):
+            self.context = None
+
+        @contextmanager
+        def __call__(self, request):
+            assert self.context is None
+            self.context = {}
+            binder = self.injector.get(Binder)
+            binder.bind(Request, to=request, scope=RequestScope)
+            yield
+            self.context = None
+
+        def get(self, key, provider):
+            if self.context is None:
+                raise UnsatisfiedRequirement(None, key)
+            try:
+                return self.context[key]
+            except KeyError:
+                provider = InstanceProvider(provider.get())
+                self.context[key] = provider
+                return provider
+
+    request = ScopeDecorator(RequestScope)
+
+    class Request(object):
+        pass
+
+    @request
+    class Handler(object):
+        def __init__(self, request):
+            self.request = request
+
+    class RequestModule(Module):
+        def configure(self, binder):
+            binder.bind_scope(RequestScope)
+
+        @provides(Handler)
+        @inject(request=Request)
+        def handler(self, request):
+            return Handler(request)
+
+    injector = Injector([RequestModule()])
+
+    assert_raises(UnsatisfiedRequirement, injector.get, Handler)
+
+    scope = injector.get(RequestScope)
+    request = Request()
+
+    with scope(request):
+        handler = injector.get(Handler)
+        assert_true(handler.request is request)
+
+    assert_raises(UnsatisfiedRequirement, injector.get, Handler)
