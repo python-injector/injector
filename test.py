@@ -352,10 +352,10 @@ def test_multibind():
     Names = Key('names')
 
     def configure_one(binder):
-        binder.multibind(Names, 'Bob')
+        binder.multibind(Names, to=['Bob'])
 
     def configure_two(binder):
-        binder.multibind(Names, 'Tom')
+        binder.multibind(Names, to=['Tom'])
 
     assert_equal(Injector([configure_one, configure_two]).get(Names),
                  ['Bob', 'Tom'])
@@ -367,11 +367,11 @@ def test_extends_decorator():
     class MyModule(Module):
         @extends(Names)
         def bob(self):
-            return 'Bob'
+            return ['Bob']
 
         @extends(Names)
         def tom(self):
-            return 'Tom'
+            return ['Tom']
 
     assert_equal(Injector(MyModule()).get(Names), ['Bob', 'Tom'])
 

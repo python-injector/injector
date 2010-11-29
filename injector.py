@@ -236,6 +236,7 @@ This framework is similar to snake-guice, but aims for simplification.
 
 import functools
 import inspect
+import itertools
 import types
 
 
@@ -304,14 +305,23 @@ class InstanceProvider(Provider):
 class ListOfProviders(Provider):
     """Provide a list of instances via other Providers."""
 
-    def __init__(self, providers):
-        self._providers = list(providers)
+    def __init__(self):
+        self._providers = []
 
     def append(self, provider):
         self._providers.append(provider)
 
     def get(self):
         return [provider.get() for provider in self._providers]
+
+
+class MultiBindProvider(ListOfProviders):
+    """Used by :meth:`Binder.multibind` to flatten results of providers that
+    return sequences.
+    """
+
+    def get(self):
+        return [i for provider in self._providers for i in provider.get()]
 
 
 # These classes are used internally by the Binder.
@@ -391,14 +401,14 @@ class Binder(object):
         the sequence is provided separately.
 
         :param interface: Interface or :func:`Key` to bind.
-        :param to: Instance or class to bind to, or an explicit
-             :class:`Provider` subclass.
+        :param to: Instance, class to bind to, or an explicit :class:`Provider`
+                subclass. Must provide a sequence.
         :param annotation: Optional global annotation of interface.
         :param scope: Optional Scope in which to bind.
         """
         key = BindingKey(interface, annotation)
         if key not in self._bindings:
-            provider = ListOfProviders([])
+            provider = MultiBindProvider()
             binding = self.create_binding(
                     interface, provider, annotation, scope)
             self._bindings[key] = binding
@@ -622,8 +632,10 @@ def provides(interface, annotation=None, scope=None):
 
 
 def extends(interface, annotation=None, scope=None):
-    """A decorator for :class:`Module` methods, extending a
-    :meth:`Module.multibind` .
+    """A decorator for :class:`Module` methods that return sequences of
+    implementations of interface.
+
+    This is a convenient way of declaring a :meth:`Module.multibind` .
 
     :param interface: Interface to provide.
     :param annotation: Optional annotation value.
