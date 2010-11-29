@@ -241,7 +241,7 @@ import types
 
 __author__ = 'Alec Thomas <alec@swapoff.org>'
 __version__ = '0.2'
-__version_tag__ = 'dev'
+__version_tag__ = ''
 
 
 class Error(Exception):
