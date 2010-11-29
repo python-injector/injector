@@ -236,7 +236,6 @@ This framework is similar to snake-guice, but aims for simplification.
 
 import functools
 import inspect
-import itertools
 import types
 
 
@@ -366,12 +365,13 @@ class Binding(tuple):
 class Binder(object):
     """Bind interfaces to implementations."""
 
-    def __init__(self, injector):
+    def __init__(self, injector, auto_bind=True):
         """Create a new Binder.
 
         :param injector: Injector we are binding for.
         """
         self.injector = injector
+        self._auto_bind = auto_bind
         self._bindings = {}
 
     def bind(self, interface, to=None, annotation=None, scope=None):
@@ -444,6 +444,11 @@ class Binder(object):
         try:
             return self._bindings[key]
         except KeyError:
+            if self._auto_bind:
+                binding = self.create_binding(key.interface,
+                        annotation=key.annotation)
+                self._bindings[key] = binding
+                return binding
             raise UnsatisfiedRequirement(cls, key)
 
 
@@ -550,20 +555,21 @@ class Module(object):
 class Injector(object):
     """Initialise and use an object dependency graph."""
 
-    def __init__(self, modules=None):
+    def __init__(self, modules=None, auto_bind=True):
         """Construct a new Injector.
 
         :param modules: A callable, or list of callables, used to configure the
                         Binder associated with this Injector. Typically these
                         callables will be subclasses of :class:`Module` .
                         Signature is ``configure(binder)``.
+        :param auto_bind: Whether to automatically bind missing types.
         """
         # Stack of keys currently being injected. Used to detect circular
         # dependencies.
         self._stack = []
 
         # Binder
-        self.binder = Binder(self)
+        self.binder = Binder(self, auto_bind=auto_bind)
 
         if not modules:
             modules = []
@@ -600,14 +606,18 @@ class Injector(object):
             scope_binding = self.binder.get_binding(None, scope_key)
             scope_instance = scope_binding.provider.get()
         except UnsatisfiedRequirement, e:
-            raise UnsatisfiedRequirement('%s; scopes must be explicitly bound '
-                    'with Binder.bind_scope(scope_cls)' % e)
+            raise Error('%s; scopes must be explicitly bound '
+                        'with Binder.bind_scope(scope_cls)' % e)
         return scope_instance.get(key, binding.provider).get()
 
     def create_object(self, cls):
         """Create a new instance, satisfying any dependencies on cls."""
         instance = cls.__new__(cls)
-        instance.__injector__ = self
+        try:
+            instance.__injector__ = self
+        except AttributeError:
+            # Some builtin types can not be modified.
+            pass
         instance.__init__()
         return instance
 

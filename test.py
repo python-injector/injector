@@ -85,7 +85,7 @@ class TestBasicInjection(object):
         def configure(binder):
             binder.bind(A)
 
-        injector = Injector(configure)
+        injector = Injector(configure, auto_bind=False)
         assert_raises(UnsatisfiedRequirement, injector.get, A)
 
 
@@ -146,7 +146,7 @@ class TestTransitiveInjection(object):
             binder.bind(A)
             binder.bind(B)
 
-        injector = Injector(configure)
+        injector = Injector(configure, auto_bind=False)
         assert_raises(UnsatisfiedRequirement, injector.get, A)
         assert_raises(UnsatisfiedRequirement, injector.get, B)
 
@@ -376,6 +376,15 @@ def test_extends_decorator():
     assert_equal(Injector(MyModule()).get(Names), ['Bob', 'Tom'])
 
 
+def test_auto_bind():
+
+    class A(object):
+        pass
+
+    injector = Injector()
+    assert_true(isinstance(injector.get(A), A))
+
+
 def test_custom_scope():
     class RequestScope(Scope):
         def configure(self):
@@ -419,7 +428,7 @@ def test_custom_scope():
         def handler(self, request):
             return Handler(request)
 
-    injector = Injector([RequestModule()])
+    injector = Injector([RequestModule()], auto_bind=False)
 
     assert_raises(UnsatisfiedRequirement, injector.get, Handler)
 
