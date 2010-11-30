@@ -240,8 +240,8 @@ import types
 
 
 __author__ = 'Alec Thomas <alec@swapoff.org>'
-__version__ = '0.4'
-__version_tag__ = 'dev'
+__version__ = '0.3.1'
+__version_tag__ = ''
 
 
 class Error(Exception):
