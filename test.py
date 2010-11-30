@@ -11,12 +11,13 @@
 """Functional tests for the Pollute dependency injection framework."""
 
 from contextlib import contextmanager
+import abc
 
 from nose.tools import assert_false, assert_true, assert_raises, assert_equal
 
-from injector import Binder, Injector, Scope, InstanceProvider, inject, \
-        singleton, UnsatisfiedRequirement, CircularDependency, Module, \
-        provides, Key, extends, SingletonScope, ScopeDecorator
+from injector import (Binder, Injector, Scope, InstanceProvider, ClassProvider,
+        inject, singleton, UnsatisfiedRequirement, CircularDependency, Module,
+        provides, Key, extends, SingletonScope, ScopeDecorator)
 
 
 class TestBasicInjection(object):
@@ -484,3 +485,44 @@ def test_binder_install():
     injector = Injector([ModuleB()])
     assert_equal(injector.get(str), 'hello world')
 
+
+def test_binder_provider_for_method_with_explicit_provider():
+    binder = Injector().binder
+    provider = binder.provider_for(int, to=InstanceProvider(1))
+    assert_true(type(provider) is InstanceProvider)
+    assert_equal(provider.get(), 1)
+
+
+def test_binder_provider_for_method_with_instance():
+    binder = Injector().binder
+    provider = binder.provider_for(int, to=1)
+    assert_true(type(provider) is InstanceProvider)
+    assert_equal(provider.get(), 1)
+
+
+def test_binder_provider_for_method_with_class():
+    binder = Injector().binder
+    provider = binder.provider_for(int)
+    assert_true(type(provider) is ClassProvider)
+    assert_equal(provider.get(), 0)
+
+
+def test_binder_provider_for_method_with_class_to_specific_subclass():
+    class A(object):
+        pass
+
+    class B(A):
+        pass
+
+    binder = Injector().binder
+    provider = binder.provider_for(A, B)
+    assert_true(type(provider) is ClassProvider)
+    assert_true(isinstance(provider.get(), B))
+
+
+def test_binder_provider_for_type_with_metaclass():
+    class A(object):
+        __metaclass__ = abc.ABCMeta
+
+    binder = Injector().binder
+    assert_true(isinstance(binder.provider_for(A, None).get(), A))

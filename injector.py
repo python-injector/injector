@@ -240,8 +240,8 @@ import types
 
 
 __author__ = 'Alec Thomas <alec@swapoff.org>'
-__version__ = '0.3'
-__version_tag__ = ''
+__version__ = '0.4'
+__version_tag__ = 'dev'
 
 
 class Error(Exception):
@@ -253,8 +253,9 @@ class UnsatisfiedRequirement(Error):
 
     def __str__(self):
         on = '%s has an ' % _describe(self.args[0]) if self.args[0] else ''
-        return '%sunsatisfied requirement on %s%s' % (
-                on, self.args[1].annotation + '=' if self.args[1].annotation else '',
+        return '%sunsatisfied requirement on %s%s' % (on,
+                self.args[1].annotation + '='
+                if self.args[1].annotation else '',
                 _describe(self.args[1].interface))
 
 
@@ -458,16 +459,17 @@ class Binder(object):
         if isinstance(to, Provider):
             return to
         elif isinstance(to, (types.FunctionType, types.LambdaType,
-                             types.MethodType)):
+                             types.MethodType, types.BuiltinFunctionType,
+                             types.BuiltinMethodType)):
             return CallableProvider(to)
-        elif type(to) is type:
+        elif issubclass(type(to), type):
             return ClassProvider(to, self.injector)
-        elif type(interface) is type and issubclass(interface, BaseKey):
-            if callable(to):
-                return CallableProvider(to)
-            return InstanceProvider(to)
         elif isinstance(to, interface):
             return InstanceProvider(to)
+        elif issubclass(type(interface), type):
+            if issubclass(interface, BaseKey):
+                return InstanceProvider(to)
+            return ClassProvider(interface, self.injector)
         else:
             raise UnknownProvider('couldn\'t determine provider for %r to %r' %
                                   (interface, to))
