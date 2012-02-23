@@ -240,7 +240,7 @@ import types
 
 
 __author__ = 'Alec Thomas <alec@swapoff.org>'
-__version__ = '0.3.1'
+__version__ = '0.4'
 __version_tag__ = ''
 
 
