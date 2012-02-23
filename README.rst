@@ -17,6 +17,85 @@ use of :class:`Module` s.
 While being inspired by Guice, it does not slavishly replicate its API.
 Providing a Pythonic API trumps faithfulness.
 
+A Full Example
+==============
+Here's a full example to give you a taste of how Injector works::
+
+    >>> from injector import Module, Key, provides, Injector, inject, singleton
+
+We'll use an in-memory SQLite database for our example::
+
+    >>> import sqlite3
+
+And make up an imaginary RequestHandler class that uses the SQLite connection::
+
+    >>> class RequestHandler(object):
+    ...   @inject(db=sqlite3.Connection)
+    ...   def __init__(self, db):
+    ...     self._db = db
+    ...   def get(self):
+    ...     cursor = self._db.cursor()
+    ...     cursor.execute('SELECT key, value FROM data ORDER by key')
+    ...     return cursor.fetchall()
+
+Next, for the sake of the example, we'll create a "configuration" annotated
+type::
+
+    >>> Configuration = Key('configuration')
+    >>> class ConfigurationForTestingModule(Module):
+    ...   def configure(self, binder):
+    ...     binder.bind(Configuration, to={'db_connection_string': ':memory:'},
+    ...         scope=singleton)
+
+Next we create our database module that initialises the DB based on the
+configuration provided by the above module, populates it with some dummy data,
+and provides a Connection object::
+
+    >>> class DatabaseModule(Module):
+    ...   @singleton
+    ...   @provides(sqlite3.Connection)
+    ...   @inject(configuration=Configuration)
+    ...   def provide_sqlite_connection(self, configuration):
+    ...     conn = sqlite3.connect(configuration['db_connection_string'])
+    ...     cursor = conn.cursor()
+    ...     cursor.execute('CREATE TABLE IF NOT EXISTS data (key PRIMARY KEY, value)')
+    ...     cursor.execute('INSERT OR REPLACE INTO data VALUES ("hello", "world")')
+    ...     return conn
+
+(Note how we have decoupled configuration from our database initialisation
+code.)
+
+Finally, we initialise an Injector and use it to instantiate a RequestHandler
+instance. This first transiently constructs a sqlite3.Connection object, and the
+Configuration dictionary that it in turn requires, then instantiates our
+RequestHandler::
+
+    >>> injector = Injector([ConfigurationForTestingModule(), DatabaseModule()])
+    >>> handler = injector.get(RequestHandler)
+    >>> handler.get()
+    [(u'hello', u'world')]
+
+We can also veryify that our Configuration and SQLite connections are indeed
+singletons within the Injector::
+
+    >>> injector.get(Configuration) is injector.get(Configuration)
+    True
+    >>> injector.get(sqlite3.Connection) is injector.get(sqlite3.Connection)
+    True
+
+You're probably thinking something like: "this is a large amount of work just
+to give me a database connection", and you are correct; dependency injection is
+typically not that useful for smaller projects. It comes into its own on large
+projects where the up-front effort pays for itself in two ways:
+
+    1. Forces decoupling. In our example, this is illustrated by decoupling
+       our configuration and database configuration.
+    2. After a type is configured, it can be injected anywhere with no
+       additional effort. Simply @inject and it appears. We don't really
+       illustrate that here, but you can imagine adding an arbitrary number of
+       RequestHandler subclasses, all of which will automatically have a DB
+       connection provided.
+
 Terminology
 ===========
 At its heart, Injector is simply a dictionary for mapping types to things that
@@ -65,6 +144,7 @@ identification.
 As an *alternative* convenience to using annotations, :func:`Key` may be used
 to create unique types as necessary::
 
+    >>> from injector import Key
     >>> Name = Key('name')
     >>> Description = Key('description')
 
@@ -87,6 +167,7 @@ Binding
 A binding is the mapping of a unique binding key to a corresponding provider.
 For example::
 
+    >>> from injector import InstanceProvider
     >>> bindings = {
     ...   (Name, None): InstanceProvider('Sherlock'),
     ...   (Description, None): InstanceProvider('A man of astounding insight')}
@@ -104,6 +185,7 @@ A :class:`Module` configures bindings. It provides methods that simplify the
 process of binding a key to a provider. For example the above bindings would be
 created with::
 
+    >>> from injector import Module
     >>> class MyModule(Module):
     ...     def configure(self, binder):
     ...         binder.bind(Name, to='Sherlock')
@@ -112,6 +194,7 @@ created with::
 For more complex instance construction, methods decorated with
 ``@provides`` will be called to resolve binding keys::
 
+    >>> from injector import provides
     >>> class MyModule(Module):
     ...     def configure(self, binder):
     ...         binder.bind(Name, to='Sherlock')
@@ -130,6 +213,7 @@ injected, and with what.
 Here is an example of injection on a module provider method, and on the
 constructor of a normal class::
 
+    >>> from injector import inject
     >>> class User(object):
     ...     @inject(name=Name, description=Description)
     ...     def __init__(self, name, description):
@@ -155,6 +239,7 @@ The :class:`Injector` brings everything together. It takes a list of
 :class:`Module` s, and configures them with a binder, effectively creating a
 dependency graph::
 
+    >>> from injector import Injector
     >>> injector = Injector([UserModule(), UserAttributeModule()])
 
 The injector can then be used to acquire instances of a type, either directly::
@@ -182,6 +267,7 @@ particular, how one would go about implementing our own scopes.
 Basically, there are two steps. First, subclass :class:`Scope` and implement
 :meth:`Scope.get`::
 
+    >>> from injector import Scope
     >>> class CustomScope(Scope):
     ...   def get(self, key, provider):
     ...     return provider
@@ -189,6 +275,7 @@ Basically, there are two steps. First, subclass :class:`Scope` and implement
 Then create a global instance of :class:`ScopeDecorator` to allow classes to be
 easily annotated with your scope::
 
+    >>> from injector import ScopeDecorator
     >>> customscope = ScopeDecorator(CustomScope)
 
 This can be used like so:
