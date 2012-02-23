@@ -12,7 +12,7 @@ That said, a framework for assisting in this process can remove a lot of
 boiler-plate from larger applications. That's where Injector can help. It
 automatically and transitively provides keyword arguments with their values. As
 an added benefit, Injector encourages nicely compartmentalised code through the
-use of :class:`Module` s.
+use of ``Module`` s.
 
 While being inspired by Guice, it does not slavishly replicate its API.
 Providing a Pythonic API trumps faithfulness.
@@ -66,7 +66,7 @@ and provides a Connection object::
 code.)
 
 Finally, we initialise an Injector and use it to instantiate a RequestHandler
-instance. This first transiently constructs a sqlite3.Connection object, and the
+instance. This first transitively constructs a sqlite3.Connection object, and the
 Configuration dictionary that it in turn requires, then instantiates our
 RequestHandler::
 
@@ -109,22 +109,22 @@ terminology used may not be obvious.
 Provider
 --------
 A means of providing an instance of a type. Built-in providers include
-:class:`ClassProvider` (creates a new instance from a class),
-:class:`InstanceProvider` (returns an existing instance directly) and
-:class:`CallableProvider` (provides an instance by calling a function).
+``ClassProvider`` (creates a new instance from a class),
+``InstanceProvider`` (returns an existing instance directly) and
+``CallableProvider`` (provides an instance by calling a function).
 
 Scope
 -----
 By default, providers are executed each time an instance is required. Scopes
-allow this behaviour to be customised. For example, :class:`SingletonScope`
-(typically used through the class decorator :data:`singleton`), can be used to
+allow this behaviour to be customised. For example, ``SingletonScope``
+(typically used through the class decorator ``singleton``), can be used to
 always provide the same instance of a class.
 
 Other examples of where scopes might be a threading scope, where instances are
 provided per-thread, or a request scope, where instances are provided
 per-HTTP-request.
 
-The default scope is :class:`NoScope`.
+The default scope is ``NoScope``.
 
 Binding Key
 -----------
@@ -141,7 +141,7 @@ For example, the following are all unique binding keys for ``str``::
 For a generic type such as ``str``, annotations are very useful for unique
 identification.
 
-As an *alternative* convenience to using annotations, :func:`Key` may be used
+As an *alternative* convenience to using annotations, ``Key`` may be used
 to create unique types as necessary::
 
     >>> from injector import Key
@@ -175,13 +175,13 @@ For example::
 
 Binder
 ------
-The :class:`Binder` is simply a convenient wrapper around the dictionary
+The ``Binder`` is simply a convenient wrapper around the dictionary
 that maps types to providers. It provides methods that make declaring bindings
 easier.
 
 Module
 ------
-A :class:`Module` configures bindings. It provides methods that simplify the
+A ``Module`` configures bindings. It provides methods that simplify the
 process of binding a key to a provider. For example the above bindings would be
 created with::
 
@@ -206,7 +206,7 @@ For more complex instance construction, methods decorated with
 Injection
 ---------
 Injection is the process of providing an instance of a type, to a method that
-uses that instance. It is achieved with the :func:`inject` decorator. Keyword
+uses that instance. It is achieved with the ``inject`` decorator. Keyword
 arguments to inject define which arguments in its decorated method should be
 injected, and with what.
 
@@ -235,8 +235,8 @@ constructor of a normal class::
 
 Injector
 --------
-The :class:`Injector` brings everything together. It takes a list of
-:class:`Module` s, and configures them with a binder, effectively creating a
+The ``Injector`` brings everything together. It takes a list of
+``Module`` s, and configures them with a binder, effectively creating a
 dependency graph::
 
     >>> from injector import Injector
@@ -259,20 +259,45 @@ Or transitively::
     >>> user.description
     'Sherlock is a man of astounding insight'
 
+Scopes
+======
+
+Singletons
+----------
+Singletons are declared by binding them in the SingletonScope. This can be done
+in three ways:
+
+    1. Decorating the class with ``@singleton``.
+    2. Decorating a ``@provides(X)`` decorated Module method with ``@singleton``.
+    3. Explicitly calling ``binder.bind(X, scope=singleton)``.
+
+A (redunant) example showing all three methods::
+
+    >>> @singleton
+    ... class Thing(object): pass
+    >>> class ThingModule(Module):
+    ...   def configure(self, binder):
+    ...     binder.bind(Thing, scope=singleton)
+    ...   @singleton
+    ...   @provides(Thing)
+    ...   def provide_thing(self):
+    ...     return Thing()
+
+
 Implementing new Scopes
-=======================
+-----------------------
 In the above description of scopes, we glossed over a lot of detail. In
 particular, how one would go about implementing our own scopes.
 
-Basically, there are two steps. First, subclass :class:`Scope` and implement
-:meth:`Scope.get`::
+Basically, there are two steps. First, subclass ``Scope`` and implement
+``Scope.get``::
 
     >>> from injector import Scope
     >>> class CustomScope(Scope):
     ...   def get(self, key, provider):
     ...     return provider
 
-Then create a global instance of :class:`ScopeDecorator` to allow classes to be
+Then create a global instance of ``ScopeDecorator`` to allow classes to be
 easily annotated with your scope::
 
     >>> from injector import ScopeDecorator
@@ -284,7 +309,7 @@ This can be used like so:
     ... class MyClass(object):
     ...   pass
 
-Scopes are bound in modules with the :meth:`Binder.bind_scope` method::
+Scopes are bound in modules with the ``Binder.bind_scope`` method::
 
     >>> class MyModule(Module):
     ...   def configure(self, binder):
