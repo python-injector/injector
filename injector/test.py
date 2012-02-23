@@ -13,7 +13,7 @@
 from contextlib import contextmanager
 import abc
 
-from nose.tools import assert_false, assert_true, assert_raises, assert_equal
+import pytest
 
 from injector import (Binder, Injector, Scope, InstanceProvider, ClassProvider,
         inject, singleton, UnsatisfiedRequirement, CircularDependency, Module,
@@ -41,18 +41,18 @@ class TestBasicInjection(object):
             binder.bind(B)
 
         injector = Injector(configure)
-        assert_true(injector.get(Injector) is injector)
-        assert_true(injector.get(Binder) is injector.binder)
+        assert (injector.get(Injector) is injector)
+        assert (injector.get(Binder) is injector.binder)
 
     def test_instantiate_injected_method(self):
         A, _ = self.prepare()
         a = A('Bob')
-        assert_equal(a.b, 'Bob')
+        assert (a.b == 'Bob')
 
     def test_method_decorator_is_wrapped(self):
         A, _ = self.prepare()
-        assert_equal(A.__init__.__doc__, 'Construct a new A.')
-        assert_equal(A.__init__.__name__, '__init__')
+        assert (A.__init__.__doc__ == 'Construct a new A.')
+        assert (A.__init__.__name__ == '__init__')
 
     def test_inject_direct(self):
         A, B = self.prepare()
@@ -63,8 +63,8 @@ class TestBasicInjection(object):
 
         injector = Injector(configure)
         a = injector.get(A)
-        assert_true(isinstance(a, A))
-        assert_true(isinstance(a.b, B))
+        assert (isinstance(a, A))
+        assert (isinstance(a.b, B))
 
     def test_configure_multiple_modules(self):
         A, B = self.prepare()
@@ -77,8 +77,8 @@ class TestBasicInjection(object):
 
         injector = Injector([configure_a, configure_b])
         a = injector.get(A)
-        assert_true(isinstance(a, A))
-        assert_true(isinstance(a.b, B))
+        assert (isinstance(a, A))
+        assert (isinstance(a.b, B))
 
     def test_inject_with_missing_dependency(self):
         A, _ = self.prepare()
@@ -87,7 +87,8 @@ class TestBasicInjection(object):
             binder.bind(A)
 
         injector = Injector(configure, auto_bind=False)
-        assert_raises(UnsatisfiedRequirement, injector.get, A)
+        with pytest.raises(UnsatisfiedRequirement):
+            injector.get(A)
 
 
 def test_inject_named_interface():
@@ -105,8 +106,8 @@ def test_inject_named_interface():
 
     injector = Injector(configure)
     a = injector.get(A)
-    assert_true(isinstance(a, A))
-    assert_true(isinstance(a.b, B))
+    assert (isinstance(a, A))
+    assert (isinstance(a.b, B))
 
 
 class TestTransitiveInjection(object):
@@ -136,9 +137,9 @@ class TestTransitiveInjection(object):
 
         injector = Injector(configure)
         a = injector.get(A)
-        assert_true(isinstance(a, A))
-        assert_true(isinstance(a.b, B))
-        assert_true(isinstance(a.b.c, C))
+        assert (isinstance(a, A))
+        assert (isinstance(a.b, B))
+        assert (isinstance(a.b.c, C))
 
     def test_transitive_injection_with_missing_dependency(self):
         A, B, _ = self.prepare()
@@ -148,8 +149,10 @@ class TestTransitiveInjection(object):
             binder.bind(B)
 
         injector = Injector(configure, auto_bind=False)
-        assert_raises(UnsatisfiedRequirement, injector.get, A)
-        assert_raises(UnsatisfiedRequirement, injector.get, B)
+        with pytest.raises(UnsatisfiedRequirement):
+            injector.get(A)
+        with pytest.raises(UnsatisfiedRequirement):
+            injector.get(B)
 
 
 def test_inject_singleton():
@@ -168,7 +171,7 @@ def test_inject_singleton():
     injector1 = Injector(configure)
     a1 = injector1.get(A)
     a2 = injector1.get(A)
-    assert_true(a1.b is a2.b)
+    assert (a1.b is a2.b)
 
 
 def test_inject_decorated_singleton_class():
@@ -188,7 +191,7 @@ def test_inject_decorated_singleton_class():
     injector1 = Injector(configure)
     a1 = injector1.get(A)
     a2 = injector1.get(A)
-    assert_true(a1.b is a2.b)
+    assert (a1.b is a2.b)
 
 
 def test_injecting_interface_implementation():
@@ -209,7 +212,7 @@ def test_injecting_interface_implementation():
 
     injector = Injector(configure)
     a = injector.get(A)
-    assert_true(isinstance(a.i, Implementation))
+    assert (isinstance(a.i, Implementation))
 
 
 def test_cyclic_dependencies():
@@ -231,7 +234,8 @@ def test_cyclic_dependencies():
         binder.bind(A)
 
     injector = Injector(configure)
-    assert_raises(CircularDependency, injector.get, A)
+    with pytest.raises(CircularDependency):
+        injector.get(A)
 
 
 def test_avoid_circular_dependency_with_method_injection():
@@ -257,10 +261,10 @@ def test_avoid_circular_dependency_with_method_injection():
 
     injector = Injector(configure)
     a = injector.get(A)
-    assert_true(isinstance(a.i, B))
+    assert (isinstance(a.i, B))
     b = injector.get(B)
     b.method()
-    assert_true(isinstance(b.a, A))
+    assert (isinstance(b.a, A))
 
 
 def test_that_injection_is_lazy():
@@ -280,9 +284,9 @@ def test_that_injection_is_lazy():
         binder.bind(A)
 
     injector = Injector(configure)
-    assert_false(Interface.constructed)
+    assert not (Interface.constructed)
     injector.get(A)
-    assert_true(Interface.constructed)
+    assert (Interface.constructed)
 
 
 def test_module_provides():
@@ -293,7 +297,7 @@ def test_module_provides():
 
     module = MyModule()
     injector = Injector(module)
-    assert_equal(injector.get(str, annotation='name'), 'Bob')
+    assert (injector.get(str, annotation='name') == 'Bob')
 
 
 def test_bind_using_key():
@@ -309,8 +313,8 @@ def test_bind_using_key():
             binder.bind(Age, to=25)
 
     injector = Injector(MyModule())
-    assert_equal(injector.get(Age), 25)
-    assert_equal(injector.get(Name), 'Bob')
+    assert (injector.get(Age) == 25)
+    assert (injector.get(Name) == 'Bob')
 
 
 def test_inject_using_key():
@@ -327,7 +331,7 @@ def test_inject_using_key():
         def provide_description(self, name):
             return '%s is cool!' % name
 
-    assert_equal(Injector(MyModule()).get(Description), 'Bob is cool!')
+    assert (Injector(MyModule()).get(Description) == 'Bob is cool!')
 
 
 def test_inject_and_provide_coexist_happily():
@@ -346,7 +350,7 @@ def test_inject_and_provide_coexist_happily():
         def provide_description(self, age, weight):
             return 'Bob is %d and weighs %0.1fkg' % (age, weight)
 
-    assert_equal(Injector(MyModule()).get(str), 'Bob is 25 and weighs 50.0kg')
+    assert (Injector(MyModule()).get(str) == 'Bob is 25 and weighs 50.0kg')
 
 
 def test_multibind():
@@ -358,8 +362,7 @@ def test_multibind():
     def configure_two(binder):
         binder.multibind(Names, to=['Tom'])
 
-    assert_equal(Injector([configure_one, configure_two]).get(Names),
-                 ['Bob', 'Tom'])
+    assert (Injector([configure_one, configure_two]).get(Names) == ['Bob', 'Tom'])
 
 
 def test_extends_decorator():
@@ -374,7 +377,7 @@ def test_extends_decorator():
         def tom(self):
             return ['Tom']
 
-    assert_equal(Injector(MyModule()).get(Names), ['Bob', 'Tom'])
+    assert (Injector(MyModule()).get(Names) == ['Bob', 'Tom'])
 
 
 def test_auto_bind():
@@ -383,7 +386,7 @@ def test_auto_bind():
         pass
 
     injector = Injector()
-    assert_true(isinstance(injector.get(A), A))
+    assert (isinstance(injector.get(A), A))
 
 
 def test_custom_scope():
@@ -431,16 +434,18 @@ def test_custom_scope():
 
     injector = Injector([RequestModule()], auto_bind=False)
 
-    assert_raises(UnsatisfiedRequirement, injector.get, Handler)
+    with pytest.raises(UnsatisfiedRequirement):
+        injector.get(Handler)
 
     scope = injector.get(RequestScope)
     request = Request()
 
     with scope(request):
         handler = injector.get(Handler)
-        assert_true(handler.request is request)
+        assert (handler.request is request)
 
-    assert_raises(UnsatisfiedRequirement, injector.get, Handler)
+    with pytest.raises(UnsatisfiedRequirement):
+        injector.get(Handler)
 
 
 def test_bind_interface_of_list_of_types():
@@ -450,7 +455,7 @@ def test_bind_interface_of_list_of_types():
         binder.multibind([int], to=[4, 5, 6])
 
     injector = Injector(configure)
-    assert_equal(injector.get([int]), [1, 2, 3, 4, 5, 6])
+    assert (injector.get([int]) == [1, 2, 3, 4, 5, 6])
 
 
 def test_map_binding_and_extends():
@@ -469,7 +474,7 @@ def test_map_binding_and_extends():
             return {'four': 4}
 
     injector = Injector([configure, MyModule()])
-    assert_equal(injector.get({str: int}),
+    assert (injector.get({str: int}) ==
                  {'one': 1, 'two': 2, 'three': 3, 'four': 4})
 
 
@@ -483,28 +488,28 @@ def test_binder_install():
             binder.install(ModuleA())
 
     injector = Injector([ModuleB()])
-    assert_equal(injector.get(str), 'hello world')
+    assert (injector.get(str) == 'hello world')
 
 
 def test_binder_provider_for_method_with_explicit_provider():
     binder = Injector().binder
     provider = binder.provider_for(int, to=InstanceProvider(1))
-    assert_true(type(provider) is InstanceProvider)
-    assert_equal(provider.get(), 1)
+    assert (type(provider) is InstanceProvider)
+    assert (provider.get() == 1)
 
 
 def test_binder_provider_for_method_with_instance():
     binder = Injector().binder
     provider = binder.provider_for(int, to=1)
-    assert_true(type(provider) is InstanceProvider)
-    assert_equal(provider.get(), 1)
+    assert (type(provider) is InstanceProvider)
+    assert (provider.get() == 1)
 
 
 def test_binder_provider_for_method_with_class():
     binder = Injector().binder
     provider = binder.provider_for(int)
-    assert_true(type(provider) is ClassProvider)
-    assert_equal(provider.get(), 0)
+    assert (type(provider) is ClassProvider)
+    assert (provider.get() == 0)
 
 
 def test_binder_provider_for_method_with_class_to_specific_subclass():
@@ -516,8 +521,8 @@ def test_binder_provider_for_method_with_class_to_specific_subclass():
 
     binder = Injector().binder
     provider = binder.provider_for(A, B)
-    assert_true(type(provider) is ClassProvider)
-    assert_true(isinstance(provider.get(), B))
+    assert (type(provider) is ClassProvider)
+    assert (isinstance(provider.get(), B))
 
 
 def test_binder_provider_for_type_with_metaclass():
@@ -525,4 +530,4 @@ def test_binder_provider_for_type_with_metaclass():
         __metaclass__ = abc.ABCMeta
 
     binder = Injector().binder
-    assert_true(isinstance(binder.provider_for(A, None).get(), A))
+    assert (isinstance(binder.provider_for(A, None).get(), A))
