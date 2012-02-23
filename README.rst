@@ -66,7 +66,7 @@ and provides a Connection object::
 code.)
 
 Finally, we initialise an Injector and use it to instantiate a RequestHandler
-instance. This first transiently constructs a sqlite3.Connection object, and the
+instance. This first transitively constructs a sqlite3.Connection object, and the
 Configuration dictionary that it in turn requires, then instantiates our
 RequestHandler::
 
