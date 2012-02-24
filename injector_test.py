@@ -17,7 +17,7 @@ import pytest
 
 from injector import (Binder, Injector, Scope, InstanceProvider, ClassProvider,
         inject, singleton, UnsatisfiedRequirement, CircularDependency, Module,
-        provides, Key, extends, SingletonScope, ScopeDecorator)
+        provides, Key, SingletonScope, ScopeDecorator)
 
 
 class TestBasicInjection(object):
@@ -353,31 +353,36 @@ def test_inject_and_provide_coexist_happily():
     assert (Injector(MyModule()).get(str) == 'Bob is 25 and weighs 50.0kg')
 
 
-def test_multibind():
+def test_mapping_bind():
     Names = Key('names')
 
     def configure_one(binder):
-        binder.multibind(Names, to=['Bob'])
+        binder.mapping_bind(Names, key='bob@example.com', to='Bob Smith')
 
     def configure_two(binder):
-        binder.multibind(Names, to=['Tom'])
+        # Verify that value providers are working
+        binder.mapping_bind(Names, key='tom@example.com', to=InstanceProvider('Tom Smith'))
 
-    assert (Injector([configure_one, configure_two]).get(Names) == ['Bob', 'Tom'])
+    assert (Injector([configure_one, configure_two]).get(Names) == {
+            'bob@example.com': 'Bob Smith',
+            'tom@example.com': 'Tom Smith',
+            })
 
 
-def test_extends_decorator():
-    Names = Key('names')
+def test_sequence_bind():
+    class Fruit(object): pass
+    class Apple(Fruit): pass
+    class Orange(Fruit): pass
 
-    class MyModule(Module):
-        @extends(Names)
-        def bob(self):
-            return ['Bob']
+    def configure_one(binder):
+        binder.sequence_bind([Fruit], to=Apple)
 
-        @extends(Names)
-        def tom(self):
-            return ['Tom']
+    def configure_two(binder):
+        binder.sequence_bind([Fruit], to=Orange)
 
-    assert (Injector(MyModule()).get(Names) == ['Bob', 'Tom'])
+    fruits = Injector([configure_one, configure_two]).get([Fruit])
+    assert isinstance(fruits[0], Apple)
+    assert isinstance(fruits[1], Orange)
 
 
 def test_auto_bind():
@@ -446,36 +451,6 @@ def test_custom_scope():
 
     with pytest.raises(UnsatisfiedRequirement):
         injector.get(Handler)
-
-
-def test_bind_interface_of_list_of_types():
-
-    def configure(binder):
-        binder.multibind([int], to=[1, 2, 3])
-        binder.multibind([int], to=[4, 5, 6])
-
-    injector = Injector(configure)
-    assert (injector.get([int]) == [1, 2, 3, 4, 5, 6])
-
-
-def test_map_binding_and_extends():
-
-    def configure(binder):
-        binder.multibind({str: int}, to={'one': 1})
-        binder.multibind({str: int}, to={'two': 2})
-
-    class MyModule(Module):
-        @extends({str: int})
-        def provide_numbers(self):
-            return {'three': 3}
-
-        @extends({str: int})
-        def provide_more_numbers(self):
-            return {'four': 4}
-
-    injector = Injector([configure, MyModule()])
-    assert (injector.get({str: int}) ==
-                 {'one': 1, 'two': 2, 'three': 3, 'four': 4})
 
 
 def test_binder_install():

@@ -87,35 +87,34 @@ class InstanceProvider(Provider):
         return self._instance
 
 
-class ListOfProviders(Provider):
-    """Provide a list of instances via other Providers."""
+class MappingBindProvider(Provider):
+    """Provide a mapping of keys to "provided" values."""
 
     def __init__(self):
         self._providers = []
 
-    def append(self, provider):
-        self._providers.append(provider)
-
-    def get(self):
-        return [provider.get() for provider in self._providers]
-
-
-class MultiBindProvider(ListOfProviders):
-    """Used by :meth:`Binder.multibind` to flatten results of providers that
-    return sequences."""
-
-    def get(self):
-        return [i for provider in self._providers for i in provider.get()]
-
-
-class MapBindProvider(ListOfProviders):
-    """A provider for map bindings."""
+    def add(self, key, provider):
+        self._providers.append((key, provider))
 
     def get(self):
         map = {}
-        for provider in self._providers:
-            map.update(provider.get())
+        for key, provider in self._providers:
+            map[key] = provider.get()
         return map
+
+
+class SequenceBindProvider(Provider):
+    """Provide a sequence of values, themselves provided by a Provider."""
+
+    def __init__(self):
+        self._providers = []
+
+    def append(self, value):
+        self._providers.append(value)
+
+    def get(self):
+        return [p.get() for p in self._providers]
+
 
 # These classes are used internally by the Binder.
 class BindingKey(tuple):
@@ -198,30 +197,52 @@ class Binder(object):
         """
         self.bind(scope, to=scope(self.injector))
 
-    def multibind(self, interface, to, annotation=None, scope=None):
-        """Creates or extends a multi-binding.
+    def mapping_bind(self, interface, key, to, annotation=None, scope=None):
+        """Creates or extends a mapping-binding.
 
-        A multi-binding maps from a key to a sequence, where each element in
-        the sequence is provided separately.
+        A mapping-binding declares a mapping from keys to injected values. Keys
+        can be added from any Module, allowing Modules to cooperate on composing
+        a single map.
 
-        :param interface: Interface or :func:`Key` to bind.
+        :param interface: Interface, dictionary of types, or :func:`Key` to bind.
+        :param key: Key for mapping_bind map.
         :param to: Instance, class to bind to, or an explicit :class:`Provider`
-                subclass. Must provide a sequence.
+                subclass, that will be resolved to the value corresponding to the key.
+        :param annotation: Optional global annotation of interface.
+        :param scope: Optional Scope in which to bind.
+        """
+        binding_key = BindingKey(interface, annotation)
+        if binding_key not in self._bindings:
+            provider = MappingBindProvider()
+            binding = self.create_binding(
+                    interface, provider, annotation, scope)
+            self._bindings[binding_key] = binding
+        else:
+            provider = self._bindings[binding_key].provider
+            assert isinstance(provider, MappingBindProvider)
+        provider.add(key, self.provider_for(binding_key.interface, to))
+
+    def sequence_bind(self, interface, to, annotation=None, scope=None):
+        """Creates or extends a sequence binding.
+
+        A sequence binding provides values via other Providers. Values in the
+        sequence can be added across modules.
+
+        :param interface: Interface, list with a type, or :func:`Key` to bind.
+        :param to: Instance, class to bind to, or an explicit :class:`Provider`
+                subclass, that will be resolved to the value corresponding to the key.
         :param annotation: Optional global annotation of interface.
         :param scope: Optional Scope in which to bind.
         """
         key = BindingKey(interface, annotation)
         if key not in self._bindings:
-            if isinstance(interface, dict):
-                provider = MapBindProvider()
-            else:
-                provider = MultiBindProvider()
+            provider = SequenceBindProvider()
             binding = self.create_binding(
                     interface, provider, annotation, scope)
             self._bindings[key] = binding
         else:
             provider = self._bindings[key].provider
-            assert isinstance(provider, ListOfProviders)
+            assert isinstance(provider, SequenceBindProvider)
         provider.append(self.provider_for(key.interface, to))
 
     def install(self, module):
@@ -357,11 +378,6 @@ class Module(object):
                 binder.bind(what,
                         to=types.MethodType(provider, self, self.__class__),
                         annotation=annotation, scope=scope)
-            elif hasattr(function, '__multibinding__'):
-                what, provider, annotation, scope = function.__multibinding__
-                binder.multibind(what,
-                        to=types.MethodType(provider, self, self.__class__),
-                        annotation=annotation, scope=scope)
         self.configure(binder)
 
     def configure(self, binder):
@@ -451,23 +467,6 @@ def provides(interface, annotation=None, scope=None):
     """
     def wrapper(provider):
         provider.__binding__ = (interface, provider, annotation, scope)
-        return provider
-
-    return wrapper
-
-
-def extends(interface, annotation=None, scope=None):
-    """A decorator for :class:`Module` methods that return sequences of
-    implementations of interface.
-
-    This is a convenient way of declaring a :meth:`Module.multibind` .
-
-    :param interface: Interface to provide.
-    :param annotation: Optional annotation value.
-    :param scope: Optional scope of provided value.
-    """
-    def wrapper(provider):
-        provider.__multibinding__ = (interface, provider, annotation, scope)
         return provider
 
     return wrapper
