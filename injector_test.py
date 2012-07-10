@@ -526,8 +526,11 @@ def test_binder_provider_for_method_with_class_to_specific_subclass():
 
 
 def test_binder_provider_for_type_with_metaclass():
-    class A(object):
-        __metaclass__ = abc.ABCMeta
+    # use a metaclass cross python2/3 way
+    # otherwise should be:
+    # class A(object, metaclass=abc.ABCMeta):
+    #    passa
+    A = abc.ABCMeta('A', (object, ), {})
 
     binder = Injector().binder
     assert (isinstance(binder.provider_for(A, None).get(), A))
