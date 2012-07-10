@@ -72,8 +72,10 @@ RequestHandler::
 
     >>> injector = Injector([ConfigurationForTestingModule(), DatabaseModule()])
     >>> handler = injector.get(RequestHandler)
-    >>> handler.get()
-    [(u'hello', u'world')]
+    >>> a = handler.get()
+    >>> # PYTHON2/3 doctest conversion. you will get some unicode strings for both versions
+    >>> str(a).replace('u', '')
+    "[('hello', 'world')]"
 
 We can also veryify that our Configuration and SQLite connections are indeed
 singletons within the Injector::

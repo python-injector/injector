@@ -132,7 +132,7 @@ class BindingKey(tuple):
             if len(what) != 1:
                 raise Error('dictionary bindings must have a single interface '
                             'key and value')
-            what = (dict, BindingKey(what.items()[0], None))
+            what = (dict, BindingKey(list(what.items())[0], None))
         return tuple.__new__(cls, (what, annotation))
 
     @property
@@ -356,12 +356,12 @@ class Module(object):
             if hasattr(function, '__binding__'):
                 what, provider, annotation, scope = function.__binding__
                 binder.bind(what,
-                        to=types.MethodType(provider, self, self.__class__),
+                        to=types.MethodType(provider, self),
                         annotation=annotation, scope=scope)
             elif hasattr(function, '__multibinding__'):
                 what, provider, annotation, scope = function.__multibinding__
                 binder.multibind(what,
-                        to=types.MethodType(provider, self, self.__class__),
+                        to=types.MethodType(provider, self),
                         annotation=annotation, scope=scope)
         self.configure(binder)
 
@@ -485,7 +485,7 @@ def inject(**bindings):
     >>> class A(object):
     ...     @inject(number=int, name=str, sizes=Sizes)
     ...     def __init__(self, number, name, sizes):
-    ...         print number, name, sizes
+    ...         print([number, name, sizes])
     ...
     ...     @inject(names=Names)
     ...     def friends(self, names):
@@ -501,7 +501,7 @@ def inject(**bindings):
     Use the Injector to get a new instance of A:
 
     >>> a = Injector(configure).get(A)
-    123 Bob [1, 2, 3]
+    [123, 'Bob', [1, 2, 3]]
 
     Call a method with arguments satisfied by the Injector:
 
@@ -510,7 +510,7 @@ def inject(**bindings):
     """
 
     def wrapper(f):
-        for key, value in bindings.iteritems():
+        for key, value in bindings.items():
             bindings[key] = BindingKey(value, None)
 
         @functools.wraps(f)
@@ -532,7 +532,7 @@ def inject(**bindings):
 
             injector._stack.append(key)
             try:
-                for arg, key in bindings.iteritems():
+                for arg, key in bindings.items():
                     try:
                         instance = injector.get(key.interface,
                                 annotation=key.annotation)
