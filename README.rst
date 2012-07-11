@@ -72,8 +72,8 @@ RequestHandler::
 
     >>> injector = Injector([ConfigurationForTestingModule(), DatabaseModule()])
     >>> handler = injector.get(RequestHandler)
-    >>> handler.get()
-    [(u'hello', u'world')]
+    >>> tuple(map(str, handler.get()[0]))  # py3/py2 compatibility hack
+    ('hello', 'world')
 
 We can also veryify that our Configuration and SQLite connections are indeed
 singletons within the Injector::
