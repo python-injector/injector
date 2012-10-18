@@ -12,12 +12,14 @@
 
 from contextlib import contextmanager
 import abc
+import threading
 
 import pytest
 
 from injector import (Binder, Injector, Scope, InstanceProvider, ClassProvider,
-        inject, singleton, UnsatisfiedRequirement, CircularDependency, Module,
-        provides, Key, extends, SingletonScope, ScopeDecorator)
+        inject, singleton, threadlocal, UnsatisfiedRequirement,
+        CircularDependency, Module, provides, Key, extends, SingletonScope,
+        ScopeDecorator)
 
 
 class TestBasicInjection(object):
@@ -192,6 +194,34 @@ def test_inject_decorated_singleton_class():
     a1 = injector1.get(A)
     a2 = injector1.get(A)
     assert (a1.b is a2.b)
+
+
+def test_threadlocal():
+    @threadlocal
+    class A(object):
+        def __init__(self):
+            pass
+
+    def configure(binder):
+        binder.bind(A)
+
+    injector = Injector(configure)
+    a1 = injector.get(A)
+    a2 = injector.get(A)
+
+    assert (a1 is a2)
+
+    a3 = [None]
+    ready = threading.Event()
+
+    def inject_a3():
+        a3[0] = injector.get(A)
+        ready.set()
+
+    threading.Thread(target=inject_a3).start()
+    ready.wait(1.0)
+
+    assert (a2 is not a3[0] and a3[0] is not None)
 
 
 def test_injecting_interface_implementation():

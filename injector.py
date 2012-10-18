@@ -19,6 +19,7 @@ See http://pypi.python.org/pypi/injector for documentation.
 import functools
 import inspect
 import types
+import threading
 
 
 __author__ = 'Alec Thomas <alec@swapoff.org>'
@@ -332,18 +333,35 @@ class SingletonScope(Scope):
     True
     """
     def configure(self):
-        self.context = {}
+        self._context = {}
 
     def get(self, key, provider):
         try:
-            return self.context[key]
+            return self._context[key]
         except KeyError:
             provider = InstanceProvider(provider.get())
-            self.context[key] = provider
+            self._context[key] = provider
             return provider
 
 
 singleton = ScopeDecorator(SingletonScope)
+
+
+class ThreadLocalScope(Scope):
+    """A :class:`Scope` that returns a per-thread instance for a key."""
+    def configure(self):
+        self._locals = threading.local()
+
+    def get(self, key, provider):
+        try:
+            return getattr(self._locals, repr(key))
+        except AttributeError:
+            provider = InstanceProvider(provider.get())
+            setattr(self._locals, repr(key), provider)
+            return provider
+
+
+threadlocal = ScopeDecorator(ThreadLocalScope)
 
 
 class Module(object):
@@ -396,6 +414,7 @@ class Injector(object):
         # Bind scopes
         self.binder.bind_scope(NoScope)
         self.binder.bind_scope(SingletonScope)
+        self.binder.bind_scope(ThreadLocalScope)
         # Bind some useful types
         self.binder.bind(Injector, to=self)
         self.binder.bind(Binder, to=self.binder)
