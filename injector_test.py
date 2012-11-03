@@ -329,6 +329,14 @@ def test_module_provides():
     injector = Injector(module)
     assert (injector.get(str, annotation='name') == 'Bob')
 
+def test_module_class_gets_instantiated():
+    name = 'Meg'
+    class MyModule(Module):
+        def configure(self, binder):
+            binder.bind(str, to = name)
+
+    injector = Injector(MyModule)
+    assert (injector.get(str) == name)
 
 def test_bind_using_key():
     Name = Key('name')

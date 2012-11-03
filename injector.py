@@ -393,9 +393,13 @@ class Injector(object):
     def __init__(self, modules=None, auto_bind=True):
         """Construct a new Injector.
 
-        :param modules: A callable, or list of callables, used to configure the
+        :param modules: A callable, class, or list of callables/classes, used to configure the
                         Binder associated with this Injector. Typically these
-                        callables will be subclasses of :class:`Module` .
+                        callables will be subclasses of :class:`Module`.
+
+                        In case of class, it's instance will be created using parameterless
+                        constructor before the configuration process begins.
+
                         Signature is ``configure(binder)``.
         :param auto_bind: Whether to automatically bind missing types.
         """
@@ -420,6 +424,9 @@ class Injector(object):
         self.binder.bind(Binder, to=self.binder)
         # Initialise modules
         for module in modules:
+            if isinstance(module, type):
+                module = module()
+
             module(self.binder)
 
     def get(self, interface, annotation=None, scope=None):
