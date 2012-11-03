@@ -19,7 +19,7 @@ import pytest
 from injector import (Binder, Injector, Scope, InstanceProvider, ClassProvider,
         inject, singleton, threadlocal, UnsatisfiedRequirement,
         CircularDependency, Module, provides, Key, extends, SingletonScope,
-        ScopeDecorator)
+        ScopeDecorator, with_injector)
 
 
 class TestBasicInjection(object):
@@ -337,6 +337,20 @@ def test_module_class_gets_instantiated():
 
     injector = Injector(MyModule)
     assert (injector.get(str) == name)
+
+def test_with_injector_works():
+    name = 'Victoria'
+    def configure(binder):
+        binder.bind(str, to = name)
+
+    class Aaa(object):
+        @with_injector(configure)
+        @inject(username = str)
+        def __init__(self, username):
+            self.username = username
+
+    aaa = Aaa()
+    assert (aaa.username == name)
 
 def test_bind_using_key():
     Name = Key('name')

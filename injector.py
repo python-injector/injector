@@ -456,12 +456,36 @@ class Injector(object):
         """Create a new instance, satisfying any dependencies on cls."""
         instance = cls.__new__(cls)
         try:
-            instance.__injector__ = self
+            self.install_into(instance)
         except AttributeError:
             # Some builtin types can not be modified.
             pass
         instance.__init__()
         return instance
+
+    def install_into(self, instance):
+        '''
+        Puts injector reference in given object.
+        '''
+        instance.__injector__ = self
+
+def with_injector(modules = None, auto_bind = True):
+    '''
+    Decorator for a method. Installs Injector object which the method belongs
+    to before the decorated method is executed.
+
+    Parameters are the same as for Injector constructor.
+    '''
+    def wrapper(f):
+        @functools.wraps(f)
+        def setup(self_, *args, **kwargs):
+            injector = Injector(modules, auto_bind)
+            injector.install_into(self_)
+            return f(self_, *args, **kwargs)
+
+        return setup
+
+    return wrapper
 
 
 def provides(interface, annotation=None, scope=None):
