@@ -245,6 +245,11 @@ dependency graph::
     >>> from injector import Injector
     >>> injector = Injector([UserModule(), UserAttributeModule()])
 
+You can also pass classes instead of instances to ``Injector``, it will
+instantiate them for you::
+
+    >>> injector = Injector([UserModule, UserAttributeModule])
+
 The injector can then be used to acquire instances of a type, either directly::
 
     >>> injector.get(Name)
@@ -350,7 +355,7 @@ class instance on the time of method call::
     ...   def setup(self):
     ...      pass
     ...
-    ...   @inject(username = str)
+    ...   @inject(username=str)
     ...   def test_username(self, username):
     ...      assert (username == 'Maria')
 

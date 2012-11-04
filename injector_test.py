@@ -333,7 +333,7 @@ def test_module_class_gets_instantiated():
     name = 'Meg'
     class MyModule(Module):
         def configure(self, binder):
-            binder.bind(str, to = name)
+            binder.bind(str, to=name)
 
     injector = Injector(MyModule)
     assert (injector.get(str) == name)
@@ -341,11 +341,11 @@ def test_module_class_gets_instantiated():
 def test_with_injector_works():
     name = 'Victoria'
     def configure(binder):
-        binder.bind(str, to = name)
+        binder.bind(str, to=name)
 
     class Aaa(object):
         @with_injector(configure)
-        @inject(username = str)
+        @inject(username=str)
         def __init__(self, username):
             self.username = username
 
