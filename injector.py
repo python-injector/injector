@@ -610,6 +610,9 @@ def Key(name):
     >>> Injector(configure).get(Age)
     90
     """
+    if isinstance(name, unicode):
+        name = name.encode('utf-8')
+
     return type(name, (BaseKey,), {})
 
 
