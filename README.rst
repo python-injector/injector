@@ -1,10 +1,11 @@
 Injector - Python dependency injection framework, inspired by Guice
 ######################################################################
 
+.. image:: https://secure.travis-ci.org/alecthomas/injector.png?branch=master
+  :target: https://travis-ci.org/alecthomas/injector
+
 Introduction
 ============
-
-.. image:: https://secure.travis-ci.org/alecthomas/injector.png?branch=master
 
 Dependency injection as a formal pattern is less useful in Python than in other
 languages, primarily due to its support for keyword arguments, the ease with
