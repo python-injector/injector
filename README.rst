@@ -170,7 +170,7 @@ For example::
     >>> from injector import InstanceProvider
     >>> bindings = {
     ...   (Name, None): InstanceProvider('Sherlock'),
-    ...   (Description, None): InstanceProvider('A man of astounding insight')}
+    ...   (Description, None): InstanceProvider('A man of astounding insight'),
     ... }
 
 Binder
