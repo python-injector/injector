@@ -4,6 +4,8 @@ Injector - Python dependency injection framework, inspired by Guice
 Introduction
 ============
 
+.. image:: https://secure.travis-ci.org/alecthomas/injector.png?branch=master
+
 Dependency injection as a formal pattern is less useful in Python than in other
 languages, primarily due to its support for keyword arguments, the ease with
 which objects can be mocked, and its dynamic nature.
