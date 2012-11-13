@@ -4,4 +4,4 @@ python:
   - "2.7"
   - "3.2"
   - "pypy"
-script: py.test
+script: py.test -vv
