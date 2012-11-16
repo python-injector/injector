@@ -245,6 +245,11 @@ dependency graph::
     >>> from injector import Injector
     >>> injector = Injector([UserModule(), UserAttributeModule()])
 
+You can also pass classes instead of instances to ``Injector``, it will
+instantiate them for you::
+
+    >>> injector = Injector([UserModule, UserAttributeModule])
+
 The injector can then be used to acquire instances of a type, either directly::
 
     >>> injector.get(Name)
@@ -330,6 +335,35 @@ usual solution is to use a thread or greenlet-local cache inside the scope. The
 scope is "entered" in some low-level code by calling a method on the scope
 instance that creates this cache. Once the request is complete, the scope is
 "left" and the cache cleared.
+
+Tests
+=====
+
+When you use unit test framework such as ``unittest2`` or ``nose`` you can also
+profit from ``injector``. However, manually creating injectors and test classes
+can be quite annoying. There is, however, ``with_injector`` method decorator which
+has parameters just as ``Injector`` construtor and installes configured injector into
+class instance on the time of method call::
+
+    >>> from injector import Module, with_injector
+    >>> class UsernameModule(Module):
+    ...   def configure(self, binder):
+    ...     binder.bind(str, 'Maria')
+    ...
+    >>> class TestSomethingClass(object):
+    ...   @with_injector(UsernameModule())
+    ...   def setup(self):
+    ...      pass
+    ...
+    ...   @inject(username=str)
+    ...   def test_username(self, username):
+    ...      assert (username == 'Maria')
+
+*Each* method call re-initializes ``Injector`` - if you want to you can also put
+``with_injector`` decorator on class constructor.
+
+After such call all ``inject``-decorated methods will work just as you'd expect
+them to work.
 
 Footnote
 ========
