@@ -12,12 +12,14 @@
 
 from contextlib import contextmanager
 import abc
+import threading
 
 import pytest
 
 from injector import (Binder, Injector, Scope, InstanceProvider, ClassProvider,
-        inject, singleton, UnsatisfiedRequirement, CircularDependency, Module,
-        provides, Key, extends, SingletonScope, ScopeDecorator)
+        inject, singleton, threadlocal, UnsatisfiedRequirement,
+        CircularDependency, Module, provides, Key, extends, SingletonScope,
+        ScopeDecorator, with_injector)
 
 
 class TestBasicInjection(object):
@@ -194,6 +196,34 @@ def test_inject_decorated_singleton_class():
     assert (a1.b is a2.b)
 
 
+def test_threadlocal():
+    @threadlocal
+    class A(object):
+        def __init__(self):
+            pass
+
+    def configure(binder):
+        binder.bind(A)
+
+    injector = Injector(configure)
+    a1 = injector.get(A)
+    a2 = injector.get(A)
+
+    assert (a1 is a2)
+
+    a3 = [None]
+    ready = threading.Event()
+
+    def inject_a3():
+        a3[0] = injector.get(A)
+        ready.set()
+
+    threading.Thread(target=inject_a3).start()
+    ready.wait(1.0)
+
+    assert (a2 is not a3[0] and a3[0] is not None)
+
+
 def test_injecting_interface_implementation():
     class Interface(object):
         pass
@@ -299,6 +329,28 @@ def test_module_provides():
     injector = Injector(module)
     assert (injector.get(str, annotation='name') == 'Bob')
 
+def test_module_class_gets_instantiated():
+    name = 'Meg'
+    class MyModule(Module):
+        def configure(self, binder):
+            binder.bind(str, to=name)
+
+    injector = Injector(MyModule)
+    assert (injector.get(str) == name)
+
+def test_with_injector_works():
+    name = 'Victoria'
+    def configure(binder):
+        binder.bind(str, to=name)
+
+    class Aaa(object):
+        @with_injector(configure)
+        @inject(username=str)
+        def __init__(self, username):
+            self.username = username
+
+    aaa = Aaa()
+    assert (aaa.username == name)
 
 def test_bind_using_key():
     Name = Key('name')
@@ -526,8 +578,11 @@ def test_binder_provider_for_method_with_class_to_specific_subclass():
 
 
 def test_binder_provider_for_type_with_metaclass():
-    class A(object):
-        __metaclass__ = abc.ABCMeta
+    # use a metaclass cross python2/3 way
+    # otherwise should be:
+    # class A(object, metaclass=abc.ABCMeta):
+    #    passa
+    A = abc.ABCMeta('A', (object, ), {})
 
     binder = Injector().binder
     assert (isinstance(binder.provider_for(A, None).get(), A))

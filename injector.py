@@ -19,10 +19,11 @@ See http://pypi.python.org/pypi/injector for documentation.
 import functools
 import inspect
 import types
+import threading
 
 
 __author__ = 'Alec Thomas <alec@swapoff.org>'
-__version__ = '0.4.3'
+__version__ = '0.5.0'
 __version_tag__ = ''
 
 
@@ -132,7 +133,7 @@ class BindingKey(tuple):
             if len(what) != 1:
                 raise Error('dictionary bindings must have a single interface '
                             'key and value')
-            what = (dict, BindingKey(what.items()[0], None))
+            what = (dict, BindingKey(list(what.items())[0], None))
         return tuple.__new__(cls, (what, annotation))
 
     @property
@@ -332,18 +333,35 @@ class SingletonScope(Scope):
     True
     """
     def configure(self):
-        self.context = {}
+        self._context = {}
 
     def get(self, key, provider):
         try:
-            return self.context[key]
+            return self._context[key]
         except KeyError:
             provider = InstanceProvider(provider.get())
-            self.context[key] = provider
+            self._context[key] = provider
             return provider
 
 
 singleton = ScopeDecorator(SingletonScope)
+
+
+class ThreadLocalScope(Scope):
+    """A :class:`Scope` that returns a per-thread instance for a key."""
+    def configure(self):
+        self._locals = threading.local()
+
+    def get(self, key, provider):
+        try:
+            return getattr(self._locals, repr(key))
+        except AttributeError:
+            provider = InstanceProvider(provider.get())
+            setattr(self._locals, repr(key), provider)
+            return provider
+
+
+threadlocal = ScopeDecorator(ThreadLocalScope)
 
 
 class Module(object):
@@ -356,12 +374,12 @@ class Module(object):
             if hasattr(function, '__binding__'):
                 what, provider, annotation, scope = function.__binding__
                 binder.bind(what,
-                        to=types.MethodType(provider, self, self.__class__),
+                        to=types.MethodType(provider, self),
                         annotation=annotation, scope=scope)
             elif hasattr(function, '__multibinding__'):
                 what, provider, annotation, scope = function.__multibinding__
                 binder.multibind(what,
-                        to=types.MethodType(provider, self, self.__class__),
+                        to=types.MethodType(provider, self),
                         annotation=annotation, scope=scope)
         self.configure(binder)
 
@@ -375,9 +393,13 @@ class Injector(object):
     def __init__(self, modules=None, auto_bind=True):
         """Construct a new Injector.
 
-        :param modules: A callable, or list of callables, used to configure the
+        :param modules: A callable, class, or list of callables/classes, used to configure the
                         Binder associated with this Injector. Typically these
-                        callables will be subclasses of :class:`Module` .
+                        callables will be subclasses of :class:`Module`.
+
+                        In case of class, it's instance will be created using parameterless
+                        constructor before the configuration process begins.
+
                         Signature is ``configure(binder)``.
         :param auto_bind: Whether to automatically bind missing types.
         """
@@ -396,11 +418,15 @@ class Injector(object):
         # Bind scopes
         self.binder.bind_scope(NoScope)
         self.binder.bind_scope(SingletonScope)
+        self.binder.bind_scope(ThreadLocalScope)
         # Bind some useful types
         self.binder.bind(Injector, to=self)
         self.binder.bind(Binder, to=self.binder)
         # Initialise modules
         for module in modules:
+            if isinstance(module, type):
+                module = module()
+
             module(self.binder)
 
     def get(self, interface, annotation=None, scope=None):
@@ -430,12 +456,36 @@ class Injector(object):
         """Create a new instance, satisfying any dependencies on cls."""
         instance = cls.__new__(cls)
         try:
-            instance.__injector__ = self
+            self.install_into(instance)
         except AttributeError:
             # Some builtin types can not be modified.
             pass
         instance.__init__()
         return instance
+
+    def install_into(self, instance):
+        """
+        Puts injector reference in given object.
+        """
+        instance.__injector__ = self
+
+def with_injector(*injector_args, **injector_kwargs):
+    """
+    Decorator for a method. Installs Injector object which the method belongs
+    to before the decorated method is executed.
+
+    Parameters are the same as for Injector constructor.
+    """
+    def wrapper(f):
+        @functools.wraps(f)
+        def setup(self_, *args, **kwargs):
+            injector = Injector(*injector_args, **injector_kwargs)
+            injector.install_into(self_)
+            return f(self_, *args, **kwargs)
+
+        return setup
+
+    return wrapper
 
 
 def provides(interface, annotation=None, scope=None):
@@ -485,7 +535,7 @@ def inject(**bindings):
     >>> class A(object):
     ...     @inject(number=int, name=str, sizes=Sizes)
     ...     def __init__(self, number, name, sizes):
-    ...         print number, name, sizes
+    ...         print([number, name, sizes])
     ...
     ...     @inject(names=Names)
     ...     def friends(self, names):
@@ -501,7 +551,7 @@ def inject(**bindings):
     Use the Injector to get a new instance of A:
 
     >>> a = Injector(configure).get(A)
-    123 Bob [1, 2, 3]
+    [123, 'Bob', [1, 2, 3]]
 
     Call a method with arguments satisfied by the Injector:
 
@@ -510,7 +560,7 @@ def inject(**bindings):
     """
 
     def wrapper(f):
-        for key, value in bindings.iteritems():
+        for key, value in bindings.items():
             bindings[key] = BindingKey(value, None)
 
         @functools.wraps(f)
@@ -532,7 +582,7 @@ def inject(**bindings):
 
             injector._stack.append(key)
             try:
-                for arg, key in bindings.iteritems():
+                for arg, key in bindings.items():
                     try:
                         instance = injector.get(key.interface,
                                 annotation=key.annotation)
@@ -591,6 +641,11 @@ def Key(name):
     >>> Injector(configure).get(Age)
     90
     """
+    try:
+        if isinstance(name, unicode):
+            name = name.encode('utf-8')
+    except NameError:
+        pass
     return type(name, (BaseKey,), {})
 
 
