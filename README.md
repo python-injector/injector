@@ -91,13 +91,13 @@ injection is typically not that useful for smaller projects. It comes
 into its own on large projects where the up-front effort pays for itself
 in two ways:
 
-> 1.  Forces decoupling. In our example, this is illustrated by
->     decoupling our configuration and database configuration.
-> 2.  After a type is configured, it can be injected anywhere with no
->     additional effort. Simply @inject and it appears. We don't really
->     illustrate that here, but you can imagine adding an arbitrary
->     number of RequestHandler subclasses, all of which will
->     automatically have a DB connection provided.
+1.  Forces decoupling. In our example, this is illustrated by
+    decoupling our configuration and database configuration.
+2.  After a type is configured, it can be injected anywhere with no
+    additional effort. Simply @inject and it appears. We don't really
+    illustrate that here, but you can imagine adding an arbitrary
+    number of RequestHandler subclasses, all of which will
+    automatically have a DB connection provided.
 
 ## Terminology
 
@@ -277,10 +277,9 @@ Or transitively:
 Singletons are declared by binding them in the SingletonScope. This can
 be done in three ways:
 
-> 1.  Decorating the class with `@singleton`.
-> 2.  Decorating a `@provides(X)` decorated Module method with
->     `@singleton`.
-> 3.  Explicitly calling `binder.bind(X, scope=singleton)`.
+1.  Decorating the class with `@singleton`.
+2.  Decorating a `@provides(X)` decorated Module method with `@singleton`.
+3.  Explicitly calling `binder.bind(X, scope=singleton)`.
 
 A (redunant) example showing all three methods:
 
@@ -315,7 +314,9 @@ easily annotated with your scope:
 
 This can be used like so:
 
-> \>\>\> @customscope ... class MyClass(object): ... pass
+	>>> @customscope
+	... class MyClass(object):
+	...   pass
 
 Scopes are bound in modules with the `Binder.bind_scope` method:
 
