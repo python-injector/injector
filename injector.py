@@ -393,9 +393,13 @@ class Injector(object):
     def __init__(self, modules=None, auto_bind=True):
         """Construct a new Injector.
 
-        :param modules: A callable, or list of callables, used to configure the
+        :param modules: A callable, class, or list of callables/classes, used to configure the
                         Binder associated with this Injector. Typically these
-                        callables will be subclasses of :class:`Module` .
+                        callables will be subclasses of :class:`Module`.
+
+                        In case of class, it's instance will be created using parameterless
+                        constructor before the configuration process begins.
+
                         Signature is ``configure(binder)``.
         :param auto_bind: Whether to automatically bind missing types.
         """
@@ -420,6 +424,9 @@ class Injector(object):
         self.binder.bind(Binder, to=self.binder)
         # Initialise modules
         for module in modules:
+            if isinstance(module, type):
+                module = module()
+
             module(self.binder)
 
     def get(self, interface, annotation=None, scope=None):
@@ -449,12 +456,36 @@ class Injector(object):
         """Create a new instance, satisfying any dependencies on cls."""
         instance = cls.__new__(cls)
         try:
-            instance.__injector__ = self
+            self.install_into(instance)
         except AttributeError:
             # Some builtin types can not be modified.
             pass
         instance.__init__()
         return instance
+
+    def install_into(self, instance):
+        """
+        Puts injector reference in given object.
+        """
+        instance.__injector__ = self
+
+def with_injector(*injector_args, **injector_kwargs):
+    """
+    Decorator for a method. Installs Injector object which the method belongs
+    to before the decorated method is executed.
+
+    Parameters are the same as for Injector constructor.
+    """
+    def wrapper(f):
+        @functools.wraps(f)
+        def setup(self_, *args, **kwargs):
+            injector = Injector(*injector_args, **injector_kwargs)
+            injector.install_into(self_)
+            return f(self_, *args, **kwargs)
+
+        return setup
+
+    return wrapper
 
 
 def provides(interface, annotation=None, scope=None):
