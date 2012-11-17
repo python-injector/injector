@@ -22,75 +22,80 @@ from injector import (Binder, Injector, Scope, InstanceProvider, ClassProvider,
         ScopeDecorator, with_injector)
 
 
-class TestBasicInjection(object):
-    def prepare(self):
-        class B(object):
-            pass
+def prepare_basic_injection():
+    class B(object):
+        pass
 
-        class A(object):
-            @inject(b=B)
-            def __init__(self, b):
-                """Construct a new A."""
-                self.b = b
+    class A(object):
+        @inject(b=B)
+        def __init__(self, b):
+            """Construct a new A."""
+            self.b = b
 
-        return A, B
+    return A, B
 
-    def test_get_default_injected_instances(self):
-        A, B = self.prepare()
 
-        def configure(binder):
-            binder.bind(A)
-            binder.bind(B)
+def test_get_default_injected_instances():
+    A, B = prepare_basic_injection()
 
-        injector = Injector(configure)
-        assert (injector.get(Injector) is injector)
-        assert (injector.get(Binder) is injector.binder)
+    def configure(binder):
+        binder.bind(A)
+        binder.bind(B)
 
-    def test_instantiate_injected_method(self):
-        A, _ = self.prepare()
-        a = A('Bob')
-        assert (a.b == 'Bob')
+    injector = Injector(configure)
+    assert (injector.get(Injector) is injector)
+    assert (injector.get(Binder) is injector.binder)
 
-    def test_method_decorator_is_wrapped(self):
-        A, _ = self.prepare()
-        assert (A.__init__.__doc__ == 'Construct a new A.')
-        assert (A.__init__.__name__ == '__init__')
 
-    def test_inject_direct(self):
-        A, B = self.prepare()
+def test_instantiate_injected_method():
+    A, _ = prepare_basic_injection()
+    a = A('Bob')
+    assert (a.b == 'Bob')
 
-        def configure(binder):
-            binder.bind(A)
-            binder.bind(B)
 
-        injector = Injector(configure)
-        a = injector.get(A)
-        assert (isinstance(a, A))
-        assert (isinstance(a.b, B))
+def test_method_decorator_is_wrapped():
+    A, _ = prepare_basic_injection()
+    assert (A.__init__.__doc__ == 'Construct a new A.')
+    assert (A.__init__.__name__ == '__init__')
 
-    def test_configure_multiple_modules(self):
-        A, B = self.prepare()
 
-        def configure_a(binder):
-            binder.bind(A)
+def test_inject_direct():
+    A, B = prepare_basic_injection()
 
-        def configure_b(binder):
-            binder.bind(B)
+    def configure(binder):
+        binder.bind(A)
+        binder.bind(B)
 
-        injector = Injector([configure_a, configure_b])
-        a = injector.get(A)
-        assert (isinstance(a, A))
-        assert (isinstance(a.b, B))
+    injector = Injector(configure)
+    a = injector.get(A)
+    assert (isinstance(a, A))
+    assert (isinstance(a.b, B))
 
-    def test_inject_with_missing_dependency(self):
-        A, _ = self.prepare()
 
-        def configure(binder):
-            binder.bind(A)
+def test_configure_multiple_modules():
+    A, B = prepare_basic_injection()
 
-        injector = Injector(configure, auto_bind=False)
-        with pytest.raises(UnsatisfiedRequirement):
-            injector.get(A)
+    def configure_a(binder):
+        binder.bind(A)
+
+    def configure_b(binder):
+        binder.bind(B)
+
+    injector = Injector([configure_a, configure_b])
+    a = injector.get(A)
+    assert (isinstance(a, A))
+    assert (isinstance(a.b, B))
+
+
+def test_inject_with_missing_dependency():
+    A, _ = prepare_basic_injection()
+
+    def configure(binder):
+        binder.bind(A)
+
+    injector = Injector(configure, auto_bind=False)
+    with pytest.raises(UnsatisfiedRequirement):
+        injector.get(A)
 
 
 def test_inject_named_interface():
@@ -112,49 +117,50 @@ def test_inject_named_interface():
     assert (isinstance(a.b, B))
 
 
-class TestTransitiveInjection(object):
-    def prepare(self):
-        class C(object):
-            pass
+def prepare_transitive_injection():
+    class C(object):
+        pass
 
-        class B(object):
-            @inject(c=C)
-            def __init__(self, c):
-                self.c = c
+    class B(object):
+        @inject(c=C)
+        def __init__(self, c):
+            self.c = c
 
-        class A(object):
-            @inject(b=B)
-            def __init__(self, b):
-                self.b = b
+    class A(object):
+        @inject(b=B)
+        def __init__(self, b):
+            self.b = b
 
-        return A, B, C
+    return A, B, C
 
-    def test_transitive_injection(self):
-        A, B, C = self.prepare()
 
-        def configure(binder):
-            binder.bind(A)
-            binder.bind(B)
-            binder.bind(C)
+def test_transitive_injection():
+    A, B, C = prepare_transitive_injection()
 
-        injector = Injector(configure)
-        a = injector.get(A)
-        assert (isinstance(a, A))
-        assert (isinstance(a.b, B))
-        assert (isinstance(a.b.c, C))
+    def configure(binder):
+        binder.bind(A)
+        binder.bind(B)
+        binder.bind(C)
 
-    def test_transitive_injection_with_missing_dependency(self):
-        A, B, _ = self.prepare()
+    injector = Injector(configure)
+    a = injector.get(A)
+    assert (isinstance(a, A))
+    assert (isinstance(a.b, B))
+    assert (isinstance(a.b.c, C))
 
-        def configure(binder):
-            binder.bind(A)
-            binder.bind(B)
 
-        injector = Injector(configure, auto_bind=False)
-        with pytest.raises(UnsatisfiedRequirement):
-            injector.get(A)
-        with pytest.raises(UnsatisfiedRequirement):
-            injector.get(B)
+def test_transitive_injection_with_missing_dependency():
+    A, B, _ = prepare_transitive_injection()
+
+    def configure(binder):
+        binder.bind(A)
+        binder.bind(B)
+
+    injector = Injector(configure, auto_bind=False)
+    with pytest.raises(UnsatisfiedRequirement):
+        injector.get(A)
+    with pytest.raises(UnsatisfiedRequirement):
+        injector.get(B)
 
 
 def test_inject_singleton():
