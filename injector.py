@@ -23,7 +23,7 @@ import threading
 
 
 __author__ = 'Alec Thomas <alec@swapoff.org>'
-__version__ = '0.5.0'
+__version__ = '0.5.1'
 __version_tag__ = ''
 
 
@@ -539,6 +539,7 @@ def inject(**bindings):
     ...
     ...     @inject(names=Names)
     ...     def friends(self, names):
+    ...       '''Get my friends'''
     ...       return ', '.join(names)
 
     >>> def configure(binder):
@@ -557,6 +558,9 @@ def inject(**bindings):
 
     >>> a.friends()
     'Fred, Barney'
+
+    >>> a.friends.__doc__
+    'Get my friends'
     """
 
     def wrapper(f):
