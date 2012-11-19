@@ -34,7 +34,6 @@ setup(
     py_modules=['injector'],
     author='Alec Thomas',
     author_email='alec@swapoff.org',
-    test_suite='injector.test',
     install_requires=[
         'setuptools >= 0.6b1',
     ],

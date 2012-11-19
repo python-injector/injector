@@ -16,14 +16,16 @@ See http://pypi.python.org/pypi/injector for documentation.
 :license: BSD
 """
 
+
 import functools
 import inspect
 import types
 import threading
+from abc import ABCMeta, abstractmethod
 
 
 __author__ = 'Alec Thomas <alec@swapoff.org>'
-__version__ = '0.5.1'
+__version__ = '0.5.2'
 __version_tag__ = ''
 
 
@@ -53,6 +55,9 @@ class UnknownProvider(Error):
 class Provider(object):
     """Provides class instances."""
 
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
     def get(self):
         raise NotImplementedError
 
@@ -169,7 +174,10 @@ class Binding(tuple):
 
 
 class Binder(object):
-    """Bind interfaces to implementations."""
+    """Bind interfaces to implementations.
+
+    :attr injector: Injector this Binder is associated with.
+    """
 
     def __init__(self, injector, auto_bind=True):
         """Create a new Binder.
@@ -277,6 +285,8 @@ class Scope(object):
     :class:`Provider` .
     """
 
+    __metaclass__ = ABCMeta
+
     def __init__(self, injector):
         self.injector = injector
         self.configure()
@@ -284,6 +294,7 @@ class Scope(object):
     def configure(self):
         """Configure the scope."""
 
+    @abstractmethod
     def get(self, key, provider):
         """Get a :class:`Provider` for a key.
 
@@ -469,6 +480,44 @@ class Injector(object):
         """
         instance.__injector__ = self
 
+    def args_to_inject(self, function, bindings, owner_key):
+        """Inject arguments into a function.
+
+        :param function: The function.
+        :param bindings: Map of argument name to binding key to inject.
+        :param owner_key: A key uniquely identifying the *scope* of this function.
+            For a method this will be the owning class.
+        :returns: Dictionary of resolved arguments.
+        """
+        dependencies = {}
+        key = (owner_key, function)
+
+        def repr_key(k):
+            return '%s.%s()' % tuple(map(_describe, k))
+
+        if key in self._stack:
+            raise CircularDependency(
+                    'circular dependency detected: %s -> %s' %
+                    (' -> '.join(map(repr_key, self._stack)),
+                     repr_key(key)))
+
+        self._stack.append(key)
+        try:
+            for arg, key in bindings.items():
+                try:
+                    instance = self.get(key.interface,
+                            annotation=key.annotation)
+                except UnsatisfiedRequirement as e:
+                    if not e.args[0]:
+                        e = UnsatisfiedRequirement(owner_key, e.args[1])
+                    raise e
+                dependencies[arg] = instance
+        finally:
+            self._stack.pop()
+
+        return dependencies
+
+
 def with_injector(*injector_args, **injector_kwargs):
     """
     Decorator for a method. Installs Injector object which the method belongs
@@ -566,42 +615,29 @@ def inject(**bindings):
     def wrapper(f):
         for key, value in bindings.items():
             bindings[key] = BindingKey(value, None)
-
-        @functools.wraps(f)
-        def inject(self_, *args, **kwargs):
-            injector = getattr(self_, '__injector__', None)
-            if injector is None:
-                return f(self_, *args, **kwargs)
-            dependencies = {}
-            key = (self_.__class__, f)
-
-            def repr_key(k):
-                return '%s.%s()' % tuple(map(_describe, k))
-
-            if key in injector._stack:
-                raise CircularDependency(
-                        'circular dependency detected: %s -> %s' %
-                        (' -> '.join(map(repr_key, injector._stack)),
-                         repr_key(key)))
-
-            injector._stack.append(key)
-            try:
-                for arg, key in bindings.items():
-                    try:
-                        instance = injector.get(key.interface,
-                                annotation=key.annotation)
-                    except UnsatisfiedRequirement as e:
-                        if not e.args[0]:
-                            e = UnsatisfiedRequirement(self_.__class__,
-                                                        e.args[1])
-                        raise e
-                    dependencies[arg] = instance
-            finally:
-                injector._stack.pop()
-            dependencies.update(kwargs)
-            return f(self_, *args, **dependencies)
-        if hasattr(f, '__binding__'):
-            inject.__binding__ = f.__binding__
+        if hasattr(inspect, 'getfullargspec'):
+            args = inspect.getfullargspec(f)
+        else:
+            args = inspect.getargspec(f)
+        if args[0][0] == 'self':
+            @functools.wraps(f)
+            def inject(self_, *args, **kwargs):
+                injector = getattr(self_, '__injector__', None)
+                if injector is None:
+                    return f(self_, *args, **kwargs)
+                dependencies = injector.args_to_inject(
+                    function=f,
+                    bindings=bindings,
+                    owner_key=self_.__class__,
+                    )
+                dependencies.update(kwargs)
+                return f(self_, *args, **dependencies)
+            # Propagate @provides bindings to wrapper function
+            if hasattr(f, '__binding__'):
+                inject.__binding__ = f.__binding__
+        else:
+            inject = f
+        inject.__bindings__ = bindings
         return inject
     return wrapper
 
