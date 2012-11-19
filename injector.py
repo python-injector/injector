@@ -25,7 +25,7 @@ from abc import ABCMeta, abstractmethod
 
 
 __author__ = 'Alec Thomas <alec@swapoff.org>'
-__version__ = '0.5.1'
+__version__ = '0.5.2'
 __version_tag__ = ''
 
 
