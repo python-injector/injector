@@ -22,6 +22,7 @@ import inspect
 import types
 import threading
 from abc import ABCMeta, abstractmethod
+from collections import namedtuple
 
 
 __author__ = 'Alec Thomas <alec@swapoff.org>'
@@ -150,27 +151,11 @@ class BindingKey(tuple):
         return self[1]
 
 
-class Binding(tuple):
+BindingBase = namedtuple("BindingBase", 'interface annotation provider scope')
+
+
+class Binding(BindingBase):
     """A binding from an (interface, annotation) to a provider in a scope."""
-
-    def __new__(cls, interface, annotation, provider, scope):
-        return tuple.__new__(cls, (interface, annotation, provider, scope))
-
-    @property
-    def interface(self):
-        return self[0]
-
-    @property
-    def annotation(self):
-        return self[1]
-
-    @property
-    def provider(self):
-        return self[2]
-
-    @property
-    def scope(self):
-        return self[3]
 
 
 class Binder(object):
@@ -382,16 +367,17 @@ class Module(object):
         """Configure the binder."""
         self.__injector__ = binder.injector
         for unused_name, function in inspect.getmembers(self, inspect.ismethod):
+            binding = None
             if hasattr(function, '__binding__'):
-                what, provider, annotation, scope = function.__binding__
-                binder.bind(what,
-                        to=types.MethodType(provider, self),
-                        annotation=annotation, scope=scope)
+                binding = function.__binding__
+                binder.bind(binding.interface,
+                        to=types.MethodType(binding.provider, self),
+                        annotation=binding.annotation, scope=binding.scope)
             elif hasattr(function, '__multibinding__'):
-                what, provider, annotation, scope = function.__multibinding__
-                binder.multibind(what,
-                        to=types.MethodType(provider, self),
-                        annotation=annotation, scope=scope)
+                binding = function.__multibinding__
+                binder.multibind(binding.interface,
+                        to=types.MethodType(binding.provider, self),
+                        annotation=binding.annotation, scope=binding.scope)
         self.configure(binder)
 
     def configure(self, binder):
@@ -537,7 +523,7 @@ def with_injector(*injector_args, **injector_kwargs):
     return wrapper
 
 
-def provides(interface, annotation=None, scope=None):
+def provides(interface, annotation=None, scope=None, eager=False):
     """Decorator for :class:`Module` methods, registering a provider of a type.
 
     >>> class MyModule(Module):
@@ -550,7 +536,7 @@ def provides(interface, annotation=None, scope=None):
     :param scope: Optional scope of provided value.
     """
     def wrapper(provider):
-        provider.__binding__ = (interface, provider, annotation, scope)
+        provider.__binding__ = Binding(interface, annotation, provider, scope)
         return provider
 
     return wrapper
@@ -567,7 +553,7 @@ def extends(interface, annotation=None, scope=None):
     :param scope: Optional scope of provided value.
     """
     def wrapper(provider):
-        provider.__multibinding__ = (interface, provider, annotation, scope)
+        provider.__multibinding__ = Binding(interface, annotation, provider, scope)
         return provider
 
     return wrapper
