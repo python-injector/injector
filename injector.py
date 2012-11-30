@@ -44,6 +44,16 @@ class UnsatisfiedRequirement(Error):
                 if self.args[1].annotation else '',
                 _describe(self.args[1].interface))
 
+class CallError(Error):
+    """Call to callable object fails."""
+
+    def __str__(self):
+        instance, method, args, kwargs, original_error = self.args
+        parameters = ', '.join(
+            list(args) + list('%s=%s' % (key, value) for (key, value) in kwargs.items()))
+        return 'Call to %s%s(%s) failed: %s' % (
+            str(instance) + '.' if instance else '', method, parameters, original_error)
+
 
 class CircularDependency(Error):
     """Circular dependency detected."""
@@ -457,7 +467,10 @@ class Injector(object):
         except AttributeError:
             # Some builtin types can not be modified.
             pass
-        instance.__init__()
+        try:
+            instance.__init__()
+        except TypeError as e:
+            raise CallError(None, instance.__init__, [], {}, e)
         return instance
 
     def install_into(self, instance):
@@ -610,14 +623,20 @@ def inject(**bindings):
             def inject(self_, *args, **kwargs):
                 injector = getattr(self_, '__injector__', None)
                 if injector is None:
-                    return f(self_, *args, **kwargs)
+                    try:
+                        return f(self_, *args, **kwargs)
+                    except TypeError as e:
+                        raise CallError(self_, f, args, kwargs, e)
                 dependencies = injector.args_to_inject(
                     function=f,
                     bindings=bindings,
                     owner_key=self_.__class__,
                     )
                 dependencies.update(kwargs)
-                return f(self_, *args, **dependencies)
+                try:
+                    return f(self_, *args, **dependencies)
+                except TypeError as e:
+                    raise CallError(self_, f, args, dependencies, e)
             # Propagate @provides bindings to wrapper function
             if hasattr(f, '__binding__'):
                 inject.__binding__ = f.__binding__
