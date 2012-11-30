@@ -49,17 +49,13 @@ class CallError(Error):
 
     def __str__(self):
         instance, method, args, kwargs, original_error = self.args
-        if instance:
-            class_name = instance.__class__.__name__
-            method_name = method.func_name
-        elif hasattr(method, 'im_class'):
-            class_name = method.im_class.__name__
+        if hasattr(method, 'im_class'):
+            instance = method.__self__
             method_name = method.im_func.func_name
         else:
-            class_name = ''
             method_name = method.func_name
 
-        full_method = '.'.join((class_name, method_name)).strip('.')
+        full_method = '.'.join((repr(instance) if instance else '', method_name)).strip('.')
 
         parameters = ', '.join(itertools.chain(
             (repr(arg) for arg in args),
