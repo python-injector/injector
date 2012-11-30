@@ -16,7 +16,7 @@ See http://pypi.python.org/pypi/injector for documentation.
 :license: BSD
 """
 
-
+import itertools
 import functools
 import inspect
 import types
@@ -49,10 +49,24 @@ class CallError(Error):
 
     def __str__(self):
         instance, method, args, kwargs, original_error = self.args
-        parameters = ', '.join(
-            list(args) + list('%s=%s' % (key, value) for (key, value) in kwargs.items()))
-        return 'Call to %s%s(%s) failed: %s' % (
-            str(instance) + '.' if instance else '', method, parameters, original_error)
+        if instance:
+            class_name = instance.__class__.__name__
+            method_name = method.func_name
+        elif hasattr(method, 'im_class'):
+            class_name = method.im_class.__name__
+            method_name = method.im_func.func_name
+        else:
+            class_name = ''
+            method_name = method.func_name
+
+        full_method = '.'.join((class_name, method_name)).strip('.')
+
+        parameters = ', '.join(itertools.chain(
+            (repr(arg) for arg in args),
+            ('%s=%r' % (key, value) for (key, value) in kwargs.items())
+        ))
+        return 'Call to %s(%s) failed: %s' % (
+            full_method, parameters, original_error)
 
 
 class CircularDependency(Error):
