@@ -115,6 +115,7 @@ A means of providing an instance of a type. Built-in providers include
 ``ClassProvider`` (creates a new instance from a class),
 ``InstanceProvider`` (returns an existing instance directly) and
 ``CallableProvider`` (provides an instance by calling a function).
+``AssistedFactoryProvider`` (provides a factory which can be used for assisted injection)
 
 Scope
 -----
@@ -266,6 +267,44 @@ Or transitively::
     'Sherlock'
     >>> user.description
     'Sherlock is a man of astounding insight'
+
+Assisted injection
+------------------
+Sometimes there are classes that have injectable and non-injectable parameters in their
+constructors. Let's have for example::
+
+    >>> Database = Key('Database')
+    >>> class User(object):
+    ...     def __init__(self, name):
+    ...         self.name = name
+
+    >>> class UserUpdater(object):
+    ...     @inject(db = Database)
+    ...     def __init__(self, db, user):
+    ...         pass 
+
+ You may want to have database connection ``db`` injected into ``UserUpdater`` constructor,
+ but in the same time provide ``user`` object by yourself, and assuming that ``user`` object
+ is a value object and there's many users in your application it doesn't make much sense
+ to inject objects of class ``User``. 
+
+ In this situation there's technique called Assisted injection::
+
+    >>> UserUpdaterFactory = Key('UserUpdaterFactory')
+    >>> def module(binder):
+    ...     binder.bind(UserUpdaterFactory, to=AssistedFactoryProvider(UserUpdater))
+
+    ... injector = Injector(module)
+    ... factory = injector.get(UserUpdaterFactory)
+    ... user = User('John')
+    ... user_updater = factory.create(user=user)
+
+ This way we don't make ``UserUpdater`` directly injectable - we provide injectable factory.
+ Such factory has ``create(**kwargs)`` method which takes non-injectable parameters, combines
+ them with injectable dependencies of ``UserUpdater`` and calls ``UserUpdater`` initializer
+ using all of them.
+
+ More information on this topic: `"How to use Google Guice to create objects that require parameters?" on Stack Overflow <http://stackoverflow.com/questions/996300/how-to-use-google-guice-to-create-objects-that-require-parameters>`_
 
 Scopes
 ======
