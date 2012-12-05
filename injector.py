@@ -51,9 +51,9 @@ class CallError(Error):
         instance, method, args, kwargs, original_error = self.args
         if hasattr(method, 'im_class'):
             instance = method.__self__
-            method_name = method.im_func.func_name
+            method_name = method.__func__.__name__
         else:
-            method_name = method.func_name
+            method_name = method.__name__
 
         full_method = '.'.join((repr(instance) if instance else '', method_name)).strip('.')
 
@@ -480,7 +480,7 @@ class Injector(object):
         try:
             instance.__init__()
         except TypeError as e:
-            raise CallError(instance, instance.__init__.im_func, (), {}, e)
+            raise CallError(instance, instance.__init__.__func__, (), {}, e)
         return instance
 
     def install_into(self, instance):

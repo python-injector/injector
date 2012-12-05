@@ -607,7 +607,14 @@ def test_injecting_undecorated_class_with_missing_dependencies_raises_the_right_
     try:
         b = injector.get(B)
     except CallError as ce:
-        assert (ce.args[1] == A.__init__.im_func)
+        function = A.__init__
+
+        # Python 3 compatibility
+        try:
+            function = function.__func__
+        except AttributeError:
+            pass
+        assert (ce.args[1] == function)
 
 def test_call_to_method_containing_noninjectable_and_unsatisfied_dependencies_raises_the_right_error():
     class A(object):
@@ -624,7 +631,14 @@ def test_call_to_method_containing_noninjectable_and_unsatisfied_dependencies_ra
 
         # We cannot really check for function identity here... Error is raised after calling
         # original function but from outside we have access to function already decorated
-        assert (ce.args[1].func_name == A.fun.im_func.func_name)
+        function = A.fun
+
+        # Python 3 compatibility
+        try:
+            function = function.__func__
+        except AttributeError:
+            pass
+        assert (ce.args[1].__name__ == function.__name__)
 
         assert (ce.args[2] == ())
         assert (ce.args[3] == {'something': str()})
