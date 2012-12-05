@@ -113,9 +113,9 @@ Provider
 --------
 A means of providing an instance of a type. Built-in providers include
 ``ClassProvider`` (creates a new instance from a class),
-``InstanceProvider`` (returns an existing instance directly) and
-``CallableProvider`` (provides an instance by calling a function).
-``AssistedFactoryProvider`` (provides a factory which can be used for assisted injection)
+``InstanceProvider`` (returns an existing instance directly),
+``CallableProvider`` (provides an instance by calling a function) and
+``AssistedFactoryProvider`` (provides a factory which can be used for assisted injection).
 
 Scope
 -----
