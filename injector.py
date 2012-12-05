@@ -480,7 +480,7 @@ class Injector(object):
         try:
             instance.__init__()
         except TypeError as e:
-            raise CallError(None, instance.__init__, [], {}, e)
+            raise CallError(instance, instance.__init__.im_func, (), {}, e)
         return instance
 
     def install_into(self, instance):
