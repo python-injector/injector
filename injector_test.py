@@ -16,7 +16,7 @@ import threading
 
 import pytest
 
-from injector import (Binder, Injector, Scope, InstanceProvider, ClassProvider,
+from injector import (Binder, CallError, Injector, Scope, InstanceProvider, ClassProvider,
         inject, singleton, threadlocal, UnsatisfiedRequirement,
         CircularDependency, Module, provides, Key, extends, SingletonScope,
         ScopeDecorator, with_injector)
@@ -592,3 +592,53 @@ def test_binder_provider_for_type_with_metaclass():
 
     binder = Injector().binder
     assert (isinstance(binder.provider_for(A, None).get(), A))
+
+def test_injecting_undecorated_class_with_missing_dependencies_raises_the_right_error():
+    class A(object):
+        def __init__(self, parameter):
+            pass
+
+    class B(object):
+        @inject(a = A)
+        def __init__(self, a):
+            pass
+
+    injector = Injector()
+    try:
+        b = injector.get(B)
+    except CallError as ce:
+        function = A.__init__
+
+        # Python 3 compatibility
+        try:
+            function = function.__func__
+        except AttributeError:
+            pass
+        assert (ce.args[1] == function)
+
+def test_call_to_method_containing_noninjectable_and_unsatisfied_dependencies_raises_the_right_error():
+    class A(object):
+        @inject(something=str)
+        def fun(self, something, something_different):
+            pass
+
+    injector = Injector()
+    a = injector.get(A)
+    try:
+        a.fun()
+    except CallError as ce:
+        assert (ce.args[0] == a)
+
+        # We cannot really check for function identity here... Error is raised after calling
+        # original function but from outside we have access to function already decorated
+        function = A.fun
+
+        # Python 3 compatibility
+        try:
+            function = function.__func__
+        except AttributeError:
+            pass
+        assert (ce.args[1].__name__ == function.__name__)
+
+        assert (ce.args[2] == ())
+        assert (ce.args[3] == {'something': str()})
