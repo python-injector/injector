@@ -290,17 +290,13 @@ to inject objects of class ``User``.
 
 In this situation there's technique called Assisted injection::
 
-    >>> UserUpdaterFactory = Key('UserUpdaterFactory')
-    >>> def module(binder):
-    ...     binder.bind(UserUpdaterFactory, to=AssistedFactoryProvider(UserUpdater))
-
     ... injector = Injector(module)
-    ... factory = injector.get(UserUpdaterFactory)
+    ... builder = injector.get(AssistedBuilder(UserUpdater))
     ... user = User('John')
-    ... user_updater = factory.create(user=user)
+    ... user_updater = builder.build(user=user)
 
-This way we don't make ``UserUpdater`` directly injectable - we provide injectable factory.
-Such factory has ``create(**kwargs)`` method which takes non-injectable parameters, combines
+This way we don't make ``UserUpdater`` directly injectable - we provide injectable builder.
+Such builder has ``build(**kwargs)`` method which takes non-injectable parameters, combines
 them with injectable dependencies of ``UserUpdater`` and calls ``UserUpdater`` initializer
 using all of them.
 
