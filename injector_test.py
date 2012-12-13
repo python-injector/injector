@@ -19,7 +19,7 @@ import pytest
 from injector import (Binder, CallError, Injector, Scope, InstanceProvider, ClassProvider,
         inject, singleton, threadlocal, UnsatisfiedRequirement,
         CircularDependency, Module, provides, Key, extends, SingletonScope,
-        ScopeDecorator, with_injector)
+        ScopeDecorator, with_injector, AssistedBuilder)
 
 
 def prepare_basic_injection():
@@ -642,3 +642,25 @@ def test_call_to_method_containing_noninjectable_and_unsatisfied_dependencies_ra
 
         assert (ce.args[2] == ())
         assert (ce.args[3] == {'something': str()})
+
+class NeedsAssistance(object):
+    @inject(a=str)
+    def __init__(self, a, b):
+        self.a = a
+        self.b = b
+
+def test_assisted_builder_works_when_got_directly_from_injector():
+    injector = Injector()
+    builder = injector.get(AssistedBuilder(NeedsAssistance))
+    obj = builder.build(b=123)
+    assert ((obj.a, obj.b) == (str(), 123))
+
+def test_assisted_builder_works_when_injected():
+    class X(object):
+        @inject(builder=AssistedBuilder(NeedsAssistance))
+        def __init__(self, builder):
+            self.obj = builder.build(b=234)
+
+    injector = Injector()
+    x = injector.get(X)
+    assert ((x.obj.a, x.obj.b) == (str(), 234))
