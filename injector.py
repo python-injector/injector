@@ -144,24 +144,6 @@ class MapBindProvider(ListOfProviders):
             map.update(provider.get())
         return map
 
-class AssistedFactoryProvider(Provider):
-
-    class AssistedFactory(object):
-        def __init__(self, injector, cls):
-            self._injector = injector
-            self._cls = cls
-
-        def create(self, **kwargs):
-            return self._injector.create_object(self._cls, additional_kwargs=kwargs)
-
-    _injector = None
-
-    def __init__(self, cls):
-        self._cls = cls
-
-    def get(self):
-        return self.AssistedFactory(self._injector, self._cls)
-
 # These classes are used internally by the Binder.
 class BindingKey(tuple):
     """A key mapping to a Binding."""
@@ -271,8 +253,6 @@ class Binder(object):
 
     def provider_for(self, interface, to=None):
         if isinstance(to, Provider):
-            if isinstance(to, AssistedFactoryProvider):
-                to._injector = self.injector
             return to
         elif isinstance(to, (types.FunctionType, types.LambdaType,
                              types.MethodType, types.BuiltinFunctionType,
@@ -280,6 +260,9 @@ class Binder(object):
             return CallableProvider(to)
         elif issubclass(type(to), type):
             return ClassProvider(to, self.injector)
+        elif isinstance(interface, AssistedBuilder):
+            self.injector.install_into(interface)
+            return InstanceProvider(interface)
         elif isinstance(to, interface):
             return InstanceProvider(to)
         elif issubclass(type(interface), type):
@@ -723,6 +706,13 @@ def Key(name):
     except NameError:
         pass
     return type(name, (BaseKey,), {})
+
+class AssistedBuilder(object):
+    def __init__(self, cls):
+        self.cls = cls
+
+    def build(self, **kwargs):
+        return self.__injector__.create_object(self.cls, additional_kwargs=kwargs)
 
 
 def _describe(c):
