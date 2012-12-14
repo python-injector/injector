@@ -144,7 +144,6 @@ class MapBindProvider(ListOfProviders):
             map.update(provider.get())
         return map
 
-
 # These classes are used internally by the Binder.
 class BindingKey(tuple):
     """A key mapping to a Binding."""
@@ -261,6 +260,9 @@ class Binder(object):
             return CallableProvider(to)
         elif issubclass(type(to), type):
             return ClassProvider(to, self.injector)
+        elif isinstance(interface, AssistedBuilder):
+            self.injector.install_into(interface)
+            return InstanceProvider(interface)
         elif isinstance(to, interface):
             return InstanceProvider(to)
         elif issubclass(type(interface), type):
@@ -469,8 +471,10 @@ class Injector(object):
                         'with Binder.bind_scope(scope_cls)' % e)
         return scope_instance.get(key, binding.provider).get()
 
-    def create_object(self, cls):
+    def create_object(self, cls, additional_kwargs=None):
         """Create a new instance, satisfying any dependencies on cls."""
+
+        additional_kwargs = additional_kwargs or {}
         instance = cls.__new__(cls)
         try:
             self.install_into(instance)
@@ -478,9 +482,9 @@ class Injector(object):
             # Some builtin types can not be modified.
             pass
         try:
-            instance.__init__()
+            instance.__init__(**additional_kwargs)
         except TypeError as e:
-            raise CallError(instance, instance.__init__.__func__, (), {}, e)
+            raise CallError(instance, instance.__init__.__func__, (), additional_kwargs, e)
         return instance
 
     def install_into(self, instance):
@@ -702,6 +706,13 @@ def Key(name):
     except NameError:
         pass
     return type(name, (BaseKey,), {})
+
+class AssistedBuilder(object):
+    def __init__(self, cls):
+        self.cls = cls
+
+    def build(self, **kwargs):
+        return self.__injector__.create_object(self.cls, additional_kwargs=kwargs)
 
 
 def _describe(c):
