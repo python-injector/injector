@@ -289,7 +289,7 @@ to inject objects of class ``User``.
 
 In this situation there's technique called Assisted injection::
 
-    >>> injector = Injector(module)
+    >>> injector = Injector()
     >>> builder = injector.get(AssistedBuilder(UserUpdater))
     >>> user = User('John')
     >>> user_updater = builder.build(user=user)
@@ -302,9 +302,10 @@ using all of them.
 ``AssistedBuilder(X)`` is injectable just as anything else, if you need instance of it you
 just ask for it like that::
 
-    >>> @inject(builder=AssistedBuilder(UserUpdater))
-    ... def method(self, builder):
-    ...     # code
+    >>> class NeedsUserUpdater(object):
+    ...     @inject(builder=AssistedBuilder(UserUpdater))
+    ...     def method(self, builder):
+    ...         # code
 
 More information on this topic:
 
