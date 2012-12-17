@@ -24,7 +24,7 @@ A Full Example
 ==============
 Here's a full example to give you a taste of how Injector works::
 
-    >>> from injector import Module, Key, provides, Injector, inject, singleton
+    >>> from injector import AssistedBuilder, Module, Key, provides, Injector, inject, singleton
 
 We'll use an in-memory SQLite database for our example::
 
@@ -305,7 +305,7 @@ just ask for it like that::
     >>> class NeedsUserUpdater(object):
     ...     @inject(builder=AssistedBuilder(UserUpdater))
     ...     def method(self, builder):
-    ...         # code
+    ...         pass
 
 More information on this topic:
 
