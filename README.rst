@@ -114,8 +114,7 @@ Provider
 A means of providing an instance of a type. Built-in providers include
 ``ClassProvider`` (creates a new instance from a class),
 ``InstanceProvider`` (returns an existing instance directly),
-``CallableProvider`` (provides an instance by calling a function) and
-``AssistedFactoryProvider`` (provides a factory which can be used for assisted injection).
+``CallableProvider`` (provides an instance by calling a function).
 
 Scope
 -----
@@ -290,17 +289,27 @@ to inject objects of class ``User``.
 
 In this situation there's technique called Assisted injection::
 
-    ... injector = Injector(module)
-    ... builder = injector.get(AssistedBuilder(UserUpdater))
-    ... user = User('John')
-    ... user_updater = builder.build(user=user)
+    >>> injector = Injector(module)
+    >>> builder = injector.get(AssistedBuilder(UserUpdater))
+    >>> user = User('John')
+    >>> user_updater = builder.build(user=user)
 
-This way we don't make ``UserUpdater`` directly injectable - we provide injectable builder.
-Such builder has ``build(**kwargs)`` method which takes non-injectable parameters, combines
+This way we don't get ``UserUpdater`` directly but rather a builder object. Such builder
+has ``build(**kwargs)`` method which takes non-injectable parameters, combines
 them with injectable dependencies of ``UserUpdater`` and calls ``UserUpdater`` initializer
 using all of them.
 
-More information on this topic: `"How to use Google Guice to create objects that require parameters?" on Stack Overflow <http://stackoverflow.com/questions/996300/how-to-use-google-guice-to-create-objects-that-require-parameters>`_
+``AssistedBuilder(X)`` is injectable just as anything else, if you need instance of it you
+just ask for it like that::
+
+    >>> @inject(builder=AssistedBuilder(UserUpdater))
+    ... def method(self, builder):
+    ...     # code
+
+More information on this topic:
+
+* `"How to use Google Guice to create objects that require parameters?" on Stack Overflow <http://stackoverflow.com/questions/996300/how-to-use-google-guice-to-create-objects-that-require-parameters>`_
+* `Google Guice assisted injection <http://code.google.com/p/google-guice/wiki/AssistedInject>`_
 
 Scopes
 ======
