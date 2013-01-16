@@ -688,7 +688,7 @@ class TestThreadSafety(object):
             with lock:
                 objects.append(o)
 
-        threads = [threading.Thread(target=target) for i in range(2)]
+        threads = [threading.Thread(target=target) for i in range(count)]
 
         for t in threads:
             t.start()
