@@ -29,6 +29,17 @@ __author__ = 'Alec Thomas <alec@swapoff.org>'
 __version__ = '0.5.2'
 __version_tag__ = ''
 
+def synchronized(lock):
+    def outside_wrapper(function):
+        @functools.wraps(function)
+        def wrapper(*args, **kwargs):
+            with lock:
+                return function(*args, **kwargs)
+        return wrapper
+    return outside_wrapper
+
+lock = threading.RLock()
+
 
 class Error(Exception):
     """Base exception."""
@@ -353,6 +364,7 @@ class SingletonScope(Scope):
     def configure(self):
         self._context = {}
 
+    @synchronized(lock)
     def get(self, key, provider):
         try:
             return self._context[key]
@@ -493,6 +505,7 @@ class Injector(object):
         """
         instance.__injector__ = self
 
+    @synchronized(lock)
     def args_to_inject(self, function, bindings, owner_key):
         """Inject arguments into a function.
 
