@@ -664,3 +664,12 @@ def test_assisted_builder_works_when_injected():
     injector = Injector()
     x = injector.get(X)
     assert ((x.obj.a, x.obj.b) == (str(), 234))
+
+def test_assisted_builder_uses_bindings():
+    Interface = Key('Interface')
+    def configure(binder):
+        binder.bind(Interface, to=NeedsAssistance)
+    injector = Injector(configure)
+    builder = injector.get(AssistedBuilder(Interface))
+    x = builder.build(b=333)
+    assert ((type(x), x.b) == (NeedsAssistance, 333))
