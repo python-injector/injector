@@ -11,6 +11,7 @@
 """Functional tests for the Pollute dependency injection framework."""
 
 from contextlib import contextmanager
+from time import sleep
 import abc
 import threading
 
@@ -664,3 +665,44 @@ def test_assisted_builder_works_when_injected():
     injector = Injector()
     x = injector.get(X)
     assert ((x.obj.a, x.obj.b) == (str(), 234))
+
+class TestThreadSafety(object):
+    def setup(self):
+        def configure(binder):
+            binder.bind(str, to=lambda: sleep(1) and 'this is str')
+
+        class XXX(object):
+            @inject(s=str)
+            def __init__(self, s):
+                pass
+
+        self.injector = Injector(configure)
+        self.cls = XXX
+
+    def gather_results(self, count):
+        objects = []
+        lock = threading.Lock()
+
+        def target():
+            o = self.injector.get(self.cls)
+            with lock:
+                objects.append(o)
+
+        threads = [threading.Thread(target=target) for i in range(2)]
+
+        for t in threads:
+            t.start()
+
+        for t in threads:
+            t.join()
+
+        return objects
+
+    def test_injection_is_thread_safe(self):
+        objects = self.gather_results(2)
+        assert (len(objects) == 2)
+
+    def test_singleton_scope_is_thread_safe(self):
+        self.injector.binder.bind(self.cls, scope=singleton)
+        a, b = self.gather_results(2)
+        assert (a is b)
