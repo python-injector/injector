@@ -35,6 +35,10 @@ def prepare_basic_injection():
 
     return A, B
 
+def test_key_cannot_be_instantiated():
+    with pytest.raises(Exception):
+        Interface = Key('Interface')
+        i = Interface()
 
 def test_get_default_injected_instances():
     A, B = prepare_basic_injection()
