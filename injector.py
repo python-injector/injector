@@ -187,14 +187,13 @@ BindingBase = namedtuple("BindingBase", 'interface annotation provider scope')
 class Binding(BindingBase):
     """A binding from an (interface, annotation) to a provider in a scope."""
 
-
 class Binder(object):
     """Bind interfaces to implementations.
 
     :attr injector: Injector this Binder is associated with.
     """
 
-    def __init__(self, injector, auto_bind=True):
+    def __init__(self, injector, auto_bind=True, parent=None):
         """Create a new Binder.
 
         :param injector: Injector we are binding for.
@@ -202,6 +201,7 @@ class Binder(object):
         self.injector = injector
         self._auto_bind = auto_bind
         self._bindings = {}
+        self.parent = parent or _EmptyBinder()
 
     def bind(self, interface, to=None, annotation=None, scope=None):
         """Bind an interface to an implementation.
@@ -284,16 +284,23 @@ class Binder(object):
             raise UnknownProvider('couldn\'t determine provider for %r to %r' %
                                   (interface, to))
 
+    def _get_binding(self, key):
+        return self._bindings.get(key) or self.parent._get_binding(key)
+
     def get_binding(self, cls, key):
         try:
-            return self._bindings[key]
-        except KeyError:
+            return self._get_binding(key)
+        except (KeyError, UnsatisfiedRequirement):
             if self._auto_bind:
                 binding = self.create_binding(key.interface,
                         annotation=key.annotation)
                 self._bindings[key] = binding
                 return binding
             raise UnsatisfiedRequirement(cls, key)
+
+class _EmptyBinder(object):
+    def _get_binding(self, key):
+        raise KeyError
 
 
 class Scope(object):
@@ -421,7 +428,7 @@ class Module(object):
 class Injector(object):
     """Initialise and use an object dependency graph."""
 
-    def __init__(self, modules=None, auto_bind=True):
+    def __init__(self, modules=None, auto_bind=True, parent=None):
         """Construct a new Injector.
 
         :param modules: A callable, class, or list of callables/classes, used to configure the
@@ -438,18 +445,22 @@ class Injector(object):
         # dependencies.
         self._stack = []
 
+        self.parent = parent
+
         # Binder
-        self.binder = Binder(self, auto_bind=auto_bind)
+        self.binder = Binder(self, auto_bind=auto_bind, parent=parent and parent.binder)
 
         if not modules:
             modules = []
         elif not hasattr(modules, '__iter__'):
             modules = [modules]
 
-        # Bind scopes
-        self.binder.bind_scope(NoScope)
-        self.binder.bind_scope(SingletonScope)
-        self.binder.bind_scope(ThreadLocalScope)
+        if not parent:
+            # Bind scopes
+            self.binder.bind_scope(NoScope)
+            self.binder.bind_scope(SingletonScope)
+            self.binder.bind_scope(ThreadLocalScope)
+
         # Bind some useful types
         self.binder.bind(Injector, to=self)
         self.binder.bind(Binder, to=self.binder)
@@ -482,6 +493,9 @@ class Injector(object):
             raise Error('%s; scopes must be explicitly bound '
                         'with Binder.bind_scope(scope_cls)' % e)
         return scope_instance.get(key, binding.provider).get()
+
+    def create_child_injector(self, *args, **kwargs):
+        return Injector(*args, parent=self, **kwargs)
 
     def create_object(self, cls, additional_kwargs=None):
         """Create a new instance, satisfying any dependencies on cls."""

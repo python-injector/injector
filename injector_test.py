@@ -35,6 +35,30 @@ def prepare_basic_injection():
 
     return A, B
 
+def prepare_nested_injectors():
+    def configure(binder):
+        binder.bind(str, to='asd')
+
+    parent = Injector(configure)
+    child = parent.create_child_injector()
+    return parent, child
+
+def test_child_injector_inherits_parent_bindings():
+    parent, child = prepare_nested_injectors()
+    assert (child.get(str) == parent.get(str))
+
+def test_child_injector_overrides_parent_bindings():
+    parent, child = prepare_nested_injectors()
+    child.binder.bind(str, to='qwe')
+
+    assert ((parent.get(str), child.get(str)) == ('asd', 'qwe'))
+
+def test_scopes_are_only_bound_to_root_injector():
+    parent, child = prepare_nested_injectors()
+    class A(object): pass
+    parent.binder.bind(A, to=A, scope=singleton)
+    assert (parent.get(A) is child.get(A))
+
 
 def test_get_default_injected_instances():
     A, B = prepare_basic_injection()
