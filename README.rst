@@ -410,6 +410,14 @@ class instance on the time of method call::
 After such call all ``inject``-decorated methods will work just as you'd expect
 them to work.
 
+Thread safety
+=============
+
+The following functions are thread safe:
+
+* ``Injector.get``
+* injection provided by ``inject`` decorator (please note, however, that it doesn't say anything about decorated function thread safety)
+
 Footnote
 ========
 This framework is similar to snake-guice, but aims for simplification.
