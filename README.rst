@@ -272,7 +272,8 @@ Assisted injection
 Sometimes there are classes that have injectable and non-injectable parameters in their
 constructors. Let's have for example::
 
-    >>> Database = Key('Database')
+    >>> class Database(object): pass
+
     >>> class User(object):
     ...     def __init__(self, name):
     ...         self.name = name
