@@ -104,7 +104,6 @@ class ClassProvider(Provider):
     def get(self):
         return self.injector.create_object(self._cls)
 
-
 class CallableProvider(Provider):
     """Provides something using a callable."""
 
@@ -496,7 +495,11 @@ class Injector(object):
         try:
             instance.__init__(**additional_kwargs)
         except TypeError as e:
-            raise CallError(instance, instance.__init__.__func__, (), additional_kwargs, e)
+            # The reason why getattr() fallback is used here is that
+            # __init__.__func__ apparently doesn't exist for Key-type objects
+            raise CallError(instance,
+                getattr(instance.__init__, '__func__', instance.__init__),
+                (), additional_kwargs, e)
         return instance
 
     def install_into(self, instance):
@@ -725,12 +728,20 @@ def Key(name):
     return type(name, (BaseKey,), {})
 
 class AssistedBuilder(object):
-    def __init__(self, cls):
-        self.cls = cls
+    def __init__(self, interface):
+        self.interface = interface
 
     def build(self, **kwargs):
-        return self.__injector__.create_object(self.cls, additional_kwargs=kwargs)
-
+        key = BindingKey(self.interface, None)
+        binder = self.__injector__.binder
+        binding = binder.get_binding(None, key)
+        provider = binding.provider
+        try:
+            cls = provider._cls
+        except AttributeError:
+            raise Error('Assisted building works only with ClassProviders, '
+                        'got %r for %r' % (provider, self.interface))
+        return self.__injector__.create_object(cls, additional_kwargs=kwargs)
 
 def _describe(c):
     if hasattr(c, '__name__'):

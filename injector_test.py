@@ -670,6 +670,15 @@ def test_assisted_builder_works_when_injected():
     x = injector.get(X)
     assert ((x.obj.a, x.obj.b) == (str(), 234))
 
+def test_assisted_builder_uses_bindings():
+    Interface = Key('Interface')
+    def configure(binder):
+        binder.bind(Interface, to=NeedsAssistance)
+    injector = Injector(configure)
+    builder = injector.get(AssistedBuilder(Interface))
+    x = builder.build(b=333)
+    assert ((type(x), x.b) == (NeedsAssistance, 333))
+
 class TestThreadSafety(object):
     def setup(self):
         def configure(binder):
