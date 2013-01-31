@@ -692,6 +692,10 @@ def Annotation(name):
 class BaseKey(object):
     """Base type for binding keys."""
 
+    def __init__(self):
+        raise Exception('Instantiation of %s prohibited - it is derived from BaseKey '
+                        'so most likely you should bind it to something.' % (self.__class__,))
+
 
 def Key(name):
     """Create a new type key.
