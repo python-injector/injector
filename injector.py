@@ -271,8 +271,8 @@ class Binder(object):
         elif issubclass(type(to), type):
             return ClassProvider(to, self.injector)
         elif isinstance(interface, AssistedBuilder):
-            self.injector.install_into(interface)
-            return InstanceProvider(interface)
+            builder = AssistedBuilderImplementation(interface.interface, self.injector)
+            return InstanceProvider(builder)
         elif isinstance(to, interface):
             return InstanceProvider(to)
         elif issubclass(type(interface), type):
@@ -731,9 +731,14 @@ class AssistedBuilder(object):
     def __init__(self, interface):
         self.interface = interface
 
+class AssistedBuilderImplementation(object):
+    def __init__(self, interface, injector):
+        self.interface = interface
+        self.injector = injector
+
     def build(self, **kwargs):
         key = BindingKey(self.interface, None)
-        binder = self.__injector__.binder
+        binder = self.injector.binder
         binding = binder.get_binding(None, key)
         provider = binding.provider
         try:
@@ -741,7 +746,7 @@ class AssistedBuilder(object):
         except AttributeError:
             raise Error('Assisted building works only with ClassProviders, '
                         'got %r for %r' % (provider, self.interface))
-        return self.__injector__.create_object(cls, additional_kwargs=kwargs)
+        return self.injector.create_object(cls, additional_kwargs=kwargs)
 
 def _describe(c):
     if hasattr(c, '__name__'):
