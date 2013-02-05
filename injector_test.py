@@ -679,6 +679,17 @@ def test_assisted_builder_uses_bindings():
     x = builder.build(b=333)
     assert ((type(x), x.b) == (NeedsAssistance, 333))
 
+def test_assisted_builder_injection_is_safe_to_use_with_multiple_injectors():
+    class X(object):
+        @inject(builder=AssistedBuilder(NeedsAssistance))
+        def y(self, builder):
+            return builder
+
+    i1, i2 = Injector(), Injector()
+    b1 = i1.get(X).y()
+    b2 = i2.get(X).y()
+    assert ((b1.injector, b2.injector) == (i1, i2))
+
 class TestThreadSafety(object):
     def setup(self):
         def configure(binder):
