@@ -730,3 +730,40 @@ class TestThreadSafety(object):
         self.injector.binder.bind(self.cls, scope=singleton)
         a, b = self.gather_results(2)
         assert (a is b)
+
+class TestMemberInjection(object):
+    def setup(self):
+        class A(object):
+            counter = 0
+
+            def __init__(self):
+                A.counter += 1
+
+        class B(object):
+            a = inject(A)
+
+        self.injector = Injector()
+        self.A = A
+        self.B = B
+
+    def test_member_injection_works(self):
+        b = self.injector.get(self.B)
+        a = b.a
+        assert (type(a) == self.A)
+
+    def test_members_arent_injected_until_accessed(self):
+        b = self.injector.get(self.B)
+        assert (self.A.counter == 0)
+
+    def test_members_are_injected_only_once(self):
+        b = self.injector.get(self.B)
+        _1 = b.a
+        _2 = b.a
+        assert (self.A.counter == 1 and _1 == _2)
+
+    def test_members_arent_injected_when_manually_overridden(self):
+        b = self.injector.get(self.B)
+        b.a = 123
+        a = b.a
+
+        assert (self.A.counter == 0 and a == 123)
