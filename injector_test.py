@@ -766,13 +766,12 @@ class TestMemberInjection(object):
         _2 = b.a
         assert (self.A.counter == 1 and _1 is _2)
 
-    def test_each_instance_get_new_injection(self):
+    def test_each_instance_gets_new_injection(self):
         count = 3
-        for i in range(count):
-            b = self.injector.get(self.B)
-            a = b.a
+        objs = [self.injector.get(self.B).a for i in range(count)]
 
         assert (self.A.counter == count)
+        assert (len(set(objs)) == count)
 
     def test_members_arent_injected_when_manually_overwritten(self):
         b = self.injector.get(self.B)
