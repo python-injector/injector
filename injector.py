@@ -727,9 +727,13 @@ def Key(name):
         pass
     return type(name, (BaseKey,), {})
 
-class AssistedBuilder(object):
-    def __init__(self, interface):
-        self.interface = interface
+class AssistedBuilder(tuple):
+    def __new__(cls, interface):
+        return super(AssistedBuilder, cls).__new__(cls, (interface,))
+
+    @property
+    def interface(self):
+        return self[0]
 
 class AssistedBuilderImplementation(object):
     def __init__(self, interface, injector):
