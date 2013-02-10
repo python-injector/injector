@@ -33,9 +33,8 @@ We'll use an in-memory SQLite database for our example::
 And make up an imaginary RequestHandler class that uses the SQLite connection::
 
     >>> class RequestHandler(object):
-    ...   @inject(db=sqlite3.Connection)
-    ...   def __init__(self, db):
-    ...     self._db = db
+    ...   _db = inject(sqlite3.Connection)
+    ...
     ...   def get(self):
     ...     cursor = self._db.cursor()
     ...     cursor.execute('SELECT key, value FROM data ORDER by key')
@@ -208,10 +207,11 @@ For more complex instance construction, methods decorated with
 
 Injection
 ---------
-Injection is the process of providing an instance of a type, to a method that
-uses that instance. It is achieved with the ``inject`` decorator. Keyword
-arguments to inject define which arguments in its decorated method should be
-injected, and with what.
+Injection is the process of providing an instance of a type, to a method or class that
+uses that instance. It is achieved with the ``inject`` function/decorator.
+
+When used as a method decorator, ``inject`` accept multiple keyword arguments that
+that define which arguments in the decorated method should be injected, and with what.
 
 Here is an example of injection on a module provider method, and on the
 constructor of a normal class::
@@ -235,6 +235,20 @@ constructor of a normal class::
     ...     @inject(name=Name)
     ...     def describe(self, name):
     ...         return '%s is a man of astounding insight' % name
+
+
+Injecting members is, in general, more concise than injecting parameters into
+constructor and copying them to appropriate members. Implementation detail: injected
+members aren't instantiated until they're accessed the first time.
+
+When ``inject`` is used to inject class member it accepts key as it's one and
+only positional parameter.
+
+Let's see how would ``User`` class look like if we used member injection there::
+
+    >>> class User2(object):
+    ...     name = inject(Name)
+    ...     description = inject(Description)
 
 Injector
 --------
@@ -279,7 +293,7 @@ constructors. Let's have for example::
     ...         self.name = name
 
     >>> class UserUpdater(object):
-    ...     @inject(db = Database)
+    ...     @inject(db=Database)
     ...     def __init__(self, db, user):
     ...         pass 
 
@@ -304,9 +318,10 @@ using all of them.
 just ask for it like that::
 
     >>> class NeedsUserUpdater(object):
-    ...     @inject(builder=AssistedBuilder(UserUpdater))
-    ...     def method(self, builder):
-    ...         pass
+    ...     updater_builder = inject(AssistedBuilder(UserUpdater))
+    ...
+    ...     def method(self):
+    ...         updater = self.updater_builder.build(user=None)
 
 More information on this topic:
 

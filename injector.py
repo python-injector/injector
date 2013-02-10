@@ -602,7 +602,7 @@ def extends(interface, annotation=None, scope=None):
     return wrapper
 
 
-def inject(**bindings):
+def inject(*args, **bindings):
     """Decorator declaring parameters to be injected.
 
     eg.
@@ -611,6 +611,8 @@ def inject(**bindings):
     >>> Names = Key('names')
 
     >>> class A(object):
+    ...     string = inject(str)
+    ...
     ...     @inject(number=int, name=str, sizes=Sizes)
     ...     def __init__(self, number, name, sizes):
     ...         print([number, name, sizes])
@@ -632,6 +634,11 @@ def inject(**bindings):
     >>> a = Injector(configure).get(A)
     [123, 'Bob', [1, 2, 3]]
 
+    Access injected member:
+
+    >>> a.string
+    'Bob'
+
     Call a method with arguments satisfied by the Injector:
 
     >>> a.friends()
@@ -641,6 +648,16 @@ def inject(**bindings):
     'Get my friends'
     """
 
+    if args:
+        assert not bindings
+        interface, = args
+        result = _MemberDescriptor(interface)
+    else:
+        result = _inject_decorator(**bindings)
+
+    return result
+
+def _inject_decorator(**bindings):
     def wrapper(f):
         for key, value in bindings.items():
             bindings[key] = BindingKey(value, None)
@@ -674,8 +691,47 @@ def inject(**bindings):
             inject = f
         inject.__bindings__ = bindings
         return inject
+
     return wrapper
 
+
+class _MemberDescriptor(object):
+    _storage_name = None
+    _owner_class = None
+
+    def __init__(self, interface):
+        self.interface = interface
+
+    def __get__(self, instance, owner):
+        if not instance:
+            return self
+
+        self._update(owner)
+
+        if not hasattr(instance, self._storage_name) and hasattr(instance, '__injector__'):
+            obj = instance.__injector__.get(self.interface)
+            setattr(instance, self._storage_name, obj)
+
+        return getattr(instance, self._storage_name)
+
+    def _update(self, owner):
+        if self._owner_class:
+            assert self._owner_class is owner
+        else:
+            for key in dir(owner):
+                if getattr(owner, key) == self:
+                    self._storage_name = '__' + key
+            assert self._storage_name
+
+            self._owner_class = owner
+
+    def __set__(self, instance, value):
+        self._update(instance.__class__)
+        setattr(instance, self._storage_name, value)
+
+    def __delete__(self, instance):
+        self._update(instance.__class__)
+        delattr(instance, self._storage_name)
 
 class BaseAnnotation(object):
     """Annotation base type."""
