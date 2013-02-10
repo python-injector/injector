@@ -20,7 +20,7 @@ import pytest
 from injector import (Binder, CallError, Injector, Scope, InstanceProvider, ClassProvider,
         inject, singleton, threadlocal, UnsatisfiedRequirement,
         CircularDependency, Module, provides, Key, extends, SingletonScope,
-        ScopeDecorator, with_injector, AssistedBuilder)
+        ScopeDecorator, with_injector, AssistedBuilder, BindingKey)
 
 
 def prepare_basic_injection():
@@ -689,6 +689,11 @@ def test_assisted_builder_injection_is_safe_to_use_with_multiple_injectors():
     b1 = i1.get(X).y()
     b2 = i2.get(X).y()
     assert ((b1.injector, b2.injector) == (i1, i2))
+
+def test_assisted_builder_injection_uses_the_same_binding_key_every_time():
+    # if we have different BindingKey for every AssistedBuilder(...) we will get memory leak
+    gen_key = lambda: BindingKey(AssistedBuilder(NeedsAssistance), None)
+    assert gen_key() == gen_key()
 
 class TestThreadSafety(object):
     def setup(self):
