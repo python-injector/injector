@@ -641,7 +641,7 @@ def inject(**bindings):
     'Get my friends'
     """
 
-    def wrapper(f):
+    def method_wrapper(f):
         for key, value in bindings.items():
             bindings[key] = BindingKey(value, None)
         if hasattr(inspect, 'getfullargspec'):
@@ -674,7 +674,24 @@ def inject(**bindings):
             inject = f
         inject.__bindings__ = bindings
         return inject
-    return wrapper
+
+    def class_wrapper(cls):
+        orig_init = cls.__init__
+        @inject(**bindings)
+        def init(self, *args, **kwargs):
+            for key in bindings:
+                setattr(self, key, kwargs.pop(key))
+            orig_init(self, *args, **kwargs)
+        cls.__init__ = init
+        return cls
+
+    def multi_wrapper(something):
+        if type(something) is type:
+            return class_wrapper(something)
+        else:
+            return method_wrapper(something)
+
+    return multi_wrapper
 
 
 class BaseAnnotation(object):

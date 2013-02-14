@@ -735,3 +735,66 @@ class TestThreadSafety(object):
         self.injector.binder.bind(self.cls, scope=singleton)
         a, b = self.gather_results(2)
         assert (a is b)
+
+class TestClassInjection(object):
+    def setup(self):
+        class A(object):
+            counter = 0
+
+            def __init__(self):
+                A.counter += 1
+
+        @inject(a=A)
+        class B(object):
+            pass
+
+        @inject(a=A)
+        class C(object):
+            def __init__(self, noninjectable):
+                self.noninjectable = noninjectable
+
+        self.injector = Injector()
+        self.A = A
+        self.B = B
+        self.C = C
+
+    def test_instantiation_still_requires_parameters(self):
+        for cls in (self.B, self.C):
+            with pytest.raises(Exception):
+                obj = cls()
+
+        with pytest.raises(Exception):
+            c = self.C(noninjectable=1)
+
+        with pytest.raises(Exception):
+            c = self.C(a=self.A())
+
+    def test_injection_works(self):
+        b = self.injector.get(self.B)
+        a = b.a
+        assert (type(a) == self.A)
+
+    def test_assisted_injection_works(self):
+        builder = self.injector.get(AssistedBuilder(self.C))
+        c = builder.build(noninjectable=5)
+
+        assert((type(c.a), c.noninjectable) == (self.A, 5))
+
+    def test_members_are_injected_only_once(self):
+        b = self.injector.get(self.B)
+        _1 = b.a
+        _2 = b.a
+        assert (self.A.counter == 1 and _1 is _2)
+
+    def test_each_instance_gets_new_injection(self):
+        count = 3
+        objs = [self.injector.get(self.B).a for i in range(count)]
+
+        assert (self.A.counter == count)
+        assert (len(set(objs)) == count)
+
+    def test_members_can_be_overwritten(self):
+        b = self.injector.get(self.B)
+        b.a = 123
+
+        assert (b.a == 123)
