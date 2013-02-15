@@ -291,7 +291,7 @@ constructors. Let's have for example::
     ...         self.name = name
 
     >>> @inject(db=Database)
-    >>> class UserUpdater(object):
+    ... class UserUpdater(object):
     ...     def __init__(self, user):
     ...         pass 
 
