@@ -104,7 +104,6 @@ class ClassProvider(Provider):
     def get(self):
         return self.injector.create_object(self._cls)
 
-
 class CallableProvider(Provider):
     """Provides something using a callable."""
 
@@ -272,8 +271,8 @@ class Binder(object):
         elif issubclass(type(to), type):
             return ClassProvider(to, self.injector)
         elif isinstance(interface, AssistedBuilder):
-            self.injector.install_into(interface)
-            return InstanceProvider(interface)
+            builder = AssistedBuilderImplementation(interface.interface, self.injector)
+            return InstanceProvider(builder)
         elif isinstance(to, interface):
             return InstanceProvider(to)
         elif issubclass(type(interface), type):
@@ -510,7 +509,11 @@ class Injector(object):
         try:
             instance.__init__(**additional_kwargs)
         except TypeError as e:
-            raise CallError(instance, instance.__init__.__func__, (), additional_kwargs, e)
+            # The reason why getattr() fallback is used here is that
+            # __init__.__func__ apparently doesn't exist for Key-type objects
+            raise CallError(instance,
+                getattr(instance.__init__, '__func__', instance.__init__),
+                (), additional_kwargs, e)
         return instance
 
     def install_into(self, instance):
@@ -706,6 +709,10 @@ def Annotation(name):
 class BaseKey(object):
     """Base type for binding keys."""
 
+    def __init__(self):
+        raise Exception('Instantiation of %s prohibited - it is derived from BaseKey '
+                        'so most likely you should bind it to something.' % (self.__class__,))
+
 
 def Key(name):
     """Create a new type key.
@@ -734,13 +741,30 @@ def Key(name):
         pass
     return type(name, (BaseKey,), {})
 
-class AssistedBuilder(object):
-    def __init__(self, cls):
-        self.cls = cls
+class AssistedBuilder(tuple):
+    def __new__(cls, interface):
+        return super(AssistedBuilder, cls).__new__(cls, (interface,))
+
+    @property
+    def interface(self):
+        return self[0]
+
+class AssistedBuilderImplementation(object):
+    def __init__(self, interface, injector):
+        self.interface = interface
+        self.injector = injector
 
     def build(self, **kwargs):
-        return self.__injector__.create_object(self.cls, additional_kwargs=kwargs)
-
+        key = BindingKey(self.interface, None)
+        binder = self.injector.binder
+        binding = binder.get_binding(None, key)
+        provider = binding.provider
+        try:
+            cls = provider._cls
+        except AttributeError:
+            raise Error('Assisted building works only with ClassProviders, '
+                        'got %r for %r' % (provider, self.interface))
+        return self.injector.create_object(cls, additional_kwargs=kwargs)
 
 def _describe(c):
     if hasattr(c, '__name__'):

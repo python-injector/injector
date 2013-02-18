@@ -20,7 +20,7 @@ import pytest
 from injector import (Binder, CallError, Injector, Scope, InstanceProvider, ClassProvider,
         inject, singleton, threadlocal, UnsatisfiedRequirement,
         CircularDependency, Module, provides, Key, extends, SingletonScope,
-        ScopeDecorator, with_injector, AssistedBuilder)
+        ScopeDecorator, with_injector, AssistedBuilder, BindingKey)
 
 
 def prepare_basic_injection():
@@ -59,6 +59,10 @@ def test_scopes_are_only_bound_to_root_injector():
     parent.binder.bind(A, to=A, scope=singleton)
     assert (parent.get(A) is child.get(A))
 
+def test_key_cannot_be_instantiated():
+    with pytest.raises(Exception):
+        Interface = Key('Interface')
+        i = Interface()
 
 def test_get_default_injected_instances():
     A, B = prepare_basic_injection()
@@ -689,6 +693,31 @@ def test_assisted_builder_works_when_injected():
     injector = Injector()
     x = injector.get(X)
     assert ((x.obj.a, x.obj.b) == (str(), 234))
+
+def test_assisted_builder_uses_bindings():
+    Interface = Key('Interface')
+    def configure(binder):
+        binder.bind(Interface, to=NeedsAssistance)
+    injector = Injector(configure)
+    builder = injector.get(AssistedBuilder(Interface))
+    x = builder.build(b=333)
+    assert ((type(x), x.b) == (NeedsAssistance, 333))
+
+def test_assisted_builder_injection_is_safe_to_use_with_multiple_injectors():
+    class X(object):
+        @inject(builder=AssistedBuilder(NeedsAssistance))
+        def y(self, builder):
+            return builder
+
+    i1, i2 = Injector(), Injector()
+    b1 = i1.get(X).y()
+    b2 = i2.get(X).y()
+    assert ((b1.injector, b2.injector) == (i1, i2))
+
+def test_assisted_builder_injection_uses_the_same_binding_key_every_time():
+    # if we have different BindingKey for every AssistedBuilder(...) we will get memory leak
+    gen_key = lambda: BindingKey(AssistedBuilder(NeedsAssistance), None)
+    assert gen_key() == gen_key()
 
 class TestThreadSafety(object):
     def setup(self):
