@@ -312,6 +312,46 @@ More information on this topic:
 
 * `"How to use Google Guice to create objects that require parameters?" on Stack Overflow <http://stackoverflow.com/questions/996300/how-to-use-google-guice-to-create-objects-that-require-parameters>`_
 * `Google Guice assisted injection <http://code.google.com/p/google-guice/wiki/AssistedInject>`_
+Child injectors
+---------------
+
+Concept similar to Guice's child injectors is supported by ``Injector``. This way you can
+have one injector that inherits bindings from other injector (parent) but these bindings
+can be overriden in it and it doesn't affect parent injector bindings::
+
+    >>> def configure_parent(binder):
+    ...     binder.bind(str, to='asd')
+    ...     binder.bind(int, to=42)
+    ...
+    >>> def configure_child(binder):
+    ...     binder.bind(str, to='qwe')
+    ...
+    >>> parent = Injector(configure_parent)
+    >>> child = parent.create_child_injector(configure_child)
+    >>> parent.get(str), parent.get(int)
+    ('asd', 42)
+    >>> child.get(str), child.get(int)
+    ('qwe', 42)
+
+**Note**: Default scopes are bound only to root injector. Binding them manually to child
+injectors will result in unexpected behaviour.
+**Note 2**: Once a binding key is present in parent injector scope (like ``singleton``
+scope), provider saved there takes predecence when binding is overridden in child injector in
+the same scope. This behaviour is subject to change::
+
+    >>> def configure_parent(binder):
+    ...     binder.bind(str, to='asd', scope=singleton)
+    ...
+    >>> def configure_child(binder):
+    ...     binder.bind(str, to='qwe', scope=singleton)
+    ...
+    >>> parent = Injector(configure_parent)
+    >>> child = parent.create_child_injector(configure_child)
+    >>> child.get(str) # this behaves as expected
+    'qwe'
+    >>> parent.get(str) # wat
+    'qwe'
+
 
 Scopes
 ======

@@ -196,11 +196,13 @@ class Binder(object):
         """Create a new Binder.
 
         :param injector: Injector we are binding for.
+        :param auto_bind: Whether to automatically bind missing types.
+        :param parent: Parent binder.
         """
         self.injector = injector
         self._auto_bind = auto_bind
         self._bindings = {}
-        self.parent = parent or _EmptyBinder()
+        self.parent = parent
 
     def bind(self, interface, to=None, annotation=None, scope=None):
         """Bind an interface to an implementation.
@@ -284,7 +286,14 @@ class Binder(object):
                                   (interface, to))
 
     def _get_binding(self, key):
-        return self._bindings.get(key) or self.parent._get_binding(key)
+        binding = self._bindings.get(key)
+        if not binding and self.parent:
+            binding = self.parent._get_binding(key)
+
+        if not binding:
+            raise KeyError
+
+        return binding
 
     def get_binding(self, cls, key):
         try:
@@ -296,10 +305,6 @@ class Binder(object):
                 self._bindings[key] = binding
                 return binding
             raise UnsatisfiedRequirement(cls, key)
-
-class _EmptyBinder(object):
-    def _get_binding(self, key):
-        raise KeyError
 
 
 class Scope(object):
@@ -439,6 +444,7 @@ class Injector(object):
 
                         Signature is ``configure(binder)``.
         :param auto_bind: Whether to automatically bind missing types.
+        :param parent: Parent injector.
         """
         # Stack of keys currently being injected. Used to detect circular
         # dependencies.
