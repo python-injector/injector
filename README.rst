@@ -32,10 +32,8 @@ We'll use an in-memory SQLite database for our example::
 
 And make up an imaginary RequestHandler class that uses the SQLite connection::
 
-    >>> class RequestHandler(object):
-    ...   @inject(db=sqlite3.Connection)
-    ...   def __init__(self, db):
-    ...     self._db = db
+    >>> @inject(_db=sqlite3.Connection)
+    ... class RequestHandler(object):
     ...   def get(self):
     ...     cursor = self._db.cursor()
     ...     cursor.execute('SELECT key, value FROM data ORDER by key')
@@ -236,6 +234,20 @@ constructor of a normal class::
     ...     def describe(self, name):
     ...         return '%s is a man of astounding insight' % name
 
+You can also ``inject``-decorate class itself. This code::
+
+    >>> @inject(name=Name)
+    ... class Item(object):
+    ...     pass
+
+is equivalent to::
+
+    >>> class Item(object):
+    ...     @inject(name=Name)
+    ...     def __init__(self, name):
+    ...         self.name = name
+
+
 Injector
 --------
 The ``Injector`` brings everything together. It takes a list of
@@ -278,9 +290,9 @@ constructors. Let's have for example::
     ...     def __init__(self, name):
     ...         self.name = name
 
-    >>> class UserUpdater(object):
-    ...     @inject(db = Database)
-    ...     def __init__(self, db, user):
+    >>> @inject(db=Database)
+    ... class UserUpdater(object):
+    ...     def __init__(self, user):
     ...         pass 
 
 You may want to have database connection ``db`` injected into ``UserUpdater`` constructor,
@@ -303,10 +315,10 @@ using all of them.
 ``AssistedBuilder(X)`` is injectable just as anything else, if you need instance of it you
 just ask for it like that::
 
-    >>> class NeedsUserUpdater(object):
-    ...     @inject(builder=AssistedBuilder(UserUpdater))
-    ...     def method(self, builder):
-    ...         pass
+    >>> @inject(updater_builder=AssistedBuilder(UserUpdater))
+    ... class NeedsUserUpdater(object):
+    ...     def method(self):
+    ...         updater = self.updater_builder.build(user=None)
 
 More information on this topic:
 
