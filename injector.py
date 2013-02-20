@@ -26,8 +26,9 @@ from collections import namedtuple
 
 
 __author__ = 'Alec Thomas <alec@swapoff.org>'
-__version__ = '0.5.2'
+__version__ = '0.6.0'
 __version_tag__ = ''
+
 
 def synchronized(lock):
     def outside_wrapper(function):
@@ -50,10 +51,12 @@ class UnsatisfiedRequirement(Error):
 
     def __str__(self):
         on = '%s has an ' % _describe(self.args[0]) if self.args[0] else ''
-        return '%sunsatisfied requirement on %s%s' % (on,
-                self.args[1].annotation + '='
-                if self.args[1].annotation else '',
-                _describe(self.args[1].interface))
+        return '%sunsatisfied requirement on %s%s' % (
+            on,
+            self.args[1].annotation + '='if self.args[1].annotation else '',
+            _describe(self.args[1].interface),
+            )
+
 
 class CallError(Error):
     """Call to callable object fails."""
@@ -103,6 +106,7 @@ class ClassProvider(Provider):
 
     def get(self):
         return self.injector.create_object(self._cls)
+
 
 class CallableProvider(Provider):
     """Provides something using a callable."""
@@ -154,6 +158,7 @@ class MapBindProvider(ListOfProviders):
             map.update(provider.get())
         return map
 
+
 # These classes are used internally by the Binder.
 class BindingKey(tuple):
     """A key mapping to a Binding."""
@@ -186,6 +191,7 @@ BindingBase = namedtuple("BindingBase", 'interface annotation provider scope')
 class Binding(BindingBase):
     """A binding from an (interface, annotation) to a provider in a scope."""
 
+
 class Binder(object):
     """Bind interfaces to implementations.
 
@@ -215,7 +221,7 @@ class Binder(object):
         """
         key = BindingKey(interface, annotation)
         self._bindings[key] = \
-                self.create_binding(interface, to, annotation, scope)
+            self.create_binding(interface, to, annotation, scope)
 
     def bind_scope(self, scope):
         """Bind a Scope.
@@ -243,7 +249,7 @@ class Binder(object):
             else:
                 provider = MultiBindProvider()
             binding = self.create_binding(
-                    interface, provider, annotation, scope)
+                interface, provider, annotation, scope)
             self._bindings[key] = binding
         else:
             provider = self._bindings[key].provider
@@ -300,8 +306,10 @@ class Binder(object):
             return self._get_binding(key)
         except (KeyError, UnsatisfiedRequirement):
             if self._auto_bind:
-                binding = self.create_binding(key.interface,
-                        annotation=key.annotation)
+                binding = self.create_binding(
+                    key.interface,
+                    annotation=key.annotation,
+                    )
                 self._bindings[key] = binding
                 return binding
             raise UnsatisfiedRequirement(cls, key)
@@ -415,14 +423,20 @@ class Module(object):
             binding = None
             if hasattr(function, '__binding__'):
                 binding = function.__binding__
-                binder.bind(binding.interface,
-                        to=types.MethodType(binding.provider, self),
-                        annotation=binding.annotation, scope=binding.scope)
+                binder.bind(
+                    binding.interface,
+                    to=types.MethodType(binding.provider, self),
+                    annotation=binding.annotation,
+                    scope=binding.scope,
+                    )
             elif hasattr(function, '__multibinding__'):
                 binding = function.__multibinding__
-                binder.multibind(binding.interface,
-                        to=types.MethodType(binding.provider, self),
-                        annotation=binding.annotation, scope=binding.scope)
+                binder.multibind(
+                    binding.interface,
+                    to=types.MethodType(binding.provider, self),
+                    annotation=binding.annotation,
+                    scope=binding.scope,
+                    )
         self.configure(binder)
 
     def configure(self, binder):
@@ -517,9 +531,11 @@ class Injector(object):
         except TypeError as e:
             # The reason why getattr() fallback is used here is that
             # __init__.__func__ apparently doesn't exist for Key-type objects
-            raise CallError(instance,
+            raise CallError(
+                instance,
                 getattr(instance.__init__, '__func__', instance.__init__),
-                (), additional_kwargs, e)
+                (), additional_kwargs, e,
+                )
         return instance
 
     def install_into(self, instance):
@@ -546,16 +562,19 @@ class Injector(object):
 
         if key in self._stack:
             raise CircularDependency(
-                    'circular dependency detected: %s -> %s' %
-                    (' -> '.join(map(repr_key, self._stack)),
-                     repr_key(key)))
+                'circular dependency detected: %s -> %s' %
+                (' -> '.join(map(repr_key, self._stack)),
+                repr_key(key)),
+                )
 
         self._stack.append(key)
         try:
             for arg, key in bindings.items():
                 try:
-                    instance = self.get(key.interface,
-                            annotation=key.annotation)
+                    instance = self.get(
+                        key.interface,
+                        annotation=key.annotation,
+                        )
                 except UnsatisfiedRequirement as e:
                     if not e.args[0]:
                         e = UnsatisfiedRequirement(owner_key, e.args[1])
@@ -568,9 +587,8 @@ class Injector(object):
 
 
 def with_injector(*injector_args, **injector_kwargs):
-    """
-    Decorator for a method. Installs Injector object which the method belongs
-    to before the decorated method is executed.
+    """Decorator for a method. Installs Injector object which the method
+    belongs to before the decorated method is executed.
 
     Parameters are the same as for Injector constructor.
     """
@@ -697,6 +715,7 @@ def inject(**bindings):
 
     def class_wrapper(cls):
         orig_init = cls.__init__
+
         @inject(**bindings)
         def init(self, *args, **kwargs):
             for key in bindings:
@@ -764,6 +783,7 @@ def Key(name):
         pass
     return type(name, (BaseKey,), {})
 
+
 class AssistedBuilder(tuple):
     def __new__(cls, interface):
         return super(AssistedBuilder, cls).__new__(cls, (interface,))
@@ -771,6 +791,7 @@ class AssistedBuilder(tuple):
     @property
     def interface(self):
         return self[0]
+
 
 class AssistedBuilderImplementation(object):
     def __init__(self, interface, injector):
@@ -788,6 +809,7 @@ class AssistedBuilderImplementation(object):
             raise Error('Assisted building works only with ClassProviders, '
                         'got %r for %r' % (provider, self.interface))
         return self.injector.create_object(cls, additional_kwargs=kwargs)
+
 
 def _describe(c):
     if hasattr(c, '__name__'):
