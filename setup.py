@@ -3,12 +3,16 @@ import sys
 sys.path.insert(0, '.')
 import injector
 
+
 class PyTest(Command):
     user_options = []
+
     def initialize_options(self):
         pass
+
     def finalize_options(self):
         pass
+
     def run(self):
         import sys, subprocess
         errno = subprocess.call([sys.executable, 'runtest.py'])
@@ -17,7 +21,7 @@ class PyTest(Command):
 
 version = injector.__version__
 version_tag = injector.__version_tag__
-long_description = open('README.md').read()
+long_description = open('README.rst').read()
 description = long_description.splitlines()[0].strip()
 
 
