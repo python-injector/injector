@@ -13,7 +13,9 @@
 from contextlib import contextmanager
 from time import sleep
 import abc
+import sys
 import threading
+import traceback
 
 import pytest
 
@@ -671,6 +673,25 @@ def test_call_to_method_containing_noninjectable_and_unsatisfied_dependencies_ra
 
         assert (ce.args[2] == ())
         assert (ce.args[3] == {'something': str()})
+
+def test_call_error_is_raised_with_correct_traceback():
+    class A(object):
+        @inject(x=str)
+        def fun_a(self, x='irrelevant'):
+            raise TypeError('Something happened')
+
+    class B(object):
+        @inject(a=A)
+        def fun_b(self, a):
+            a.fun_a()
+
+    injector = Injector()
+    b = injector.get(B)
+    try:
+        b.fun_b()
+    except:
+        tb = traceback.format_exc()
+        assert 'in fun_a' in tb
 
 class NeedsAssistance(object):
     @inject(a=str)
