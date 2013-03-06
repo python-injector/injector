@@ -693,6 +693,10 @@ def test_call_error_is_raised_with_correct_traceback():
         tb = traceback.format_exc()
         assert 'in fun_a' in tb
 
+def test_call_error_str_representation_handles_single_arg():
+    ce = CallError('zxc')
+    assert str(ce) == 'zxc'
+
 class NeedsAssistance(object):
     @inject(a=str)
     def __init__(self, a, b):

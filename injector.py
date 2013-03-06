@@ -66,21 +66,24 @@ class CallError(Error):
     """Call to callable object fails."""
 
     def __str__(self):
-        instance, method, args, kwargs, original_error = self.args
-        if hasattr(method, 'im_class'):
-            instance = method.__self__
-            method_name = method.__func__.__name__
+        if len(self.args) == 1:
+            return self.args[0]
         else:
-            method_name = method.__name__
+            instance, method, args, kwargs, original_error = self.args
+            if hasattr(method, 'im_class'):
+                instance = method.__self__
+                method_name = method.__func__.__name__
+            else:
+                method_name = method.__name__
 
-        full_method = '.'.join((repr(instance) if instance else '', method_name)).strip('.')
+            full_method = '.'.join((repr(instance) if instance else '', method_name)).strip('.')
 
-        parameters = ', '.join(itertools.chain(
-            (repr(arg) for arg in args),
-            ('%s=%r' % (key, value) for (key, value) in kwargs.items())
-        ))
-        return 'Call to %s(%s) failed: %s' % (
-            full_method, parameters, original_error)
+            parameters = ', '.join(itertools.chain(
+                (repr(arg) for arg in args),
+                ('%s=%r' % (key, value) for (key, value) in kwargs.items())
+            ))
+            return 'Call to %s(%s) failed: %s' % (
+                full_method, parameters, original_error)
 
 
 class CircularDependency(Error):
