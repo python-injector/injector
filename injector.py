@@ -44,7 +44,12 @@ lock = threading.RLock()
 
 def reraise(exception):
     prev_cls, prev, tb = sys.exc_info()
-    raise exception.__class__, exception, tb
+    try:
+        raise exception.with_traceback(tb)
+    except AttributeError:
+        # This syntax is not a valid Python 3 syntax so we have
+        # to work around that
+        exec('raise exception.__class__, exception, tb')
 
 class Error(Exception):
     """Base exception."""
