@@ -19,6 +19,7 @@ See http://pypi.python.org/pypi/injector for documentation.
 import itertools
 import functools
 import inspect
+import sys
 import types
 import threading
 from abc import ABCMeta, abstractmethod
@@ -41,6 +42,14 @@ def synchronized(lock):
 
 lock = threading.RLock()
 
+def reraise(exception):
+    prev_cls, prev, tb = sys.exc_info()
+    try:
+        raise exception.with_traceback(tb)
+    except AttributeError:
+        # This syntax is not a valid Python 3 syntax so we have
+        # to work around that
+        exec('raise exception.__class__, exception, tb')
 
 class Error(Exception):
     """Base exception."""
@@ -62,6 +71,9 @@ class CallError(Error):
     """Call to callable object fails."""
 
     def __str__(self):
+        if len(self.args) == 1:
+            return self.args[0]
+
         instance, method, args, kwargs, original_error = self.args
         if hasattr(method, 'im_class'):
             instance = method.__self__
@@ -531,11 +543,12 @@ class Injector(object):
         except TypeError as e:
             # The reason why getattr() fallback is used here is that
             # __init__.__func__ apparently doesn't exist for Key-type objects
-            raise CallError(
+            reraise(CallError(
                 instance,
                 getattr(instance.__init__, '__func__', instance.__init__),
                 (), additional_kwargs, e,
                 )
+            )
         return instance
 
     def install_into(self, instance):
@@ -694,7 +707,7 @@ def inject(**bindings):
                     try:
                         return f(self_, *args, **kwargs)
                     except TypeError as e:
-                        raise CallError(self_, f, args, kwargs, e)
+                        reraise(CallError(self_, f, args, kwargs, e))
                 dependencies = injector.args_to_inject(
                     function=f,
                     bindings=bindings,
@@ -704,7 +717,7 @@ def inject(**bindings):
                 try:
                     return f(self_, *args, **dependencies)
                 except TypeError as e:
-                    raise CallError(self_, f, args, dependencies, e)
+                    reraise(CallError(self_, f, args, dependencies, e))
             # Propagate @provides bindings to wrapper function
             if hasattr(f, '__binding__'):
                 inject.__binding__ = f.__binding__
