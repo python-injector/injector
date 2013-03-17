@@ -807,6 +807,15 @@ class TestClassInjection(object):
         self.B = B
         self.C = C
 
+    def test_inject_decorator_works_when_metaclass_used(self):
+        WithABCMeta = abc.ABCMeta(str('WithABCMeta'), (object,), {})
+
+        @inject(y=int)
+        class X(WithABCMeta):
+            pass
+
+        self.injector.get(X)
+
     def test_instantiation_still_requires_parameters(self):
         for cls in (self.B, self.C):
             with pytest.raises(Exception):
