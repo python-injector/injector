@@ -13,16 +13,17 @@
 from contextlib import contextmanager
 from time import sleep
 import abc
-import sys
 import threading
 import traceback
 
 import pytest
 
-from injector import (Binder, CallError, Injector, Scope, InstanceProvider, ClassProvider,
-        inject, singleton, threadlocal, UnsatisfiedRequirement,
-        CircularDependency, Module, provides, Key, extends, SingletonScope,
-        ScopeDecorator, with_injector, AssistedBuilder, BindingKey)
+from injector import (
+    Binder, CallError, Injector, Scope, InstanceProvider, ClassProvider,
+    inject, singleton, threadlocal, UnsatisfiedRequirement,
+    CircularDependency, Module, provides, Key, extends, SingletonScope,
+    ScopeDecorator, with_injector, AssistedBuilder, BindingKey,
+    )
 
 
 def prepare_basic_injection():
@@ -37,6 +38,7 @@ def prepare_basic_injection():
 
     return A, B
 
+
 def prepare_nested_injectors():
     def configure(binder):
         binder.bind(str, to='asd')
@@ -45,9 +47,11 @@ def prepare_nested_injectors():
     child = parent.create_child_injector()
     return parent, child
 
+
 def test_child_injector_inherits_parent_bindings():
     parent, child = prepare_nested_injectors()
     assert (child.get(str) == parent.get(str))
+
 
 def test_child_injector_overrides_parent_bindings():
     parent, child = prepare_nested_injectors()
@@ -55,16 +59,22 @@ def test_child_injector_overrides_parent_bindings():
 
     assert ((parent.get(str), child.get(str)) == ('asd', 'qwe'))
 
+
 def test_scopes_are_only_bound_to_root_injector():
     parent, child = prepare_nested_injectors()
-    class A(object): pass
+
+    class A(object):
+        pass
+
     parent.binder.bind(A, to=A, scope=singleton)
     assert (parent.get(A) is child.get(A))
+
 
 def test_key_cannot_be_instantiated():
     with pytest.raises(Exception):
         Interface = Key('Interface')
-        i = Interface()
+        Interface()
+
 
 def test_get_default_injected_instances():
     A, B = prepare_basic_injection()
@@ -366,8 +376,10 @@ def test_module_provides():
     injector = Injector(module)
     assert (injector.get(str, annotation='name') == 'Bob')
 
+
 def test_module_class_gets_instantiated():
     name = 'Meg'
+
     class MyModule(Module):
         def configure(self, binder):
             binder.bind(str, to=name)
@@ -375,8 +387,10 @@ def test_module_class_gets_instantiated():
     injector = Injector(MyModule)
     assert (injector.get(str) == name)
 
+
 def test_with_injector_works():
     name = 'Victoria'
+
     def configure(binder):
         binder.bind(str, to=name)
 
@@ -388,6 +402,7 @@ def test_with_injector_works():
 
     aaa = Aaa()
     assert (aaa.username == name)
+
 
 def test_bind_using_key():
     Name = Key('name')
@@ -563,8 +578,7 @@ def test_map_binding_and_extends():
             return {'four': 4}
 
     injector = Injector([configure, MyModule()])
-    assert (injector.get({str: int}) ==
-                 {'one': 1, 'two': 2, 'three': 3, 'four': 4})
+    assert (injector.get({str: int}) == {'one': 1, 'two': 2, 'three': 3, 'four': 4})
 
 
 def test_binder_install():
@@ -624,19 +638,20 @@ def test_binder_provider_for_type_with_metaclass():
     binder = Injector().binder
     assert (isinstance(binder.provider_for(A, None).get(), A))
 
+
 def test_injecting_undecorated_class_with_missing_dependencies_raises_the_right_error():
     class A(object):
         def __init__(self, parameter):
             pass
 
     class B(object):
-        @inject(a = A)
+        @inject(a=A)
         def __init__(self, a):
             pass
 
     injector = Injector()
     try:
-        b = injector.get(B)
+        injector.get(B)
     except CallError as ce:
         function = A.__init__
 
@@ -646,6 +661,17 @@ def test_injecting_undecorated_class_with_missing_dependencies_raises_the_right_
         except AttributeError:
             pass
         assert (ce.args[1] == function)
+
+
+def test_call_to_method_with_legitimate_call_error_raises_type_error():
+    class A(object):
+        def __init__(self):
+            max()
+
+    injector = Injector()
+    with pytest.raises(TypeError):
+        injector.get(A)
+
 
 def test_call_to_method_containing_noninjectable_and_unsatisfied_dependencies_raises_the_right_error():
     class A(object):
@@ -693,9 +719,11 @@ def test_call_error_is_raised_with_correct_traceback():
         tb = traceback.format_exc()
         assert 'in fun_a' in tb
 
+
 def test_call_error_str_representation_handles_single_arg():
     ce = CallError('zxc')
     assert str(ce) == 'zxc'
+
 
 class NeedsAssistance(object):
     @inject(a=str)
@@ -703,11 +731,13 @@ class NeedsAssistance(object):
         self.a = a
         self.b = b
 
+
 def test_assisted_builder_works_when_got_directly_from_injector():
     injector = Injector()
     builder = injector.get(AssistedBuilder(NeedsAssistance))
     obj = builder.build(b=123)
     assert ((obj.a, obj.b) == (str(), 123))
+
 
 def test_assisted_builder_works_when_injected():
     class X(object):
@@ -719,14 +749,18 @@ def test_assisted_builder_works_when_injected():
     x = injector.get(X)
     assert ((x.obj.a, x.obj.b) == (str(), 234))
 
+
 def test_assisted_builder_uses_bindings():
     Interface = Key('Interface')
+
     def configure(binder):
         binder.bind(Interface, to=NeedsAssistance)
+
     injector = Injector(configure)
     builder = injector.get(AssistedBuilder(Interface))
     x = builder.build(b=333)
     assert ((type(x), x.b) == (NeedsAssistance, 333))
+
 
 def test_assisted_builder_injection_is_safe_to_use_with_multiple_injectors():
     class X(object):
@@ -739,10 +773,12 @@ def test_assisted_builder_injection_is_safe_to_use_with_multiple_injectors():
     b2 = i2.get(X).y()
     assert ((b1.injector, b2.injector) == (i1, i2))
 
+
 def test_assisted_builder_injection_uses_the_same_binding_key_every_time():
     # if we have different BindingKey for every AssistedBuilder(...) we will get memory leak
     gen_key = lambda: BindingKey(AssistedBuilder(NeedsAssistance), None)
     assert gen_key() == gen_key()
+
 
 class TestThreadSafety(object):
     def setup(self):
@@ -785,6 +821,7 @@ class TestThreadSafety(object):
         a, b = self.gather_results(2)
         assert (a is b)
 
+
 class TestClassInjection(object):
     def setup(self):
         class A(object):
@@ -819,13 +856,13 @@ class TestClassInjection(object):
     def test_instantiation_still_requires_parameters(self):
         for cls in (self.B, self.C):
             with pytest.raises(Exception):
-                obj = cls()
+                cls()
 
         with pytest.raises(Exception):
-            c = self.C(noninjectable=1)
+            self.C(noninjectable=1)
 
         with pytest.raises(Exception):
-            c = self.C(a=self.A())
+            self.C(a=self.A())
 
     def test_injection_works(self):
         b = self.injector.get(self.B)

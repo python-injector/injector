@@ -42,14 +42,19 @@ def synchronized(lock):
 
 lock = threading.RLock()
 
-def reraise(exception):
+
+def reraise(original, exception):
     prev_cls, prev, tb = sys.exc_info()
+    frames = inspect.getinnerframes(tb)
+    if len(frames) > 1:
+        exception = original
     try:
         raise exception.with_traceback(tb)
     except AttributeError:
         # This syntax is not a valid Python 3 syntax so we have
         # to work around that
         exec('raise exception.__class__, exception, tb')
+
 
 class Error(Exception):
     """Base exception."""
@@ -543,7 +548,7 @@ class Injector(object):
         except TypeError as e:
             # The reason why getattr() fallback is used here is that
             # __init__.__func__ apparently doesn't exist for Key-type objects
-            reraise(CallError(
+            reraise(e, CallError(
                 instance,
                 getattr(instance.__init__, '__func__', instance.__init__),
                 (), additional_kwargs, e,
@@ -707,7 +712,7 @@ def inject(**bindings):
                     try:
                         return f(self_, *args, **kwargs)
                     except TypeError as e:
-                        reraise(CallError(self_, f, args, kwargs, e))
+                        reraise(e, CallError(self_, f, args, kwargs, e))
                 dependencies = injector.args_to_inject(
                     function=f,
                     bindings=bindings,
@@ -717,7 +722,7 @@ def inject(**bindings):
                 try:
                     return f(self_, *args, **dependencies)
                 except TypeError as e:
-                    reraise(CallError(self_, f, args, dependencies, e))
+                    reraise(e, CallError(self_, f, args, dependencies, e))
             # Propagate @provides bindings to wrapper function
             if hasattr(f, '__binding__'):
                 inject.__binding__ = f.__binding__
