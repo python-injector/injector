@@ -738,7 +738,7 @@ def inject(**bindings):
         return cls
 
     def multi_wrapper(something):
-        if type(something) is type:
+        if isinstance(something, type):
             return class_wrapper(something)
         else:
             return method_wrapper(something)
