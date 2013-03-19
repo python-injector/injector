@@ -734,7 +734,7 @@ def inject(**bindings):
     def class_wrapper(cls):
         orig_init = cls.__init__
 
-        original_keys = bindings.keys()
+        original_keys = tuple(bindings.keys())
 
         for k in bindings:
             bindings[k.lstrip('_')] = bindings.pop(k)
