@@ -20,6 +20,14 @@ use of ``Module`` s.
 While being inspired by Guice, it does not slavishly replicate its API.
 Providing a Pythonic API trumps faithfulness.
 
+Supported Python versions
+=========================
+
+Injector work with the following Python interpreters:
+
+* CPython 2.6, 2.7, 3.2, 3.3
+* PyPy 1.9
+
 A Full Example
 ==============
 Here's a full example to give you a taste of how Injector works::
