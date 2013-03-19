@@ -247,6 +247,30 @@ is equivalent to::
     ...     def __init__(self, name):
     ...         self.name = name
 
+**Note**: You can also begin the name of injected member with an underscore(s) (to
+indicate the member being private for example). In such case the member will be
+injected using the name you specified, but corresponding parameter in a constructor
+(let's say you instantiate the class manually) will have the trailing underscore(s)
+stripped (it makes it consistent with most of the usual parameter names)::
+
+    >>> @inject(_y=int)
+    ... class X(object):
+    ...     pass
+
+    >>> x1 = injector.get(X)
+    >>> x1.y
+    Traceback (most recent call last):
+    AttributeError: 'X' object has no attribute 'y'
+    >>> x1._y
+    0
+
+    >>> x2 = X(y=2)
+    >>> x2.y
+    Traceback (most recent call last):
+    AttributeError: 'X' object has no attribute 'y'
+    >>> x2._y
+    2
+
 
 Injector
 --------

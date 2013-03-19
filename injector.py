@@ -734,10 +734,15 @@ def inject(**bindings):
     def class_wrapper(cls):
         orig_init = cls.__init__
 
+        original_keys = bindings.keys()
+
+        for k in bindings:
+            bindings[k.lstrip('_')] = bindings.pop(k)
+
         @inject(**bindings)
         def init(self, *args, **kwargs):
-            for key in bindings:
-                setattr(self, key, kwargs.pop(key))
+            for key in original_keys:
+                setattr(self, key, kwargs.pop(key.lstrip('_')))
             orig_init(self, *args, **kwargs)
         cls.__init__ = init
         return cls

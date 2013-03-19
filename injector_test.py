@@ -893,3 +893,14 @@ class TestClassInjection(object):
         b.a = 123
 
         assert (b.a == 123)
+
+    def test_injected_members_starting_with_underscore_generate_sane_constructor(self):
+        @inject(_b=self.B)
+        class X(object):
+            pass
+
+        x = self.injector.get(X)
+        assert (type(x._b) == self.B)
+
+        x = X(b=314)
+        assert (x._b == 314)
