@@ -27,7 +27,7 @@ from collections import namedtuple
 
 
 __author__ = 'Alec Thomas <alec@swapoff.org>'
-__version__ = '0.6.0'
+__version__ = '0.6.1'
 __version_tag__ = ''
 
 
