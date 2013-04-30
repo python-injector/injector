@@ -32,7 +32,7 @@ A Full Example
 ==============
 Here's a full example to give you a taste of how Injector works::
 
-    >>> from injector import AssistedBuilder, Module, Key, provides, Injector, inject, singleton
+    >>> from injector import Module, Key, provides, Injector, inject, singleton
 
 We'll use an in-memory SQLite database for our example::
 
@@ -40,8 +40,10 @@ We'll use an in-memory SQLite database for our example::
 
 And make up an imaginary RequestHandler class that uses the SQLite connection::
 
-    >>> @inject(_db=sqlite3.Connection)
-    ... class RequestHandler(object):
+    >>> class RequestHandler(object):
+    ...   @inject(db=sqlite3.Connection)
+    ...   def __init__(self, db):
+    ...     self._db = db
     ...   def get(self):
     ...     cursor = self._db.cursor()
     ...     cursor.execute('SELECT key, value FROM data ORDER by key')
@@ -51,14 +53,17 @@ Next, for the sake of the example, we'll create a "configuration" annotated
 type::
 
     >>> Configuration = Key('configuration')
-    >>> class ConfigurationForTestingModule(Module):
-    ...   def configure(self, binder):
-    ...     binder.bind(Configuration, to={'db_connection_string': ':memory:'},
-    ...         scope=singleton)
 
-Next we create our database module that initialises the DB based on the
-configuration provided by the above module, populates it with some dummy data,
-and provides a Connection object::
+`Key` is used to uniquely identifies the configuration dictionary. Next, we
+bind the configuration to the injector, using a module::
+
+    >>> def configure_for_testing(binder):
+    ...     configuration = {'db_connection_string': ':memory:'}
+    ...     binder.bind(Configuration, to=configuration, scope=singleton)
+
+Next we create a module that initialises the DB. It depends on the
+configuration provided by the above module to create a new DB connection, then
+populates it with some dummy data, and provides a Connection object::
 
     >>> class DatabaseModule(Module):
     ...   @singleton
@@ -75,11 +80,11 @@ and provides a Connection object::
 code.)
 
 Finally, we initialise an Injector and use it to instantiate a RequestHandler
-instance. This first transitively constructs a sqlite3.Connection object, and the
-Configuration dictionary that it in turn requires, then instantiates our
-RequestHandler::
+instance. This first transitively constructs a `sqlite3.Connection` object,
+and the `Configuration` dictionary that it in turn requires, then instantiates
+our `RequestHandler`::
 
-    >>> injector = Injector([ConfigurationForTestingModule(), DatabaseModule()])
+    >>> injector = Injector([configure_for_testing, DatabaseModule()])
     >>> handler = injector.get(RequestHandler)
     >>> tuple(map(str, handler.get()[0]))  # py3/py2 compatibility hack
     ('hello', 'world')
@@ -255,11 +260,12 @@ is equivalent to::
     ...     def __init__(self, name):
     ...         self.name = name
 
-**Note**: You can also begin the name of injected member with an underscore(s) (to
-indicate the member being private for example). In such case the member will be
-injected using the name you specified, but corresponding parameter in a constructor
-(let's say you instantiate the class manually) will have the trailing underscore(s)
-stripped (it makes it consistent with most of the usual parameter names)::
+**Note**: You can also begin the name of injected member with an underscore(s)
+(to indicate the member being private for example). In such case the member
+will be injected using the name you specified, but corresponding parameter in
+a constructor (let's say you instantiate the class manually) will have the
+underscore prefix stripped (it makes it consistent with most of the usual
+parameter names)::
 
     >>> @inject(_y=int)
     ... class X(object):
@@ -325,15 +331,16 @@ constructors. Let's have for example::
     >>> @inject(db=Database)
     ... class UserUpdater(object):
     ...     def __init__(self, user):
-    ...         pass 
+    ...         pass
 
 You may want to have database connection ``db`` injected into ``UserUpdater`` constructor,
 but in the same time provide ``user`` object by yourself, and assuming that ``user`` object
 is a value object and there's many users in your application it doesn't make much sense
-to inject objects of class ``User``. 
+to inject objects of class ``User``.
 
 In this situation there's technique called Assisted injection::
 
+    >>> from injector import AssistedBuilder
     >>> injector = Injector()
     >>> builder = injector.get(AssistedBuilder(UserUpdater))
     >>> user = User('John')
