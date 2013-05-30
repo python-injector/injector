@@ -236,6 +236,8 @@ class Binder(object):
         :param annotation: Optional global annotation of interface.
         :param scope: Optional :class:`Scope` in which to bind.
         """
+        if issubclass(interface, (BaseMappingKey, BaseSequenceKey)):
+            return self.multibind(interface, to, annotation=annotation, scope=scope)
         key = BindingKey(interface, annotation)
         self._bindings[key] = \
             self.create_binding(interface, to, annotation, scope)
@@ -261,7 +263,7 @@ class Binder(object):
         """
         key = BindingKey(interface, annotation)
         if key not in self._bindings:
-            if isinstance(interface, dict):
+            if isinstance(interface, dict) or isinstance(interface, type) and issubclass(interface, dict):
                 provider = MapBindProvider()
             else:
                 provider = MultiBindProvider()
@@ -269,13 +271,23 @@ class Binder(object):
                 interface, provider, annotation, scope)
             self._bindings[key] = binding
         else:
-            provider = self._bindings[key].provider
+            binding = self._bindings[key]
+            provider = binding.provider
             assert isinstance(provider, ListOfProviders)
         provider.append(self.provider_for(key.interface, to))
 
     def install(self, module):
-        """Install a module into this binder."""
-        module(self)
+        """Install a module into this binder.
+
+        :param module: A Module instance, Module subclass, or a function.
+        """
+        if isinstance(module, Module):
+            module(self)
+        elif type(module) is type and issubclass(module, Module):
+            module()(self)
+        else:
+            kwargs = self.injector.args_to_inject(module, module.__bindings__, module)
+            module(self, **kwargs)
 
     def create_binding(self, interface, to=None, annotation=None, scope=None):
         to = to or interface
@@ -295,13 +307,16 @@ class Binder(object):
             return CallableProvider(to)
         elif issubclass(type(to), type):
             return ClassProvider(to, self.injector)
+        elif isinstance(interface, ParameterizedBuilder):
+            builder = AssistedBuilderImplementation(interface.interface, self.injector)
+            return CallableProvider(lambda: builder.build(**interface.kwargs))
         elif isinstance(interface, AssistedBuilder):
             builder = AssistedBuilderImplementation(interface.interface, self.injector)
             return InstanceProvider(builder)
         elif isinstance(to, interface):
             return InstanceProvider(to)
         elif issubclass(type(interface), type):
-            if issubclass(interface, BaseKey):
+            if issubclass(interface, (BaseKey, BaseMappingKey, BaseSequenceKey)):
                 return InstanceProvider(to)
             return ClassProvider(interface, self.injector)
         else:
@@ -658,6 +673,12 @@ def extends(interface, annotation=None, scope=None):
     return wrapper
 
 
+if hasattr(inspect, 'getfullargspec'):
+    getargspec = inspect.getfullargspec
+else:
+    getargspec = inspect.getargspec
+
+
 def inject(**bindings):
     """Decorator declaring parameters to be injected.
 
@@ -700,10 +721,7 @@ def inject(**bindings):
     def method_wrapper(f):
         for key, value in bindings.items():
             bindings[key] = BindingKey(value, None)
-        if hasattr(inspect, 'getfullargspec'):
-            args = inspect.getfullargspec(f)
-        else:
-            args = inspect.getargspec(f)
+        args = getargspec(f)
         if args[0][0] == 'self':
             @functools.wraps(f)
             def inject(self_, *args, **kwargs):
@@ -805,6 +823,54 @@ def Key(name):
     except NameError:
         pass
     return type(name, (BaseKey,), {})
+
+
+class BaseMappingKey(dict):
+    """Base type for mapping binding keys."""
+    def __init__(self):
+        raise Exception('Instantiation of %s prohibited - it is derived from BaseMappingKey '
+                        'so most likely you should bind it to something.' % (self.__class__,))
+
+
+def MappingKey(name):
+    """As for Key, but declares a multibind mapping."""
+    try:
+        if isinstance(name, unicode):
+            name = name.encode('utf-8')
+    except NameError:
+        pass
+    return type(name, (BaseMappingKey,), {})
+
+
+class BaseSequenceKey(list):
+    """Base type for mapping sequence keys."""
+    def __init__(self):
+        raise Exception('Instantiation of %s prohibited - it is derived from BaseSequenceKey '
+                        'so most likely you should bind it to something.' % (self.__class__,))
+
+
+def SequenceKey(name):
+    """As for Key, but declares a multibind sequence."""
+    try:
+        if isinstance(name, unicode):
+            name = name.encode('utf-8')
+    except NameError:
+        pass
+    return type(name, (BaseMappingKey,), {})
+
+
+class ParameterizedBuilder(tuple):
+    def __new__(cls, interface, **kwargs):
+        kwargs = tuple(sorted(kwargs.items()))
+        return super(ParameterizedBuilder, cls).__new__(cls, (interface, kwargs))
+
+    @property
+    def interface(self):
+        return self[0]
+
+    @property
+    def kwargs(self):
+        return dict(self[1])
 
 
 class AssistedBuilder(tuple):
