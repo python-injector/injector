@@ -236,7 +236,7 @@ class Binder(object):
         :param annotation: Optional global annotation of interface.
         :param scope: Optional :class:`Scope` in which to bind.
         """
-        if issubclass(interface, (BaseMappingKey, BaseSequenceKey)):
+        if type(interface) is type and issubclass(interface, (BaseMappingKey, BaseSequenceKey)):
             return self.multibind(interface, to, annotation=annotation, scope=scope)
         key = BindingKey(interface, annotation)
         self._bindings[key] = \
@@ -286,11 +286,13 @@ class Binder(object):
         elif type(module) is type and issubclass(module, Module):
             module()(self)
         else:
-            kwargs = self.injector.args_to_inject(module, module.__bindings__, module)
+            bindings = getattr(module, '__bindings__', {})
+            kwargs = self.injector.args_to_inject(module, bindings, module)
             module(self, **kwargs)
 
     def create_binding(self, interface, to=None, annotation=None, scope=None):
-        to = to or interface
+        if to is None:
+            to = interface
         provider = self.provider_for(interface, to)
         if scope is None:
             scope = getattr(to, '__scope__', NoScope)
