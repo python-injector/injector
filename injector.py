@@ -894,12 +894,13 @@ class AssistedBuilderImplementation(object):
         binder = self.injector.binder
         binding = binder.get_binding(None, key)
         provider = binding.provider
-        try:
-            cls = provider._cls
-        except AttributeError:
-            raise Error('Assisted building works only with ClassProviders, '
+        if isinstance(provider, ClassProvider):
+            return self.injector.create_object(provider._cls, additional_kwargs=kwargs)
+        elif isinstance(provider, CallableProvider):
+            return provider._callable(**kwargs)
+        else:
+            raise Error('Assisted building works only with ClassProviders and CallableProviders, '
                         'got %r for %r' % (provider, self.interface))
-        return self.injector.create_object(cls, additional_kwargs=kwargs)
 
 
 def _describe(c):
