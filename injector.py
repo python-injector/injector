@@ -858,7 +858,7 @@ def SequenceKey(name):
             name = name.encode('utf-8')
     except NameError:
         pass
-    return type(name, (BaseMappingKey,), {})
+    return type(name, (BaseSequenceKey,), {})
 
 
 class ParameterizedBuilder(tuple):
