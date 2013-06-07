@@ -551,7 +551,7 @@ class Injector(object):
 
         result = scope_instance.get(key, binding.provider).get()
         if trace:
-            print 'injector.get(%r, annotation=%r, scope=%r) -> %r' % (interface, annotation, scope, result)
+            print('injector.get(%r, annotation=%r, scope=%r) -> %r' % (interface, annotation, scope, result))
         return result
 
     def create_child_injector(self, *args, **kwargs):
