@@ -31,6 +31,9 @@ __version__ = '0.6.3'
 __version_tag__ = ''
 
 
+trace = False
+
+
 def synchronized(lock):
     def outside_wrapper(function):
         @functools.wraps(function)
@@ -545,7 +548,11 @@ class Injector(object):
         except UnsatisfiedRequirement as e:
             raise Error('%s; scopes must be explicitly bound '
                         'with Binder.bind_scope(scope_cls)' % e)
-        return scope_instance.get(key, binding.provider).get()
+
+        result = scope_instance.get(key, binding.provider).get()
+        if trace:
+            print 'injector.get(%r, annotation=%r, scope=%r) -> %r' % (interface, annotation, scope, result)
+        return result
 
     def create_child_injector(self, *args, **kwargs):
         return Injector(*args, parent=self, **kwargs)
