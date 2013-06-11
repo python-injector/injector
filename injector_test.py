@@ -782,8 +782,10 @@ def test_assisted_builder_injection_uses_the_same_binding_key_every_time():
 
 class TestThreadSafety(object):
     def setup(self):
+        self.event = threading.Event()
+
         def configure(binder):
-            binder.bind(str, to=lambda: sleep(1) and 'this is str')
+            binder.bind(str, to=lambda: self.event.wait() and 'this is str')
 
         class XXX(object):
             @inject(s=str)
@@ -806,6 +808,8 @@ class TestThreadSafety(object):
 
         for t in threads:
             t.start()
+
+        self.event.set()
 
         for t in threads:
             t.join()
