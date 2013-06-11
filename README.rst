@@ -502,6 +502,13 @@ class instance on the time of method call::
 After such call all ``inject``-decorated methods will work just as you'd expect
 them to work.
 
+Logging
+=======
+
+Injector uses standard :mod:`logging` module, the logger name is ``injector``.
+
+By default ``injector`` logger is configured to use :class:`logging.NullHandler`.
+
 Thread safety
 =============
 

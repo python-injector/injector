@@ -19,19 +19,26 @@ See http://pypi.python.org/pypi/injector for documentation.
 import itertools
 import functools
 import inspect
+import logging
 import sys
 import types
 import threading
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
 
+try:
+    NullHandler = logging.NullHandler
+except AttributeError:
+    class NullHandler(logging.Handler):
+        def emit(self, record):
+            pass
 
 __author__ = 'Alec Thomas <alec@swapoff.org>'
 __version__ = '0.6.3'
 __version_tag__ = ''
 
-
-trace = False
+log = logging.getLogger(__name__)
+log.addHandler(NullHandler())
 
 
 def synchronized(lock):
@@ -550,8 +557,7 @@ class Injector(object):
                         'with Binder.bind_scope(scope_cls)' % e)
 
         result = scope_instance.get(key, binding.provider).get()
-        if trace:
-            print('injector.get(%r, annotation=%r, scope=%r) -> %r' % (interface, annotation, scope, result))
+        log.debug('get(%r, annotation=%r, scope=%r) -> %r', interface, annotation, scope, result)
         return result
 
     def create_child_injector(self, *args, **kwargs):
