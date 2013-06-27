@@ -21,7 +21,7 @@ class PyTest(Command):
 
 version = injector.__version__
 version_tag = injector.__version_tag__
-long_description = open('README.rst').read()
+long_description = open('README.md').read()
 description = long_description.splitlines()[0].strip()
 
 
