@@ -120,8 +120,8 @@ True
 
 You're probably thinking something like: "this is a large amount of work just to give me a database connection", and you are correct; dependency injection is typically not that useful for smaller projects. It comes into its own on large projects where the up-front effort pays for itself in two ways:
 
-> 1.  Forces decoupling. In our example, this is illustrated by decoupling our configuration and database configuration.
-> 2.  After a type is configured, it can be injected anywhere with no additional effort. Simply @inject and it appears. We don't really illustrate that here, but you can imagine adding an arbitrary number of RequestHandler subclasses, all of which will automatically have a DB connection provided.
+1.  Forces decoupling. In our example, this is illustrated by decoupling our configuration and database configuration.
+2.  After a type is configured, it can be injected anywhere with no additional effort. Simply @inject and it appears. We don't really illustrate that here, but you can imagine adding an arbitrary number of RequestHandler subclasses, all of which will automatically have a DB connection provided.
 
 Terminology
 -----------
