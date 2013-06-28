@@ -10,7 +10,7 @@
 
 """Injector - Python dependency injection framework, inspired by Guice
 
-See http://pypi.python.org/pypi/injector for documentation.
+See https://github.com/alecthomas/injector for documentation.
 
 :copyright: (c) 2012 by Alec Thomas
 :license: BSD
@@ -38,6 +38,7 @@ __version__ = '0.6.3'
 __version_tag__ = ''
 
 log = logging.getLogger(__name__)
+# log.setLevel(logging.WARNING)
 log.addHandler(NullHandler())
 
 
@@ -212,10 +213,7 @@ class BindingKey(tuple):
         return self[1]
 
 
-BindingBase = namedtuple("BindingBase", 'interface annotation provider scope')
-
-
-class Binding(BindingBase):
+class Binding(namedtuple('BindingBase', 'interface annotation provider scope')):
     """A binding from an (interface, annotation) to a provider in a scope."""
 
 
@@ -392,6 +390,10 @@ class ScopeDecorator(object):
 
     def __call__(self, cls):
         cls.__scope__ = self.scope
+        for attr in ['__binding', '__multibinding__']:
+            binding = getattr(cls, attr, None)
+            if binding:
+                setattr(cls, attr, BindingKey(binding))
         return cls
 
     def __repr__(self):
@@ -665,7 +667,8 @@ def provides(interface, annotation=None, scope=None, eager=False):
     :param scope: Optional scope of provided value.
     """
     def wrapper(provider):
-        provider.__binding__ = Binding(interface, annotation, provider, scope)
+        scope_ = scope or getattr(provider, '__scope__', getattr(wrapper, '__scope__', None))
+        provider.__binding__ = Binding(interface, annotation, provider, scope_)
         return provider
 
     return wrapper

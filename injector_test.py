@@ -11,7 +11,6 @@
 """Functional tests for the Pollute dependency injection framework."""
 
 from contextlib import contextmanager
-from time import sleep
 import abc
 import threading
 import traceback
@@ -700,6 +699,7 @@ def test_call_to_method_containing_noninjectable_and_unsatisfied_dependencies_ra
         assert (ce.args[2] == ())
         assert (ce.args[3] == {'something': str()})
 
+
 def test_call_error_is_raised_with_correct_traceback():
     class A(object):
         @inject(x=str)
@@ -908,3 +908,17 @@ class TestClassInjection(object):
 
         x = X(b=314)
         assert (x._b == 314)
+
+
+def test_provides_and_scope_decorator_collaboration():
+    @provides(int)
+    @singleton
+    def provides_singleton():
+        return 10
+
+    @singleton
+    @provides(int)
+    def singleton_provides():
+        return 10
+
+    assert provides_singleton.__binding__.scope == SingletonScope
