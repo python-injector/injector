@@ -100,6 +100,12 @@ def test_method_decorator_is_wrapped():
     assert (A.__init__.__name__ == '__init__')
 
 
+def test_decorator_works_for_function_with_no_args():
+    @inject(s=str)
+    def wrapped(*args, **kwargs):
+        pass
+
+
 def test_inject_direct():
     A, B = prepare_basic_injection()
 

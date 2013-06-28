@@ -720,8 +720,8 @@ def inject(**bindings):
     def method_wrapper(f):
         for key, value in bindings.items():
             bindings[key] = BindingKey(value, None)
-        args = getargspec(f)
-        if args[0][0] == 'self':
+        argspec = getargspec(f)
+        if argspec.args and argspec.args[0] == 'self':
             @functools.wraps(f)
             def inject(self_, *args, **kwargs):
                 injector = getattr(self_, '__injector__', None)
