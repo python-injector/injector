@@ -383,6 +383,35 @@ def test_module_provides():
     assert (injector.get(str, annotation='name') == 'Bob')
 
 
+def test_can_inject_into_modules():
+    counter = [0]
+
+    class M(Module):
+        @inject(f=float)
+        def __init__(self, f):
+            counter[0] += 1
+            assert (f == 0.0)
+
+        @inject(s=str)
+        def configure(self, binder, s):
+            counter[0] += 1
+            assert (s == '')
+
+    Injector(M)
+    assert (counter[0] == 2)
+
+    Injector(M(f=0.0))
+    assert (counter[0] == 4)
+
+    @inject(i=int)
+    def configure(binder, i):
+        counter[0] += 1
+        assert (i == 0)
+
+    Injector(configure)
+    assert (counter[0] == 5)
+
+
 def test_module_class_gets_instantiated():
     name = 'Meg'
 

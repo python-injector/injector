@@ -292,10 +292,9 @@ class Binder(object):
 
         :param module: A Module instance, Module subclass, or a function.
         """
-        if isinstance(module, Module):
-            module(self)
-        elif type(module) is type and issubclass(module, Module):
-            module()(self)
+        if type(module) is type and issubclass(module, Module):
+            instance = self.injector.create_object(module)
+            instance(self)
         else:
             bindings = getattr(module, '__bindings__', {})
             kwargs = self.injector.args_to_inject(module, bindings, module)
@@ -525,10 +524,7 @@ class Injector(object):
         self.binder.bind(Binder, to=self.binder)
         # Initialise modules
         for module in modules:
-            if isinstance(module, type):
-                module = module()
-
-            module(self.binder)
+            self.binder.install(module)
 
     def get(self, interface, annotation=None, scope=None):
         """Get an instance of the given interface.
