@@ -296,9 +296,11 @@ class Binder(object):
             instance = self.injector.create_object(module)
             instance(self)
         else:
-            bindings = getattr(module, '__bindings__', {})
-            kwargs = self.injector.args_to_inject(module, bindings, module)
-            module(self, **kwargs)
+            self.injector.call_with_injection(
+                callable=module,
+                self_=None,
+                args=(self,),
+            )
 
     def create_binding(self, interface, to=None, annotation=None, scope=None):
         if to is None:
@@ -590,6 +592,34 @@ class Injector(object):
         """
         instance.__injector__ = self
 
+    def call_with_injection(self, callable, self_, args=(), kwargs={}):
+        """Call a callable and provide it's dependencies if needed.
+
+        :param self_: Instance of a class callable belongs to if it's a method,
+            None otherwise.
+        :param args: Arguments to pass to callable.
+        :param kwargs: Keyword arguments to pass to callable.
+        :type callable: callable
+        :type args: tuple of objects
+        :type kwargs: dict of string -> object
+        :return: Value returned by callable.
+        """
+        bindings = getattr(callable, '__bindings__', {})
+        needed = dict(
+            (k, v) for (k, v) in bindings.items() if k not in kwargs)
+
+        dependencies = self.args_to_inject(
+            function=callable,
+            bindings=needed,
+            owner_key=self_.__class__ if self_ else callable.__module__)
+
+        dependencies.update(kwargs)
+
+        try:
+            return callable(*((self_,) if self_ else ()) + tuple(args), **dependencies)
+        except TypeError as e:
+            reraise(e, CallError(self_, callable, args, dependencies, e))
+
     @synchronized(lock)
     def args_to_inject(self, function, bindings, owner_key):
         """Inject arguments into a function.
@@ -682,6 +712,8 @@ else:
     getargspec = inspect.getargspec
 
 
+
+
 def inject(**bindings):
     """Decorator declaring parameters to be injected.
 
@@ -729,26 +761,23 @@ def inject(**bindings):
             @functools.wraps(f)
             def inject(self_, *args, **kwargs):
                 injector = getattr(self_, '__injector__', None)
-                if injector is None:
-                    try:
-                        return f(self_, *args, **kwargs)
-                    except TypeError as e:
-                        reraise(e, CallError(self_, f, args, kwargs, e))
-                dependencies = injector.args_to_inject(
-                    function=f,
-                    bindings=bindings,
-                    owner_key=self_.__class__,
+                if injector:
+                    return injector.call_with_injection(
+                        callable=f,
+                        self_=self_,
+                        args=args,
+                        kwargs=kwargs
                     )
-                dependencies.update(kwargs)
-                try:
-                    return f(self_, *args, **dependencies)
-                except TypeError as e:
-                    reraise(e, CallError(self_, f, args, dependencies, e))
+                else:
+                    return f(self_, *args, **kwargs)
+
             # Propagate @provides bindings to wrapper function
             if hasattr(f, '__binding__'):
                 inject.__binding__ = f.__binding__
         else:
             inject = f
+
+        f.__bindings__ = bindings
         inject.__bindings__ = bindings
         return inject
 
