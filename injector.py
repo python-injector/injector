@@ -526,6 +526,10 @@ class Injector(object):
         for module in modules:
             self.binder.install(module)
 
+    @property
+    def _log_prefix(self):
+        return '>' * (len(self._stack) + 1) + ' '
+
     def get(self, interface, annotation=None, scope=None):
         """Get an instance of the given interface.
 
@@ -548,8 +552,9 @@ class Injector(object):
             raise Error('%s; scopes must be explicitly bound '
                         'with Binder.bind_scope(scope_cls)' % e)
 
+        log.debug('%sGetting %r using %r', self._log_prefix, key, binding)
         result = scope_instance.get(key, binding.provider).get()
-        log.debug('get(%r, annotation=%r, scope=%r) -> %r', interface, annotation, scope, result)
+        log.debug('%sGot %r', self._log_prefix, result)
         return result
 
     def create_child_injector(self, *args, **kwargs):
@@ -557,8 +562,9 @@ class Injector(object):
 
     def create_object(self, cls, additional_kwargs=None):
         """Create a new instance, satisfying any dependencies on cls."""
-
         additional_kwargs = additional_kwargs or {}
+        log.debug('%sCreating %r object with %r', self._log_prefix, cls, additional_kwargs)
+
         instance = cls.__new__(cls)
         try:
             self.install_into(instance)
@@ -599,6 +605,8 @@ class Injector(object):
 
         def repr_key(k):
             return '%s.%s()' % tuple(map(_describe, k))
+
+        log.debug('%sProviding %r for %r', self._log_prefix, bindings, function)
 
         if key in self._stack:
             raise CircularDependency(
