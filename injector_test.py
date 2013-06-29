@@ -981,3 +981,4 @@ def test_provides_and_scope_decorator_collaboration():
         return 10
 
     assert provides_singleton.__binding__.scope == SingletonScope
+    assert singleton_provides.__binding__.scope == SingletonScope

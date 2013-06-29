@@ -34,7 +34,7 @@ except AttributeError:
             pass
 
 __author__ = 'Alec Thomas <alec@swapoff.org>'
-__version__ = '0.7.1'
+__version__ = '0.7.2'
 __version_tag__ = ''
 
 log = logging.getLogger(__name__)
@@ -396,7 +396,12 @@ class ScopeDecorator(object):
         cls.__scope__ = self.scope
         binding = getattr(cls, '__binding__', None)
         if binding:
-            setattr(cls, '__binding__', Binding(*binding))
+            new_binding = Binding(
+                interface=binding.interface,
+                annotation=binding.annotation,
+                provider=binding.provider,
+                scope=self.scope)
+            setattr(cls, '__binding__', new_binding)
         return cls
 
     def __repr__(self):
