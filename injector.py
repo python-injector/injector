@@ -34,7 +34,7 @@ except AttributeError:
             pass
 
 __author__ = 'Alec Thomas <alec@swapoff.org>'
-__version__ = '0.6.3'
+__version__ = '0.7.0'
 __version_tag__ = ''
 
 log = logging.getLogger(__name__)
@@ -213,7 +213,10 @@ class BindingKey(tuple):
         return self[1]
 
 
-class Binding(namedtuple('BindingBase', 'interface annotation provider scope')):
+_BindingBase = namedtuple('_BindingBase', 'interface annotation provider scope')
+
+
+class Binding(_BindingBase):
     """A binding from an (interface, annotation) to a provider in a scope."""
 
 
@@ -263,7 +266,7 @@ class Binder(object):
         A multi-binding maps from a key to a sequence, where each element in
         the sequence is provided separately.
 
-        :param interface: Interface or :func:`Key` to bind.
+        :param interface: :func:`MappingKey` or :func:`SequenceKey` to bind to.
         :param to: Instance, class to bind to, or an explicit :class:`Provider`
                 subclass. Must provide a sequence.
         :param annotation: Optional global annotation of interface.
@@ -390,10 +393,9 @@ class ScopeDecorator(object):
 
     def __call__(self, cls):
         cls.__scope__ = self.scope
-        for attr in ['__binding', '__multibinding__']:
-            binding = getattr(cls, attr, None)
-            if binding:
-                setattr(cls, attr, BindingKey(binding))
+        binding = getattr(cls, '__binding__', None)
+        if binding:
+            setattr(cls, '__binding__', Binding(*binding))
         return cls
 
     def __repr__(self):
@@ -470,14 +472,6 @@ class Module(object):
             if hasattr(function, '__binding__'):
                 binding = function.__binding__
                 binder.bind(
-                    binding.interface,
-                    to=types.MethodType(binding.provider, self),
-                    annotation=binding.annotation,
-                    scope=binding.scope,
-                    )
-            elif hasattr(function, '__multibinding__'):
-                binding = function.__multibinding__
-                binder.multibind(
                     binding.interface,
                     to=types.MethodType(binding.provider, self),
                     annotation=binding.annotation,
@@ -675,20 +669,7 @@ def provides(interface, annotation=None, scope=None, eager=False):
 
 
 def extends(interface, annotation=None, scope=None):
-    """A decorator for :class:`Module` methods that return sequences of
-    implementations of interface.
-
-    This is a convenient way of declaring a :meth:`Module.multibind` .
-
-    :param interface: Interface to provide.
-    :param annotation: Optional annotation value.
-    :param scope: Optional scope of provided value.
-    """
-    def wrapper(provider):
-        provider.__multibinding__ = Binding(interface, annotation, provider, scope)
-        return provider
-
-    return wrapper
+    raise DeprecationWarning('@extends({}|[]) is deprecated, use @provides and SequenceKey or MappingKey')
 
 
 if hasattr(inspect, 'getfullargspec'):

@@ -20,8 +20,9 @@ import pytest
 from injector import (
     Binder, CallError, Injector, Scope, InstanceProvider, ClassProvider,
     inject, singleton, threadlocal, UnsatisfiedRequirement,
-    CircularDependency, Module, provides, Key, extends, SingletonScope,
+    CircularDependency, Module, provides, Key, SingletonScope,
     ScopeDecorator, with_injector, AssistedBuilder, BindingKey,
+    SequenceKey, MappingKey
     )
 
 
@@ -468,15 +469,15 @@ def test_multibind():
     assert (Injector([configure_one, configure_two]).get(Names) == ['Bob', 'Tom'])
 
 
-def test_extends_decorator():
-    Names = Key('names')
+def test_provides_sequence_decorator():
+    Names = SequenceKey('names')
 
     class MyModule(Module):
-        @extends(Names)
+        @provides(Names)
         def bob(self):
             return ['Bob']
 
-        @extends(Names)
+        @provides(Names)
         def tom(self):
             return ['Tom']
 
@@ -561,23 +562,25 @@ def test_bind_interface_of_list_of_types():
     assert (injector.get([int]) == [1, 2, 3, 4, 5, 6])
 
 
-def test_map_binding_and_extends():
+def test_provides_mapping():
+
+    StrInt = MappingKey('StrInt')
 
     def configure(binder):
-        binder.multibind({str: int}, to={'one': 1})
-        binder.multibind({str: int}, to={'two': 2})
+        binder.multibind(StrInt, to={'one': 1})
+        binder.multibind(StrInt, to={'two': 2})
 
     class MyModule(Module):
-        @extends({str: int})
+        @provides(StrInt)
         def provide_numbers(self):
             return {'three': 3}
 
-        @extends({str: int})
+        @provides(StrInt)
         def provide_more_numbers(self):
             return {'four': 4}
 
     injector = Injector([configure, MyModule()])
-    assert (injector.get({str: int}) == {'one': 1, 'two': 2, 'three': 3, 'four': 4})
+    assert (injector.get(StrInt) == {'one': 1, 'two': 2, 'three': 3, 'four': 4})
 
 
 def test_binder_install():
