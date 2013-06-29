@@ -106,6 +106,27 @@ def test_decorator_works_for_function_with_no_args():
         pass
 
 
+def test_providers_arent_called_for_dependencies_that_are_already_provided():
+    def configure(binder):
+        binder.bind(int, to=lambda: 1 / 0)
+
+    class A(object):
+        @inject(i=int)
+        def __init__(self, i):
+            pass
+
+    injector = Injector(configure)
+    builder = injector.get(AssistedBuilder(A))
+
+    try:
+        builder.build()
+        assert False, 'Above line shouldn\'t succeed'
+    except ZeroDivisionError:
+        pass
+
+    builder.build(i=3)
+
+
 def test_inject_direct():
     A, B = prepare_basic_injection()
 
