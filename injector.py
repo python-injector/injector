@@ -34,7 +34,7 @@ except AttributeError:
             pass
 
 __author__ = 'Alec Thomas <alec@swapoff.org>'
-__version__ = '0.7.2'
+__version__ = '0.7.3'
 __version_tag__ = ''
 
 # To enable get() tracing, getLogger('injector').setLevel(logging.INFO)
