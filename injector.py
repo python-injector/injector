@@ -618,12 +618,15 @@ class Injector(object):
         dependencies = self.args_to_inject(
             function=callable,
             bindings=needed,
-            owner_key=self_.__class__ if self_ else callable.__module__)
+            owner_key=self_.__class__ if self_ is not None
+                else callable.__module__)
 
         dependencies.update(kwargs)
 
         try:
-            return callable(*((self_,) if self_ else ()) + tuple(args), **dependencies)
+            return callable(
+                *((self_,) if self_ is not None else ()) + tuple(args),
+                **dependencies)
         except TypeError as e:
             reraise(e, CallError(self_, callable, args, dependencies, e))
 

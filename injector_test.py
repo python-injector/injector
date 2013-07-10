@@ -982,3 +982,15 @@ def test_provides_and_scope_decorator_collaboration():
 
     assert provides_singleton.__binding__.scope == SingletonScope
     assert singleton_provides.__binding__.scope == SingletonScope
+
+
+def test_injecting_into_method_of_object_that_is_falseish_works():
+    # regression test
+
+    class X(dict):
+        @inject(s=str)
+        def __init__(self, s):
+            pass
+
+    injector = Injector()
+    injector.get(X)
