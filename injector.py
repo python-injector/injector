@@ -34,7 +34,7 @@ except AttributeError:
             pass
 
 __author__ = 'Alec Thomas <alec@swapoff.org>'
-__version__ = '0.7.3'
+__version__ = '0.7.4'
 __version_tag__ = ''
 
 # To enable get() tracing, getLogger('injector').setLevel(logging.INFO)
@@ -611,15 +611,14 @@ class Injector(object):
         :type kwargs: dict of string -> object
         :return: Value returned by callable.
         """
-        bindings = getattr(callable, '__bindings__', {})
-        needed = dict(
-            (k, v) for (k, v) in bindings.items() if k not in kwargs)
+        bindings = getattr(callable, '__bindings__', None) or {}
+        needed = dict((k, v) for (k, v) in bindings.items() if k not in kwargs)
 
         dependencies = self.args_to_inject(
             function=callable,
             bindings=needed,
-            owner_key=self_.__class__ if self_ is not None
-                else callable.__module__)
+            owner_key=self_.__class__ if self_ is not None else callable.__module__,
+            )
 
         dependencies.update(kwargs)
 
@@ -787,8 +786,11 @@ def inject(**bindings):
         else:
             inject = f
 
-        f.__bindings__ = bindings
-        inject.__bindings__ = bindings
+        function_bindings = getattr(f, '__bindings__', None) or {}
+        merged_bindings = dict(function_bindings, **bindings)
+
+        f.__bindings__ = merged_bindings
+        inject.__bindings__ = merged_bindings
         return inject
 
     def class_wrapper(cls):
