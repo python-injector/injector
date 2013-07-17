@@ -120,7 +120,7 @@ def test_providers_arent_called_for_dependencies_that_are_already_provided():
 
     try:
         builder.build()
-        assert False, 'Above line shouldn\'t succeed'
+        assert False, 'Shouldn\'t happen'
     except ZeroDivisionError:
         pass
 
@@ -819,6 +819,25 @@ def test_assisted_builder_uses_bindings():
     builder = injector.get(AssistedBuilder(Interface))
     x = builder.build(b=333)
     assert ((type(x), x.b) == (NeedsAssistance, 333))
+
+
+def test_assisted_builder_uses_concrete_class_when_specified():
+    class X(object):
+        pass
+
+    def configure(binder):
+        # meant only to show that provider isn't called
+        binder.bind(X, to=lambda: 1 / 0)
+
+    injector = Injector(configure)
+    builder = injector.get(AssistedBuilder(cls=X))
+    builder.build()
+
+
+def test_assisted_builder_accepts_callables():
+    injector = Injector()
+    builder = injector.get(AssistedBuilder(callable=lambda x: x * 2))
+    assert builder.build(x=3) == 6
 
 
 def test_assisted_builder_injection_is_safe_to_use_with_multiple_injectors():

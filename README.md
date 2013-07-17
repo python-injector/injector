@@ -434,7 +434,7 @@ In this situation there's technique called Assisted injection:
 ```pycon
 >>> from injector import AssistedBuilder
 >>> injector = Injector()
->>> builder = injector.get(AssistedBuilder(UserUpdater))
+>>> builder = injector.get(AssistedBuilder(cls=UserUpdater))
 >>> user = User('John')
 >>> user_updater = builder.build(user=user)
 
@@ -442,14 +442,34 @@ In this situation there's technique called Assisted injection:
 
 This way we don't get `UserUpdater` directly but rather a builder object. Such builder has `build(**kwargs)` method which takes non-injectable parameters, combines them with injectable dependencies of `UserUpdater` and calls `UserUpdater` initializer using all of them.
 
-`AssistedBuilder(X)` is injectable just as anything else, if you need instance of it you just ask for it like that:
+`AssistedBuilder(...)` is injectable just as anything else, if you need instance of it you just ask for it like that:
 
 
 ```pycon
->>> @inject(updater_builder=AssistedBuilder(UserUpdater))
+>>> @inject(updater_builder=AssistedBuilder(cls=UserUpdater))
 ... class NeedsUserUpdater(object):
 ...     def method(self):
 ...         updater = self.updater_builder.build(user=None)
+
+```
+
+`cls` needs to be a concrete class and no bindings will be used.
+
+If you want `AssistedBuilder` to follow bindings and construct class pointed to by a key you can do it like this:
+
+```pycon
+>>> DB = Key('DB')
+>>> class DBImplementation(object):
+...     def __init__(self, uri):
+...         pass
+...
+>>> def configure(binder):
+...     binder.bind(DB, to=DBImplementation)
+...
+>>> injector = Injector(configure)
+>>> builder = injector.get(AssistedBuilder(interface=DB))
+>>> isinstance(builder.build(uri='x'), DBImplementation)
+True
 
 ```
 

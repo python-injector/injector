@@ -16,6 +16,7 @@ See https://github.com/alecthomas/injector for documentation.
 :license: BSD
 """
 
+import collections
 import itertools
 import functools
 import inspect
@@ -324,10 +325,10 @@ class Binder(object):
         elif issubclass(type(to), type):
             return ClassProvider(to, self.injector)
         elif isinstance(interface, ParameterizedBuilder):
-            builder = AssistedBuilderImplementation(interface.interface, self.injector)
+            builder = AssistedBuilderImplementation(self.injector, *interface)
             return CallableProvider(lambda: builder.build(**interface.kwargs))
         elif isinstance(interface, AssistedBuilder):
-            builder = AssistedBuilderImplementation(interface.interface, self.injector)
+            builder = AssistedBuilderImplementation(self.injector, *interface)
             return InstanceProvider(builder)
         elif isinstance(to, interface):
             return InstanceProvider(to)
@@ -928,32 +929,48 @@ class ParameterizedBuilder(tuple):
         return dict(self[1])
 
 
-class AssistedBuilder(tuple):
-    def __new__(cls, interface):
-        return super(AssistedBuilder, cls).__new__(cls, (interface,))
+class AssistedBuilder(namedtuple('_AssistedBuilder', 'interface cls callable')):
+    def __new__(cls_, interface=None, cls=None, callable=None):
+        if len([x for x in (interface, cls, callable) if x is not None]) != 1:
+            raise Error('You need to specify exactly one of the following '
+                        'arguments: interface, cls or callable')
 
-    @property
-    def interface(self):
-        return self[0]
+        return super(AssistedBuilder, cls_).__new__(
+            cls_, interface, cls, callable)
 
 
-class AssistedBuilderImplementation(object):
-    def __init__(self, interface, injector):
-        self.interface = interface
-        self.injector = injector
+class AssistedBuilderImplementation(namedtuple(
+        '_AssistedBuilderImplementation', 'injector interface cls callable')):
 
     def build(self, **kwargs):
+        if self.interface is not None:
+            return self.build_interface(**kwargs)
+        elif self.cls is not None:
+            return self.build_class(self.cls, **kwargs)
+        else:
+            return self.build_callable(**kwargs)
+
+    def build_class(self, cls, **kwargs):
+        return self.injector.create_object(cls, additional_kwargs=kwargs)
+
+    def build_interface(self, **kwargs):
         key = BindingKey(self.interface, None)
         binder = self.injector.binder
         binding = binder.get_binding(None, key)
         provider = binding.provider
-        if isinstance(provider, ClassProvider):
-            return self.injector.create_object(provider._cls, additional_kwargs=kwargs)
-        elif isinstance(provider, CallableProvider):
-            return provider._callable(**kwargs)
-        else:
-            raise Error('Assisted building works only with ClassProviders and CallableProviders, '
-                        'got %r for %r' % (provider, self.interface))
+        if not isinstance(provider, ClassProvider):
+            raise Error(
+                'Assisted interface building works only with ClassProviders, '
+                'got %r for %r' % (provider, self.interface))
+
+        return self.build_class(provider._cls, **kwargs)
+
+    def build_callable(self, **kwargs):
+        return self.injector.call_with_injection(
+            callable=self.callable,
+            self_=None,
+            kwargs=kwargs
+        )
 
 
 def _describe(c):
