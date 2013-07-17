@@ -37,11 +37,11 @@ __author__ = 'Alec Thomas <alec@swapoff.org>'
 __version__ = '0.7.4'
 __version_tag__ = ''
 
-# To enable get() tracing, getLogger('injector').setLevel(logging.INFO)
-# To enable debug logging, setLevel(logging.DEBUG).
 log = logging.getLogger('injector')
 log.addHandler(NullHandler())
-log.setLevel(logging.WARNING)
+
+if log.level == logging.NOTSET:
+    log.setLevel(logging.WARN)
 
 
 def synchronized(lock):
@@ -561,9 +561,9 @@ class Injector(object):
             raise Error('%s; scopes must be explicitly bound '
                         'with Binder.bind_scope(scope_cls)' % e)
 
-        log.info('%sInjector.get(%r, annotation=%r, scope=%r) using %r', self._log_prefix, interface, annotation, scope, binding.provider)
+        log.debug('%sInjector.get(%r, annotation=%r, scope=%r) using %r', self._log_prefix, interface, annotation, scope, binding.provider)
         result = scope_instance.get(key, binding.provider).get()
-        log.info('%s -> %r', self._log_prefix, result)
+        log.debug('%s -> %r', self._log_prefix, result)
         return result
 
     def create_child_injector(self, *args, **kwargs):

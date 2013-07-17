@@ -584,7 +584,15 @@ Logging
 
 Injector uses standard :mod:`logging` module, the logger name is ``injector``.
 
-By default ``injector`` logger is configured to use :class:`logging.NullHandler`.
+By default ``injector`` logger is not configured to print logs anywhere.
+
+To enable ``get()`` tracing you need to set ``injector`` logger level to ``DEBUG``. You can do that programatically by executing:
+
+```pycon
+import logging
+
+logging.getLogger('injector').setLevel(logging.DEBUG)
+```
 
 Thread safety
 -------------
