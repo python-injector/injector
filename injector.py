@@ -40,6 +40,9 @@ __version_tag__ = ''
 log = logging.getLogger('injector')
 log.addHandler(NullHandler())
 
+if log.level == logging.NOTSET:
+    log.setLevel(logging.WARN)
+
 
 def synchronized(lock):
     def outside_wrapper(function):
