@@ -34,7 +34,7 @@ except AttributeError:
             pass
 
 __author__ = 'Alec Thomas <alec@swapoff.org>'
-__version__ = '0.7.4'
+__version__ = '0.7.5'
 __version_tag__ = ''
 
 log = logging.getLogger('injector')
@@ -494,7 +494,7 @@ class Module(object):
 class Injector(object):
     """Initialise and use an object dependency graph."""
 
-    def __init__(self, modules=None, auto_bind=True, parent=None):
+    def __init__(self, modules=None, auto_bind=True, parent=None, use_annotations=False):
         """Construct a new Injector.
 
         :param modules: A callable, class, or list of callables/classes, used to configure the
@@ -507,12 +507,14 @@ class Injector(object):
                         Signature is ``configure(binder)``.
         :param auto_bind: Whether to automatically bind missing types.
         :param parent: Parent injector.
+        :param use_annotations: Attempt to infer injected arguments using Python3 argument annotations.
         """
         # Stack of keys currently being injected. Used to detect circular
         # dependencies.
         self._stack = []
 
         self.parent = parent
+        self.use_annotations = use_annotations
 
         # Binder
         self.binder = Binder(self, auto_bind=auto_bind, parent=parent and parent.binder)
@@ -574,6 +576,10 @@ class Injector(object):
         additional_kwargs = additional_kwargs or {}
         log.debug('%sCreating %r object with %r', self._log_prefix, cls, additional_kwargs)
 
+        if self.use_annotations and hasattr(cls, '__init__') and not hasattr(cls.__init__, '__binding__'):
+            bindings = self._infer_injected_bindings(cls.__init__)
+            cls.__init__ = inject(**bindings)(cls.__init__)
+
         instance = cls.__new__(cls)
         try:
             self.install_into(instance)
@@ -592,6 +598,12 @@ class Injector(object):
                 )
             )
         return instance
+
+    def _infer_injected_bindings(self, callable):
+        if not getfullargspec or not self.use_annotations:
+            return None
+        spec = getfullargspec(callable)
+        return dict(spec.annotations.items())
 
     def install_into(self, instance):
         """
@@ -716,11 +728,10 @@ def extends(interface, annotation=None, scope=None):
 
 
 if hasattr(inspect, 'getfullargspec'):
-    getargspec = inspect.getfullargspec
+    getfullargspec = getargspec = inspect.getfullargspec
 else:
     getargspec = inspect.getargspec
-
-
+    getfullargspec = None
 
 
 def inject(**bindings):

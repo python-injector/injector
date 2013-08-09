@@ -20,6 +20,29 @@ Injector work with the following Python interpreters:
 -   CPython 2.6, 2.7, 3.2, 3.3
 -   PyPy 1.9
 
+Recent Notable Changes
+----------------------
+Added support for using Python3 annotations instead of @inject.
+
+eg. The following code:
+
+```python
+class B(object):
+    @inject(a=A):
+    def __init__(self, a):
+        self.a = a
+```
+
+Can now be written as:
+
+```python3
+class B(object):
+    def __init__(self, a:A):
+        self.a = a
+```
+
+To enable this support, instantiate your `Injector` with `Injector(..., use_annotations=True)`
+
 A Quick Example
 ---------------
 

@@ -6,5 +6,5 @@ python:
   - "3.3"
   - "pypy"
 install:
-  - pip install pytest
+  - pip install pytest --use-mirrors
 script: py.test -vv
