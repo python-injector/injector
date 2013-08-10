@@ -455,9 +455,11 @@ This way we don't get `UserUpdater` directly but rather a builder object. Such b
 
 More information on this topic:
 
--   ["How to use Google Guice to create objects that require parameters?" on Stack Overflow](http://stackoverflow.com/questions/996300/how-to-use-google-guice-to-create-objects-that-require-parameters)
+- ["How to use Google Guice to create objects that require parameters?" on Stack Overflow](http://stackoverflow.com/questions/996300/how-to-use-google-guice-to-create-objects-that-require-parameters)
+- [Google Guice assisted injection](http://code.google.com/p/google-guice/wiki/AssistedInject)
 
-\* [Google Guice assisted injection](http://code.google.com/p/google-guice/wiki/AssistedInject) Child injectors ---------------
+### Child injectors
+
 
 Concept similar to Guice's child injectors is supported by `Injector`. This way you can have one injector that inherits bindings from other injector (parent) but these bindings can be overriden in it and it doesn't affect parent injector bindings:
 
@@ -505,11 +507,11 @@ Scopes
 
 Singletons are declared by binding them in the SingletonScope. This can be done in three ways:
 
-> 1.  Decorating the class with `@singleton`.
-> 2.  Decorating a `@provides(X)` decorated Module method with `@singleton`.
-> 3.  Explicitly calling `binder.bind(X, scope=singleton)`.
+1.  Decorating the class with `@singleton`.
+2.  Decorating a `@provides(X)` decorated Module method with `@singleton`.
+3.  Explicitly calling `binder.bind(X, scope=singleton)`.
 
-A (redunant) example showing all three methods:
+A (redundant) example showing all three methods:
 
 
 ```pycon
@@ -551,7 +553,12 @@ Then create a global instance of `ScopeDecorator` to allow classes to be easily 
 
 This can be used like so:
 
-> \>\>\> @customscope ... class MyClass(object): ... pass
+```pycon
+>>> @customscope
+... class MyClass(object):
+...   pass
+
+```
 
 Scopes are bound in modules with the `Binder.bind_scope` method:
 
@@ -630,9 +637,5 @@ Footnote
 
 This framework is similar to snake-guice, but aims for simplification.
 
-copyright  
-1.  2010 by Alec Thomas
-
-license  
-BSD
+&copy; Copyright 2010-2013 to Alec Thomas, under the BSD license
 

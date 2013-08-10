@@ -14,14 +14,21 @@ class PyTest(Command):
         pass
 
     def run(self):
-        import sys, subprocess
+        import subprocess
         errno = subprocess.call([sys.executable, 'runtest.py'])
         raise SystemExit(errno)
 
 
 version = injector.__version__
 version_tag = injector.__version_tag__
-long_description = open('README.md').read()
+
+try:
+    import pypandoc
+    long_description = pypandoc.convert('README.md', 'rst')
+except ImportError:
+    print('WARNING: Could not locate pandoc, using Markdown long_description.')
+    long_description = open('README.md').read()
+
 description = long_description.splitlines()[0].strip()
 
 
