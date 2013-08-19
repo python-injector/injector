@@ -473,6 +473,8 @@ True
 
 ```
 
+Note: ``AssistedBuilder(X)`` is a shortcut for ``AssistedBuilder(interface=X)``
+
 More information on this topic:
 
 - ["How to use Google Guice to create objects that require parameters?" on Stack Overflow](http://stackoverflow.com/questions/996300/how-to-use-google-guice-to-create-objects-that-require-parameters)
