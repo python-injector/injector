@@ -16,7 +16,6 @@ See https://github.com/alecthomas/injector for documentation.
 :license: BSD
 """
 
-import collections
 import itertools
 import functools
 import inspect
@@ -35,7 +34,7 @@ except AttributeError:
             pass
 
 __author__ = 'Alec Thomas <alec@swapoff.org>'
-__version__ = '0.7.6'
+__version__ = '0.7.7'
 __version_tag__ = ''
 
 log = logging.getLogger('injector')
