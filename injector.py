@@ -324,7 +324,7 @@ class Binder(object):
         elif issubclass(type(to), type):
             return ClassProvider(to, self.injector)
         elif isinstance(interface, ParameterizedBuilder):
-            builder = AssistedBuilderImplementation(self.injector, *interface)
+            builder = AssistedBuilderImplementation(self.injector, interface.interface, None, None)
             return CallableProvider(lambda: builder.build(**interface.kwargs))
         elif isinstance(interface, AssistedBuilder):
             builder = AssistedBuilderImplementation(self.injector, *interface)

@@ -8,7 +8,7 @@
 #
 # Author: Alec Thomas <alec@swapoff.org>
 
-"""Functional tests for the Pollute dependency injection framework."""
+"""Functional tests for the "Injector" dependency injection framework."""
 
 from contextlib import contextmanager
 import abc
