@@ -49,4 +49,8 @@ setup(
         'setuptools >= 0.6b1',
     ],
     cmdclass={'test': PyTest},
-    )
+    keywords=[
+        'Dependency Injection', 'DI', 'Dependency Injection framework',
+        'Inversion of Control', 'IoC', 'Inversion of Control container',
+    ],
+)
