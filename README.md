@@ -27,10 +27,10 @@ pip install injector
 Supported Python versions
 -------------------------
 
-Injector work with the following Python interpreters:
+Injector works with the following Python interpreters:
 
--   CPython 2.6, 2.7, 3.2, 3.3
--   PyPy 1.9
+-   CPython 2.6+, 3.2+
+-   PyPy 1.9+
 
 Recent Notable Changes
 ----------------------
@@ -181,7 +181,9 @@ Terminology
 
 At its heart, Injector is simply a dictionary for mapping types to things that create instances of those types. This could be as simple as:
 
+```python
 {str: 'an instance of a string'}
+```
 
 For those new to dependency-injection and/or Guice, though, some of the terminology used may not be obvious.
 
@@ -203,8 +205,10 @@ A binding key uniquely identifies a provider of a type. It is effectively a tupl
 
 For example, the following are all unique binding keys for `str`:
 
+```python
 (str, 'name')
 (str, 'description')
+```
 
 For a generic type such as `str`, annotations are very useful for unique identification.
 
@@ -220,8 +224,10 @@ As an *alternative* convenience to using annotations, `Key` may be used to creat
 
 Which may then be used as binding keys, without annotations, as they already uniquely identify a particular provider:
 
+```python
 (Name, None)
 (Description, None)
+```
 
 Though of course, annotations may still be used with these types, like any other type.
 
