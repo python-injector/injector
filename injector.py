@@ -611,7 +611,7 @@ class Injector(object):
         """
         instance.__injector__ = self
 
-    def call_with_injection(self, callable, self_, args=(), kwargs={}):
+    def call_with_injection(self, callable, self_=None, args=(), kwargs={}):
         """Call a callable and provide it's dependencies if needed.
 
         :param self_: Instance of a class callable belongs to if it's a method,
