@@ -987,6 +987,17 @@ class TestClassInjection(object):
         x = X(b=314)
         assert (x._b == 314)
 
+    def test_correct_exception_is_raised_when_argument_is_missing(self):
+        @inject(s=str)
+        class X(object):
+            pass
+
+        with pytest.raises(CallError):
+            self.B()
+
+        with pytest.raises(CallError):
+            self.B('something')
+
 
 def test_provides_and_scope_decorator_collaboration():
     @provides(int)

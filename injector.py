@@ -814,8 +814,13 @@ def inject(**bindings):
 
         @inject(**bindings)
         def init(self, *args, **kwargs):
-            for key in original_keys:
-                setattr(self, key, kwargs.pop(key.lstrip('_')))
+            try:
+                for key in original_keys:
+                    normalized_key = key.lstrip('_')
+                    setattr(self, key, kwargs.pop(normalized_key))
+            except KeyError as e:
+                reraise(e, CallError('Keyword argument %s not found' % normalized_key))
+
             orig_init(self, *args, **kwargs)
         cls.__init__ = init
         return cls
