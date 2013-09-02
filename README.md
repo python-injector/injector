@@ -96,7 +96,7 @@ We'll use an in-memory SQLite database for our example:
 
 ```
 
-And make up an imaginary RequestHandler class that uses the SQLite connection:
+And make up an imaginary `RequestHandler` class that uses the SQLite connection:
 
 
 ```pycon
@@ -130,7 +130,7 @@ Key is used to uniquely identifies the configuration dictionary. Next, we bind t
 
 ```
 
-Next we create a module that initialises the DB. It depends on the configuration provided by the above module to create a new DB connection, then populates it with some dummy data, and provides a Connection object:
+Next we create a module that initialises the DB. It depends on the configuration provided by the above module to create a new DB connection, then populates it with some dummy data, and provides a `Connection` object:
 
 
 ```pycon
@@ -149,7 +149,7 @@ Next we create a module that initialises the DB. It depends on the configuration
 
 (Note how we have decoupled configuration from our database initialisation code.)
 
-Finally, we initialise an Injector and use it to instantiate a RequestHandler instance. This first transitively constructs a sqlite3.Connection object, and the Configuration dictionary that it in turn requires, then instantiates our \`RequestHandler\`:
+Finally, we initialise an `Injector` and use it to instantiate a `RequestHandler` instance. This first transitively constructs a `sqlite3.Connection` object, and the Configuration dictionary that it in turn requires, then instantiates our `RequestHandler`:
 
 
 ```pycon
@@ -160,7 +160,7 @@ Finally, we initialise an Injector and use it to instantiate a RequestHandler in
 
 ```
 
-We can also veryify that our Configuration and SQLite connections are indeed singletons within the Injector:
+We can also veryify that our `Configuration` and `SQLite` connections are indeed singletons within the Injector:
 
 
 ```pycon
@@ -174,7 +174,7 @@ True
 You're probably thinking something like: "this is a large amount of work just to give me a database connection", and you are correct; dependency injection is typically not that useful for smaller projects. It comes into its own on large projects where the up-front effort pays for itself in two ways:
 
 1.  Forces decoupling. In our example, this is illustrated by decoupling our configuration and database configuration.
-2.  After a type is configured, it can be injected anywhere with no additional effort. Simply @inject and it appears. We don't really illustrate that here, but you can imagine adding an arbitrary number of RequestHandler subclasses, all of which will automatically have a DB connection provided.
+2.  After a type is configured, it can be injected anywhere with no additional effort. Simply `@inject` and it appears. We don't really illustrate that here, but you can imagine adding an arbitrary number of `RequestHandler` subclasses, all of which will automatically have a DB connection provided.
 
 Terminology
 -----------
@@ -341,36 +341,35 @@ is equivalent to:
 
 ```
 
-**Note**: You can also begin the name of injected member with an underscore(s) (to indicate the member being private for example). In such case the member will be injected using the name you specified, but corresponding parameter in a constructor (let's say you instantiate the class manually) will have the underscore prefix stripped (it makes it consistent with most of the usual parameter names):
+**Note 1**: You can also begin the name of injected member with an underscore(s) (to indicate the member being private for example). In such case the member will be injected using the name you specified, but corresponding parameter in a constructor (let's say you instantiate the class manually) will have the underscore prefix stripped (it makes it consistent with most of the usual parameter names):
 
 
 ```pycon
 >>> @inject(_y=int)
 ... class X(object):
 ...     pass
-
-```
-
-
-```pycon
+...
 >>> x1 = injector.get(X)
 >>> x1.y
 Traceback (most recent call last):
 AttributeError: 'X' object has no attribute 'y'
 >>> x1._y
 0
-
-```
-
-
-```pycon
 >>> x2 = X(y=2)
 >>> x2.y
 Traceback (most recent call last):
 AttributeError: 'X' object has no attribute 'y'
 >>> x2._y
 2
+```
 
+**Note 2**: When class is decorated with `inject` decorator you need to use keyword arguments when instantiating the class manually:
+
+```pycon
+>>> Item(name='computer')  # that's ok
+<Item object at 0x10cb04210>
+>>> Item('computer')  # that'll result in a CallError
+Traceback (...)
 ```
 
 ### Injector
