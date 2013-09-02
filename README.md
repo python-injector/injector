@@ -366,13 +366,9 @@ AttributeError: 'X' object has no attribute 'y'
 
 **Note 2**: When class is decorated with `inject` decorator you need to use keyword arguments when instantiating the class manually:
 
-```pycon
->>> x = X(y=2)  # that's ok
->>> x = X(2)  # that'll result in a CallError
-Traceback (most recent call last):
-    ...
-CallError: Keyword argument y not found
-
+```python
+x = X(y=2)  # that's ok
+x = X(2)  # this'll raise CallError
 ```
 
 ### Injector
