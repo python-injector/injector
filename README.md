@@ -361,15 +361,18 @@ Traceback (most recent call last):
 AttributeError: 'X' object has no attribute 'y'
 >>> x2._y
 2
+
 ```
 
 **Note 2**: When class is decorated with `inject` decorator you need to use keyword arguments when instantiating the class manually:
 
 ```pycon
->>> Item(name='computer')  # that's ok
-<Item object at 0x10cb04210>
->>> Item('computer')  # that'll result in a CallError
-Traceback (...)
+>>> x = X(y=2)  # that's ok
+>>> x = X(2)  # that'll result in a CallError
+Traceback (most recent call last):
+    ...
+CallError: Keyword argument y not found
+
 ```
 
 ### Injector
@@ -658,9 +661,9 @@ By default ``injector`` logger is not configured to print logs anywhere.
 To enable ``get()`` tracing you need to set ``injector`` logger level to ``DEBUG``. You can do that programatically by executing:
 
 ```pycon
-import logging
+>>> import logging
+>>> logging.getLogger('injector').setLevel(logging.DEBUG)
 
-logging.getLogger('injector').setLevel(logging.DEBUG)
 ```
 
 Thread safety
