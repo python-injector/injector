@@ -4,6 +4,7 @@
 
 - Exception is raised when Injector can't install itself into a class instance due to __slots__ presence
 - Some of exception messages are now more detailed to make debugging easier when injection fails
+- You can inject functions now - Injector provides a wrapper that takes care of injecting dependencies into the original function
 
 ## 0.7.7
 

@@ -1039,3 +1039,18 @@ def test_injection_fails_when_injector_cant_install_itself_into_an_object_with_s
         check_exception_contains_stuff(e, ('ClassName', '__slots__'))
     else:
         assert False, 'Should have raised an exception and it didn\'t'
+
+
+def test_injecting_function_will_work():
+    @inject(s=str)
+    def function(s):
+        return 'Got %s' % s
+
+    def configure(binder):
+        binder.bind(str, to='123')
+
+    injector = Injector(configure)
+    wrapped = injector.get(function)
+    assert wrapped.__name__ == function.__name__
+    result = wrapped()
+    assert result == 'Got 123'

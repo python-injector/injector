@@ -34,7 +34,8 @@ Injector works with the following Python interpreters:
 
 Recent Notable Changes
 ----------------------
-Added support for using Python3 annotations instead of @inject.
+
+### Added support for using Python3 annotations instead of @inject.
 
 eg. The following code:
 
@@ -54,6 +55,28 @@ class B(object):
 ```
 
 To enable this support, instantiate your `Injector` with `Injector(..., use_annotations=True)`
+
+### If you inject a function, an injection-aware wrapper is provided
+
+Example:
+
+```python
+>>> from injector import Injector, inject, Key
+>>> GreetingType = Key('GreetingType')
+>>>
+>>> @inject(greeting_type=GreetingType)
+... def greet(greeting_type, who):
+...     print('%s, %s!' % (greeting_type, who))
+...
+>>> def configure(binder):
+...     binder.bind(GreetingType, to='Hello')
+...
+>>> injector = Injector(configure)
+>>> greet_wrapper = injector.get(greet)
+>>> greet_wrapper(who='John')
+Hello, John!
+
+```
 
 A Quick Example
 ---------------

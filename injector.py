@@ -312,11 +312,8 @@ class Binder(object):
             )
 
     def create_binding(self, interface, to=None, annotation=None, scope=None):
-        if to is None:
-            to = interface
         provider = self.provider_for(interface, to)
-        if scope is None:
-            scope = getattr(to, '__scope__', NoScope)
+        scope = scope or getattr(to or interface, '__scope__', NoScope)
         if isinstance(scope, ScopeDecorator):
             scope = scope.scope
         return Binding(interface, annotation, provider, scope)
@@ -336,12 +333,19 @@ class Binder(object):
         elif isinstance(interface, AssistedBuilder):
             builder = AssistedBuilderImplementation(self.injector, *interface)
             return InstanceProvider(builder)
-        elif isinstance(to, interface):
+        elif isinstance(interface, (tuple, type)) and isinstance(to, interface):
             return InstanceProvider(to)
-        elif issubclass(type(interface), type):
+        elif issubclass(type(interface), type) or isinstance(interface, (tuple, list)):
             if issubclass(interface, (BaseKey, BaseMappingKey, BaseSequenceKey)):
                 return InstanceProvider(to)
             return ClassProvider(interface, self.injector)
+        elif hasattr(interface, '__call__'):
+            function = to or interface
+            if hasattr(function, '__bindings__'):
+                function = self.injector.wrap_function(function)
+
+            return InstanceProvider(function)
+
         else:
             raise UnknownProvider('couldn\'t determine provider for %r to %r' %
                                   (interface, to))
@@ -619,6 +623,25 @@ class Injector(object):
         Puts injector reference in given object.
         """
         instance.__injector__ = self
+
+    @private
+    def wrap_function(self, function):
+        """Create function wrapper that will take care of it's dependencies.
+
+        You only need to provide noninjectable arguments to the wrapped function.
+
+        :return: Wrapped function.
+        """
+
+        @functools.wraps(function)
+        def wrapper(*args, **kwargs):
+            return self.call_with_injection(
+                callable=function,
+                args=args,
+                kwargs=kwargs
+            )
+
+        return wrapper
 
     @private
     def call_with_injection(self, callable, self_=None, args=(), kwargs={}):
