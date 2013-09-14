@@ -1024,3 +1024,18 @@ def test_injecting_into_method_of_object_that_is_falseish_works():
 
     injector = Injector()
     injector.get(X)
+
+
+def test_injection_fails_when_injector_cant_install_itself_into_an_object_with_slots():
+    try:
+        class ClassName(object):
+            __slots__ = ()
+
+        injector = Injector()
+        injector.get(ClassName)
+    except Exception as e:
+        for part in ('ClassName', '__slots__'):
+            assert part in str(e), (
+                '%r should be present in the exception message: %s' % (part, e))
+    else:
+        assert False, 'Should have raised an exception and it didn\'t'

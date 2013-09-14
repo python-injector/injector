@@ -584,8 +584,11 @@ class Injector(object):
         try:
             self.install_into(instance)
         except AttributeError:
-            # Some builtin types can not be modified.
-            pass
+            if hasattr(instance, '__slots__'):
+                raise Error('Can\'t create an instance of type %r due to presence of __slots__, '
+                            'remove __slots__ to fix that' % (cls,))
+
+            # Else do nothing - some builtin types can not be modified.
         try:
             instance.__init__(**additional_kwargs)
         except TypeError as e:
