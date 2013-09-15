@@ -92,21 +92,23 @@ class CallError(Error):
         if len(self.args) == 1:
             return self.args[0]
 
-        instance, method, args, kwargs, original_error = self.args
+        instance, method, args, kwargs, original_error, stack = self.args
         if hasattr(method, 'im_class'):
             instance = method.__self__
             method_name = method.__func__.__name__
         else:
             method_name = method.__name__
 
-        full_method = '.'.join((repr(instance) if instance else '', method_name)).strip('.')
+        cls = instance.__class__.__name__ if instance is not None else ''
+
+        full_method = '.'.join((cls, method_name)).strip('.')
 
         parameters = ', '.join(itertools.chain(
             (repr(arg) for arg in args),
             ('%s=%r' % (key, value) for (key, value) in kwargs.items())
         ))
-        return 'Call to %s(%s) failed: %s' % (
-            full_method, parameters, original_error)
+        return 'Call to %s(%s) failed: %s (injection stack: %r)' % (
+            full_method, parameters, original_error, [level[0] for level in stack])
 
 
 class CircularDependency(Error):
@@ -511,7 +513,7 @@ class Injector(object):
         """
         # Stack of keys currently being injected. Used to detect circular
         # dependencies.
-        self._stack = []
+        self._stack = ()
 
         self.parent = parent
         self.use_annotations = use_annotations
@@ -597,8 +599,7 @@ class Injector(object):
             reraise(e, CallError(
                 instance,
                 getattr(instance.__init__, '__func__', instance.__init__),
-                (), additional_kwargs, e,
-                )
+                (), additional_kwargs, e, self._stack,)
             )
         return instance
 
@@ -642,7 +643,7 @@ class Injector(object):
                 *((self_,) if self_ is not None else ()) + tuple(args),
                 **dependencies)
         except TypeError as e:
-            reraise(e, CallError(self_, callable, args, dependencies, e))
+            reraise(e, CallError(self_, callable, args, dependencies, e, self._stack))
 
     @synchronized(lock)
     def args_to_inject(self, function, bindings, owner_key):
@@ -669,7 +670,7 @@ class Injector(object):
                 repr_key(key)),
                 )
 
-        self._stack.append(key)
+        self._stack += (key,)
         try:
             for arg, key in bindings.items():
                 try:
@@ -683,7 +684,7 @@ class Injector(object):
                     raise e
                 dependencies[arg] = instance
         finally:
-            self._stack.pop()
+            self._stack = tuple(self._stack[:-1])
 
         return dependencies
 
@@ -822,7 +823,9 @@ def inject(**bindings):
                     normalized_key = key.lstrip('_')
                     setattr(self, key, kwargs.pop(normalized_key))
             except KeyError as e:
-                reraise(e, CallError('Keyword argument %s not found' % normalized_key))
+                reraise(e, CallError(
+                    'Keyword argument %s not found when calling %s' % (
+                        normalized_key, '%s.%s' % (cls.__name__, '__init__'))))
 
             orig_init(self, *args, **kwargs)
         cls.__init__ = init

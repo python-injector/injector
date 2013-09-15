@@ -48,6 +48,15 @@ def prepare_nested_injectors():
     return parent, child
 
 
+def check_exception_contains_stuff(exception, stuff):
+    stringified = str(exception)
+
+    for thing in stuff:
+        assert thing in stringified, (
+            '%r should be present in the exception representation: %s' % (
+                thing, stringified))
+
+
 def test_child_injector_inherits_parent_bindings():
     parent, child = prepare_nested_injectors()
     assert (child.get(str) == parent.get(str))
@@ -118,11 +127,8 @@ def test_providers_arent_called_for_dependencies_that_are_already_provided():
     injector = Injector(configure)
     builder = injector.get(AssistedBuilder(A))
 
-    try:
+    with pytest.raises(ZeroDivisionError):
         builder.build()
-        assert False, 'Shouldn\'t happen'
-    except ZeroDivisionError:
-        pass
 
     builder.build(i=3)
 
@@ -698,27 +704,20 @@ def test_binder_provider_for_type_with_metaclass():
 
 
 def test_injecting_undecorated_class_with_missing_dependencies_raises_the_right_error():
-    class A(object):
+    class ClassA(object):
         def __init__(self, parameter):
             pass
 
-    class B(object):
-        @inject(a=A)
+    class ClassB(object):
+        @inject(a=ClassA)
         def __init__(self, a):
             pass
 
     injector = Injector()
     try:
-        injector.get(B)
+        injector.get(ClassB)
     except CallError as ce:
-        function = A.__init__
-
-        # Python 3 compatibility
-        try:
-            function = function.__func__
-        except AttributeError:
-            pass
-        assert (ce.args[1] == function)
+        check_exception_contains_stuff(ce, ('ClassA.__init__', 'ClassB'))
 
 
 def test_call_to_method_with_legitimate_call_error_raises_type_error():
@@ -916,7 +915,7 @@ class TestClassInjection(object):
         class B(object):
             pass
 
-        @inject(a=A)
+        @inject(injectable=A)
         class C(object):
             def __init__(self, noninjectable):
                 self.noninjectable = noninjectable
@@ -940,11 +939,14 @@ class TestClassInjection(object):
             with pytest.raises(Exception):
                 cls()
 
-        with pytest.raises(Exception):
+        try:
             self.C(noninjectable=1)
+            assert False, 'Should have raised an exception'
+        except Exception as e:
+            check_exception_contains_stuff(e, ('C.__init__', 'injectable'))
 
         with pytest.raises(Exception):
-            self.C(a=self.A())
+            self.C(injectable=self.A())
 
     def test_injection_works(self):
         b = self.injector.get(self.B)
@@ -955,7 +957,7 @@ class TestClassInjection(object):
         builder = self.injector.get(AssistedBuilder(self.C))
         c = builder.build(noninjectable=5)
 
-        assert((type(c.a), c.noninjectable) == (self.A, 5))
+        assert((type(c.injectable), c.noninjectable) == (self.A, 5))
 
     def test_members_are_injected_only_once(self):
         b = self.injector.get(self.B)
@@ -1034,8 +1036,6 @@ def test_injection_fails_when_injector_cant_install_itself_into_an_object_with_s
         injector = Injector()
         injector.get(ClassName)
     except Exception as e:
-        for part in ('ClassName', '__slots__'):
-            assert part in str(e), (
-                '%r should be present in the exception message: %s' % (part, e))
+        check_exception_contains_stuff(e, ('ClassName', '__slots__'))
     else:
         assert False, 'Should have raised an exception and it didn\'t'

@@ -3,6 +3,7 @@
 ## 0.7.8
 
 - Exception is raised when Injector can't install itself into a class instance due to __slots__ presence
+- Some of exception messages are now more detailed to make debugging easier when injection fails
 
 ## 0.7.7
 
