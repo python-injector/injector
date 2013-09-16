@@ -3,37 +3,28 @@ Injector - Python dependency injection framework, inspired by Guice
 
 [![image](https://secure.travis-ci.org/alecthomas/injector.png?branch=master)](https://travis-ci.org/alecthomas/injector)
 
-Introduction
-------------
-
-Dependency injection as a formal pattern is less useful in Python than in other languages, primarily due to its support for keyword arguments, the ease with which objects can be mocked, and its dynamic nature.
-
-That said, a framework for assisting in this process can remove a lot of boiler-plate from larger applications. That's where Injector can help. It automatically and transitively provides keyword arguments with their values. As an added benefit, Injector encourages nicely compartmentalised code through the use of `Module` s.
+## Introduction
+Injector is a factory for (almost) everything. You let it know about class dependencies (and some instantiation details if needed) and it'll create object graphs for you.
 
 While being inspired by Guice, it does not slavishly replicate its API. Providing a Pythonic API trumps faithfulness.
 
-How to get Injector?
---------------------
+### How to get Injector?
 
 GitHub page: https://github.com/alecthomas/injector
 
 Injector is also available on PyPI: https://pypi.python.org/pypi/injector. You can install it using pip:
-
 ```python
 pip install injector
 ```
 
-
-Supported Python versions
--------------------------
+### Supported Python versions
 
 Injector works with the following Python interpreters:
 
 -   CPython 2.6+, 3.2+
 -   PyPy 1.9+
 
-Recent Notable Changes
-----------------------
+### Recent Notable Changes
 Added support for using Python3 annotations instead of @inject.
 
 eg. The following code:
@@ -55,8 +46,7 @@ class B(object):
 
 To enable this support, instantiate your `Injector` with `Injector(..., use_annotations=True)`
 
-A Quick Example
----------------
+## A Quick Example
 
 
 ```pycon
@@ -77,11 +67,9 @@ A Quick Example
 
 ```
 
-A Full Example
---------------
+## A Full Example
 
 Here's a full example to give you a taste of how Injector works:
-
 
 ```pycon
 >>> from injector import Module, Key, provides, Injector, inject, singleton
@@ -670,8 +658,11 @@ The following functions are thread safe:
 -   `Injector.get`
 -   injection provided by `inject` decorator (please note, however, that it doesn't say anything about decorated function thread safety)
 
-Footnote
---------
+## API
+
+``inject``
+
+## Footnote
 
 This framework is similar to snake-guice, but aims for simplification.
 
