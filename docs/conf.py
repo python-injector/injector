@@ -250,3 +250,16 @@ texinfo_documents = [
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'http://docs.python.org/': None}
+
+
+def setup(app):
+  app.connect('autodoc-skip-member', skip_member)
+
+
+def skip_member(app, what, name, obj, skip, options):
+  return (
+    skip or
+    getattr(obj, '__doc__', None) is None or
+    getattr(obj, '__private__', False) is True or
+    getattr(getattr(obj, '__func__', None), '__private__', False) is True
+  )

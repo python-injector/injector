@@ -44,6 +44,11 @@ if log.level == logging.NOTSET:
     log.setLevel(logging.WARN)
 
 
+def private(something):
+    something.__private__ = True
+    return something
+
+
 def synchronized(lock):
     def outside_wrapper(function):
         @functools.wraps(function)
@@ -160,6 +165,7 @@ class InstanceProvider(Provider):
         return self._instance
 
 
+@private
 class ListOfProviders(Provider):
     """Provide a list of instances via other Providers."""
 
@@ -191,7 +197,7 @@ class MapBindProvider(ListOfProviders):
         return map
 
 
-# These classes are used internally by the Binder.
+@private
 class BindingKey(tuple):
     """A key mapping to a Binding."""
 
@@ -220,16 +226,15 @@ class BindingKey(tuple):
 _BindingBase = namedtuple('_BindingBase', 'interface annotation provider scope')
 
 
+@private
 class Binding(_BindingBase):
     """A binding from an (interface, annotation) to a provider in a scope."""
 
 
 class Binder(object):
-    """Bind interfaces to implementations.
+    """Bind interfaces to implementations."""
 
-    :attr injector: Injector this Binder is associated with.
-    """
-
+    @private
     def __init__(self, injector, auto_bind=True, parent=None):
         """Create a new Binder.
 
@@ -615,6 +620,7 @@ class Injector(object):
         """
         instance.__injector__ = self
 
+    @private
     def call_with_injection(self, callable, self_=None, args=(), kwargs={}):
         """Call a callable and provide it's dependencies if needed.
 
@@ -645,6 +651,7 @@ class Injector(object):
         except TypeError as e:
             reraise(e, CallError(self_, callable, args, dependencies, e, self._stack))
 
+    @private
     @synchronized(lock)
     def args_to_inject(self, function, bindings, owner_key):
         """Inject arguments into a function.
