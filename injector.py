@@ -34,7 +34,7 @@ except AttributeError:
             pass
 
 __author__ = 'Alec Thomas <alec@swapoff.org>'
-__version__ = '0.7.7'
+__version__ = '0.7.8'
 __version_tag__ = ''
 
 log = logging.getLogger('injector')
