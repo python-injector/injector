@@ -1,5 +1,9 @@
 # ChangeLog for Injector
 
+## 0.8.0
+
+- Binding annotations are removed. Use Key to create unique types instead.
+
 ## 0.7.8
 
 - Exception is raised when Injector can't install itself into a class instance due to __slots__ presence

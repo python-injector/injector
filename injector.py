@@ -83,11 +83,8 @@ class UnsatisfiedRequirement(Error):
 
     def __str__(self):
         on = '%s has an ' % _describe(self.args[0]) if self.args[0] else ''
-        return '%sunsatisfied requirement on %s%s' % (
-            on,
-            self.args[1].annotation + '='if self.args[1].annotation else '',
-            _describe(self.args[1].interface),
-            )
+        return '%sunsatisfied requirement on %s' % (
+            on, _describe(self.args[1].interface),)
 
 
 class CallError(Error):
@@ -201,34 +198,30 @@ class MapBindProvider(ListOfProviders):
 class BindingKey(tuple):
     """A key mapping to a Binding."""
 
-    def __new__(cls, what, annotation):
+    def __new__(cls, what):
         if isinstance(what, list):
             if len(what) != 1:
                 raise Error('list bindings must have a single interface '
                             'element')
-            what = (list, BindingKey(what[0], None))
+            what = (list, BindingKey(what[0]))
         elif isinstance(what, dict):
             if len(what) != 1:
                 raise Error('dictionary bindings must have a single interface '
                             'key and value')
-            what = (dict, BindingKey(list(what.items())[0], None))
-        return tuple.__new__(cls, (what, annotation))
+            what = (dict, BindingKey(list(what.items())[0]))
+        return tuple.__new__(cls, (what,))
 
     @property
     def interface(self):
         return self[0]
 
-    @property
-    def annotation(self):
-        return self[1]
 
-
-_BindingBase = namedtuple('_BindingBase', 'interface annotation provider scope')
+_BindingBase = namedtuple('_BindingBase', 'interface provider scope')
 
 
 @private
 class Binding(_BindingBase):
-    """A binding from an (interface, annotation) to a provider in a scope."""
+    """A binding from an (interface,) to a provider in a scope."""
 
 
 class Binder(object):
@@ -251,20 +244,19 @@ class Binder(object):
         self._bindings = {}
         self.parent = parent
 
-    def bind(self, interface, to=None, annotation=None, scope=None):
+    def bind(self, interface, to=None, scope=None):
         """Bind an interface to an implementation.
 
         :param interface: Interface or :func:`Key` to bind.
         :param to: Instance or class to bind to, or an explicit
              :class:`Provider` subclass.
-        :param annotation: Optional global annotation of interface.
         :param scope: Optional :class:`Scope` in which to bind.
         """
         if type(interface) is type and issubclass(interface, (BaseMappingKey, BaseSequenceKey)):
-            return self.multibind(interface, to, annotation=annotation, scope=scope)
-        key = BindingKey(interface, annotation)
+            return self.multibind(interface, to, scope=scope)
+        key = BindingKey(interface)
         self._bindings[key] = \
-            self.create_binding(interface, to, annotation, scope)
+            self.create_binding(interface, to, scope)
 
     def bind_scope(self, scope):
         """Bind a Scope.
@@ -273,7 +265,7 @@ class Binder(object):
         """
         self.bind(scope, to=scope(self.injector))
 
-    def multibind(self, interface, to, annotation=None, scope=None):
+    def multibind(self, interface, to, scope=None):
         """Creates or extends a multi-binding.
 
         A multi-binding maps from a key to a sequence, where each element in
@@ -282,17 +274,17 @@ class Binder(object):
         :param interface: :func:`MappingKey` or :func:`SequenceKey` to bind to.
         :param to: Instance, class to bind to, or an explicit :class:`Provider`
                 subclass. Must provide a sequence.
-        :param annotation: Optional global annotation of interface.
         :param scope: Optional Scope in which to bind.
         """
-        key = BindingKey(interface, annotation)
+        key = BindingKey(interface)
         if key not in self._bindings:
-            if isinstance(interface, dict) or isinstance(interface, type) and issubclass(interface, dict):
+            if (
+                    isinstance(interface, dict) or
+                    isinstance(interface, type) and issubclass(interface, dict)):
                 provider = MapBindProvider()
             else:
                 provider = MultiBindProvider()
-            binding = self.create_binding(
-                interface, provider, annotation, scope)
+            binding = self.create_binding(interface, provider, scope)
             self._bindings[key] = binding
         else:
             binding = self._bindings[key]
@@ -341,12 +333,12 @@ class Binder(object):
                 args=(self,),
             )
 
-    def create_binding(self, interface, to=None, annotation=None, scope=None):
+    def create_binding(self, interface, to=None, scope=None):
         provider = self.provider_for(interface, to)
         scope = scope or getattr(to or interface, '__scope__', NoScope)
         if isinstance(scope, ScopeDecorator):
             scope = scope.scope
-        return Binding(interface, annotation, provider, scope)
+        return Binding(interface, provider, scope)
 
     def provider_for(self, interface, to=None):
         if isinstance(to, Provider):
@@ -395,10 +387,7 @@ class Binder(object):
             return self._get_binding(key)
         except (KeyError, UnsatisfiedRequirement):
             if self._auto_bind:
-                binding = self.create_binding(
-                    key.interface,
-                    annotation=key.annotation,
-                    )
+                binding = self.create_binding(key.interface)
                 self._bindings[key] = binding
                 return binding
             raise UnsatisfiedRequirement(cls, key)
@@ -439,9 +428,7 @@ class ScopeDecorator(object):
         cls.__scope__ = self.scope
         binding = getattr(cls, '__binding__', None)
         if binding:
-            new_binding = Binding(
-                interface=binding.interface,
-                annotation=binding.annotation,
+            new_binding = Binding(interface=binding.interface,
                 provider=binding.provider,
                 scope=self.scope)
             setattr(cls, '__binding__', new_binding)
@@ -523,9 +510,8 @@ class Module(object):
                 binder.bind(
                     binding.interface,
                     to=types.MethodType(binding.provider, self),
-                    annotation=binding.annotation,
                     scope=binding.scope,
-                    )
+                )
         self.configure(binder)
 
     def configure(self, binder):
@@ -578,21 +564,20 @@ class Injector(object):
     def _log_prefix(self):
         return '>' * (len(self._stack) + 1) + ' '
 
-    def get(self, interface, annotation=None, scope=None):
+    def get(self, interface, scope=None):
         """Get an instance of the given interface.
 
         :param interface: Interface whose implementation we want.
-        :param annotation: Optional annotation of the specific implementation.
         :param scope: Class of the Scope in which to resolve.
         :returns: An implementation of interface.
         """
-        key = BindingKey(interface, annotation)
+        key = BindingKey(interface)
         binding = self.binder.get_binding(None, key)
         scope = scope or binding.scope
         if isinstance(scope, ScopeDecorator):
             scope = scope.scope
         # Fetch the corresponding Scope instance from the Binder.
-        scope_key = BindingKey(scope, None)
+        scope_key = BindingKey(scope)
         try:
             scope_binding = self.binder.get_binding(None, scope_key)
             scope_instance = scope_binding.provider.get()
@@ -600,7 +585,8 @@ class Injector(object):
             raise Error('%s; scopes must be explicitly bound '
                         'with Binder.bind_scope(scope_cls)' % e)
 
-        log.debug('%sInjector.get(%r, annotation=%r, scope=%r) using %r', self._log_prefix, interface, annotation, scope, binding.provider)
+        log.debug('%sInjector.get(%r, scope=%r) using %r',
+                  self._log_prefix, interface, scope, binding.provider)
         result = scope_instance.get(key, binding.provider).get()
         log.debug('%s -> %r', self._log_prefix, result)
         return result
@@ -722,18 +708,14 @@ class Injector(object):
         if key in self._stack:
             raise CircularDependency(
                 'circular dependency detected: %s -> %s' %
-                (' -> '.join(map(repr_key, self._stack)),
-                repr_key(key)),
-                )
+                (' -> '.join(map(repr_key, self._stack)), repr_key(key))
+            )
 
         self._stack += (key,)
         try:
             for arg, key in bindings.items():
                 try:
-                    instance = self.get(
-                        key.interface,
-                        annotation=key.annotation,
-                        )
+                    instance = self.get(key.interface)
                 except UnsatisfiedRequirement as e:
                     if not e.args[0]:
                         e = UnsatisfiedRequirement(owner_key, e.args[1])
@@ -763,21 +745,20 @@ def with_injector(*injector_args, **injector_kwargs):
     return wrapper
 
 
-def provides(interface, annotation=None, scope=None, eager=False):
+def provides(interface, scope=None, eager=False):
     """Decorator for :class:`Module` methods, registering a provider of a type.
 
     >>> class MyModule(Module):
-    ...   @provides(str, annotation='annotation')
+    ...   @provides(str)
     ...   def provide_name(self):
-    ...     return 'Bob'
+    ...       return 'Bob'
 
     :param interface: Interface to provide.
-    :param annotation: Optional annotation value.
     :param scope: Optional scope of provided value.
     """
     def wrapper(provider):
         scope_ = scope or getattr(provider, '__scope__', getattr(wrapper, '__scope__', None))
-        provider.__binding__ = Binding(interface, annotation, provider, scope_)
+        provider.__binding__ = Binding(interface, provider, scope_)
         return provider
 
     return wrapper
@@ -835,7 +816,7 @@ def inject(**bindings):
 
     def method_wrapper(f):
         for key, value in bindings.items():
-            bindings[key] = BindingKey(value, None)
+            bindings[key] = BindingKey(value)
         argspec = getargspec(f)
         if argspec.args and argspec.args[0] == 'self':
             @functools.wraps(f)
@@ -897,22 +878,6 @@ def inject(**bindings):
 
 
 @private
-class BaseAnnotation(object):
-    """Annotation base type."""
-
-
-def Annotation(name):
-    """Create a new annotation type.
-
-    Useful for declaring a unique annotation type.
-
-    :param name: Name of the annotation type.
-    :returns: Newly created unique type.
-    """
-    return type(name, (BaseAnnotation,), {})
-
-
-@private
 class BaseKey(object):
     """Base type for binding keys."""
 
@@ -923,17 +888,6 @@ class BaseKey(object):
 
 def Key(name):
     """Create a new type key.
-
-    Typically when using Injector, complex types can be bound to providers
-    directly.
-
-    Keys are a convenient alternative to binding to (type, annotation) pairs,
-    particularly when non-unique types such as str or int are being bound.
-
-    eg. if using :func:`@provides(str) <provides>`, chances of collision are almost guaranteed.
-    One solution is to use @provides(str, annotation='unique') everywhere
-    you wish to inject the value, but this is verbose and error prone. Keys
-    solve this problem:
 
     >>> Age = Key('Age')
     >>> def configure(binder):
@@ -1024,7 +978,7 @@ class AssistedBuilderImplementation(namedtuple(
         return self.injector.create_object(cls, additional_kwargs=kwargs)
 
     def build_interface(self, **kwargs):
-        key = BindingKey(self.interface, None)
+        key = BindingKey(self.interface)
         binder = self.injector.binder
         binding = binder.get_binding(None, key)
         provider = binding.provider

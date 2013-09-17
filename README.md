@@ -222,20 +222,9 @@ Other examples of where scopes might be a threading scope, where instances are p
 
 The default scope is `NoScope`.
 
-### Binding Key
+### Keys
 
-A binding key uniquely identifies a provider of a type. It is effectively a tuple of `(type, annotation)` where `type` is the type to be provided and `annotation` is additional, optional, uniquely identifying information for the type.
-
-For example, the following are all unique binding keys for `str`:
-
-```python
-(str, 'name')
-(str, 'description')
-```
-
-For a generic type such as `str`, annotations are very useful for unique identification.
-
-As an *alternative* convenience to using annotations, `Key` may be used to create unique types as necessary:
+`Key` may be used to create unique types as necessary:
 
 
 ```pycon
@@ -244,19 +233,6 @@ As an *alternative* convenience to using annotations, `Key` may be used to creat
 >>> Description = Key('description')
 
 ```
-
-Which may then be used as binding keys, without annotations, as they already uniquely identify a particular provider:
-
-```python
-(Name, None)
-(Description, None)
-```
-
-Though of course, annotations may still be used with these types, like any other type.
-
-### Annotation
-
-An annotation is additional unique information about a type to avoid binding key collisions. It creates a new unique binding key for an existing type.
 
 ### Binding
 

@@ -401,13 +401,13 @@ def test_that_injection_is_lazy():
 
 def test_module_provides():
     class MyModule(Module):
-        @provides(str, annotation='name')
+        @provides(str)
         def provide_name(self):
             return 'Bob'
 
     module = MyModule()
     injector = Injector(module)
-    assert (injector.get(str, annotation='name') == 'Bob')
+    assert injector.get(str) == 'Bob'
 
 
 def test_can_inject_into_modules():
@@ -853,7 +853,7 @@ def test_assisted_builder_injection_is_safe_to_use_with_multiple_injectors():
 
 def test_assisted_builder_injection_uses_the_same_binding_key_every_time():
     # if we have different BindingKey for every AssistedBuilder(...) we will get memory leak
-    gen_key = lambda: BindingKey(AssistedBuilder(NeedsAssistance), None)
+    gen_key = lambda: BindingKey(AssistedBuilder(NeedsAssistance))
     assert gen_key() == gen_key()
 
 
