@@ -232,7 +232,11 @@ class Binding(_BindingBase):
 
 
 class Binder(object):
-    """Bind interfaces to implementations."""
+    """Bind interfaces to implementations.
+
+    .. note:: This class is instantiated internally for you and there's no need
+        to instantiate it on your own.
+    """
 
     @private
     def __init__(self, injector, auto_bind=True, parent=None):
@@ -299,7 +303,33 @@ class Binder(object):
     def install(self, module):
         """Install a module into this binder.
 
-        :param module: A Module instance, Module subclass, or a function.
+        In this context the module is one of the following:
+
+        * function taking the :class:`Binder` as it's only parameter
+
+          ::
+
+            def configure(binder):
+                bind(str, to='s')
+
+            binder.install(configure)
+
+        * instance of :class:`Module` (instance of it's subclass counts)
+
+          ::
+
+            class MyModule(Module):
+                def configure(self, binder):
+                    binder.bind(str, to='s')
+
+            binder.install(MyModule())
+
+        * subclass of :class:`Module` - the subclass needs to be instantiable so if it
+          expects any parameters they need to be injected
+
+          ::
+
+            binder.install(MyModule)
         """
         if type(module) is type and issubclass(module, Module):
             instance = self.injector.create_object(module)
@@ -503,23 +533,19 @@ class Module(object):
 
 
 class Injector(object):
-    """Initialise and use an object dependency graph."""
+    """Initialise and use an object dependency graph.
+
+    :param modules: Optional - a configuration module or iterable of configuration modules.
+        Each module will be installed in current :class:`Binder` using :meth:`Binder.install`.
+
+        Consult :meth:`Binder.install` documentation for the details.
+
+    :param auto_bind: Whether to automatically bind missing types.
+    :param parent: Parent injector.
+    :param use_annotations: Attempt to infer injected arguments using Python3 argument annotations.
+    """
 
     def __init__(self, modules=None, auto_bind=True, parent=None, use_annotations=False):
-        """Construct a new Injector.
-
-        :param modules: A callable, class, or list of callables/classes, used to configure the
-                        Binder associated with this Injector. Typically these
-                        callables will be subclasses of :class:`Module`.
-
-                        In case of class, it's instance will be created using parameterless
-                        constructor before the configuration process begins.
-
-                        Signature is ``configure(binder)``.
-        :param auto_bind: Whether to automatically bind missing types.
-        :param parent: Parent injector.
-        :param use_annotations: Attempt to infer injected arguments using Python3 argument annotations.
-        """
         # Stack of keys currently being injected. Used to detect circular
         # dependencies.
         self._stack = ()
@@ -723,7 +749,7 @@ def with_injector(*injector_args, **injector_kwargs):
     """Decorator for a method. Installs Injector object which the method
     belongs to before the decorated method is executed.
 
-    Parameters are the same as for Injector constructor.
+    Parameters are the same as for :class:`Injector` constructor.
     """
     def wrapper(f):
         @functools.wraps(f)
@@ -870,6 +896,7 @@ def inject(**bindings):
     return multi_wrapper
 
 
+@private
 class BaseAnnotation(object):
     """Annotation base type."""
 
@@ -885,6 +912,7 @@ def Annotation(name):
     return type(name, (BaseAnnotation,), {})
 
 
+@private
 class BaseKey(object):
     """Base type for binding keys."""
 
@@ -902,7 +930,7 @@ def Key(name):
     Keys are a convenient alternative to binding to (type, annotation) pairs,
     particularly when non-unique types such as str or int are being bound.
 
-    eg. if using @provides(str), chances of collision are almost guaranteed.
+    eg. if using :func:`@provides(str) <provides>`, chances of collision are almost guaranteed.
     One solution is to use @provides(str, annotation='unique') everywhere
     you wish to inject the value, but this is verbose and error prone. Keys
     solve this problem:
@@ -921,6 +949,7 @@ def Key(name):
     return type(name, (BaseKey,), {})
 
 
+@private
 class BaseMappingKey(dict):
     """Base type for mapping binding keys."""
     def __init__(self):
@@ -938,6 +967,7 @@ def MappingKey(name):
     return type(name, (BaseMappingKey,), {})
 
 
+@private
 class BaseSequenceKey(list):
     """Base type for mapping sequence keys."""
     def __init__(self):
