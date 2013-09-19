@@ -10,8 +10,6 @@
 
 """Injector - Python dependency injection framework, inspired by Guice
 
-See https://github.com/alecthomas/injector for documentation.
-
 :copyright: (c) 2012 by Alec Thomas
 :license: BSD
 """
@@ -519,8 +517,7 @@ class Module(object):
 
 
 class Injector(object):
-    """Initialise and use an object dependency graph.
-
+    """
     :param modules: Optional - a configuration module or iterable of configuration modules.
         Each module will be installed in current :class:`Binder` using :meth:`Binder.install`.
 
@@ -529,6 +526,27 @@ class Injector(object):
     :param auto_bind: Whether to automatically bind missing types.
     :param parent: Parent injector.
     :param use_annotations: Attempt to infer injected arguments using Python3 argument annotations.
+
+    If you use Python 3 you can make Injector use constructor parameter annotations to
+    determine class dependencies. The following code::
+
+        class B(object):
+            @inject(a=A):
+            def __init__(self, a):
+                self.a = a
+
+    can now be written as::
+
+        class B(object):
+            def __init__(self, a:A):
+                self.a = a
+
+    To enable Python 3 annotation support, instantiate your :class:`Injector` with
+    ``use_annotations=True``.
+
+
+    .. versionadded:: 0.7.5
+        ``use_annotations`` parameter
     """
 
     def __init__(self, modules=None, auto_bind=True, parent=None, use_annotations=False):
