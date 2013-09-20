@@ -26,6 +26,7 @@ Contents:
 
    changelog
    terminology
+   testing
    scopes
    logging
    api

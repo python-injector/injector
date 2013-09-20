@@ -180,34 +180,6 @@ You're probably thinking something like: "this is a large amount of work just to
 1.  Forces decoupling. In our example, this is illustrated by decoupling our configuration and database configuration.
 2.  After a type is configured, it can be injected anywhere with no additional effort. Simply `@inject` and it appears. We don't really illustrate that here, but you can imagine adding an arbitrary number of `RequestHandler` subclasses, all of which will automatically have a DB connection provided.
 
-
-Tests
------
-
-When you use unit test framework such as `unittest2` or `nose` you can also profit from `injector`. However, manually creating injectors and test classes can be quite annoying. There is, however, `with_injector` method decorator which has parameters just as `Injector` construtor and installes configured injector into class instance on the time of method call:
-
-
-```pycon
->>> from injector import Module, with_injector
->>> class UsernameModule(Module):
-...   def configure(self, binder):
-...     binder.bind(str, 'Maria')
-...
->>> class TestSomethingClass(object):
-...   @with_injector(UsernameModule())
-...   def setup(self):
-...      pass
-...
-...   @inject(username=str)
-...   def test_username(self, username):
-...      assert (username == 'Maria')
-
-```
-
-*Each* method call re-initializes `Injector` - if you want to you can also put `with_injector` decorator on class constructor.
-
-After such call all `inject`-decorated methods will work just as you'd expect them to work.
-
 Footnote
 --------
 
