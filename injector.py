@@ -141,7 +141,26 @@ class ClassProvider(Provider):
 
 
 class CallableProvider(Provider):
-    """Provides something using a callable."""
+    """Provides something using a callable.
+
+    The callable is called every time new value is requested from the provider.
+
+    ::
+
+        >>> key = Key('key')
+        >>> def factory():
+        ...     print('providing')
+        ...     return []
+        ...
+        >>> def configure(binder):
+        ...     binder.bind(key, to=CallableProvider(factory))
+        ...
+        >>> injector = Injector(configure)
+        >>> injector.get(key) is injector.get(key)
+        providing
+        providing
+        False
+        """
 
     def __init__(self, callable):
         self._callable = callable
@@ -151,7 +170,21 @@ class CallableProvider(Provider):
 
 
 class InstanceProvider(Provider):
-    """Provide a specific instance."""
+    """Provide a specific instance.
+
+    ::
+
+        >>> my_list = Key('my_list')
+        >>> def configure(binder):
+        ...     binder.bind(my_list, to=InstanceProvider([]))
+        ...
+        >>> injector = Injector(configure)
+        >>> injector.get(my_list) is injector.get(my_list)
+        True
+        >>> injector.get(my_list).append('x')
+        >>> injector.get(my_list)
+        ['x']
+    """
 
     def __init__(self, instance):
         self._instance = instance

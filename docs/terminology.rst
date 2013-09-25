@@ -10,7 +10,13 @@ For those new to dependency-injection and/or Guice, though, some of the terminol
 Provider
 ````````
 
-A means of providing an instance of a type. Built-in providers include `ClassProvider` (creates a new instance from a class), `InstanceProvider` (returns an existing instance directly), `CallableProvider` (provides an instance by calling a function).
+A means of providing an instance of a type. Built-in providers include:
+
+* :class:`~injector.ClassProvider` - creates a new instance from a class
+* :class:`~injector.InstanceProvider` - returns an existing instance directly
+* :class:`~injector.CallableProvider` - provides an instance by calling a function
+
+In order to create custom provider you need to subclass :class:`~injector.Provider` and override its :meth:`~injector.Provider.get` method.
 
 Scope
 `````
