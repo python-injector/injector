@@ -649,8 +649,42 @@ class Injector(object):
         return dict(spec.annotations.items())
 
     def install_into(self, instance):
-        """
-        Puts injector reference in given object.
+        """Put injector reference in given object.
+
+        This method has, in general, two applications:
+
+        * Injector internal use (not documented here)
+        * Making it possible to inject into methods of an object that wasn't created
+            using Injector. Usually it's because you either don't control the instantiation
+            process, it'd generate unnecessary boilerplate or it's just easier this way.
+
+            For example, in application main script::
+
+                from injector import Injector
+
+                class Main(object):
+                    def __init__(self):
+                        def configure(binder):
+                            binder.bind(str, to='Hello!')
+
+                        injector = Injector(configure)
+                        injector.install_into(self)
+
+                    @inject(s=str)
+                    def run(self, s):
+                        print(s)
+
+                if __name__ == '__main__':
+                    main = Main()
+                    main.run()
+
+
+        .. note:: You don't need to use this method if the object is created using `Injector`.
+
+        .. warning:: Using `install_into` to install :class:`Injector` reference into an object
+            created by different :class:`Injector` instance may very likely result in unexpected
+            behaviour of that object immediately or in the future.
+
         """
         instance.__injector__ = self
 
