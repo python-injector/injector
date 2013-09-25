@@ -12,32 +12,23 @@ That said, a framework for assisting in this process can remove a lot of boiler-
 
 While being inspired by Guice, it does not slavishly replicate its API. Providing a Pythonic API trumps faithfulness.
 
-How to get Injector?
---------------------
+### How to get Injector?
 
-GitHub page: https://github.com/alecthomas/injector
+* GitHub (code repository, issues): https://github.com/alecthomas/injector
 
-Injector is also available on PyPI: https://pypi.python.org/pypi/injector. You can install it using pip:
+* PyPI (installable, stable distributions): https://pypi.python.org/pypi/injector. You can install it using pip:
 
-```python
-pip install injector
-```
+  ```python
+  pip install injector
+  ```
 
-You can find Injector documentation at http://injector.readthedocs.org
+* Documentation: http://injector.readthedocs.org
 
+Injector works with CPython 2.6+/3.2+ and PyPy 1.9+.
 
-Supported Python versions
--------------------------
+### Recent Notable Changes
 
-Injector works with the following Python interpreters:
-
--   CPython 2.6+, 3.2+
--   PyPy 1.9+
-
-Recent Notable Changes
-----------------------
-
-### If you inject a function, an injection-aware wrapper is provided
+#### If you inject a function, an injection-aware wrapper is provided
 
 Example:
 
