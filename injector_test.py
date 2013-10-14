@@ -14,6 +14,7 @@ from contextlib import contextmanager
 import abc
 import threading
 import traceback
+import warnings
 
 import pytest
 
@@ -1054,3 +1055,19 @@ def test_injecting_function_will_work():
     assert wrapped.__name__ == function.__name__
     result = wrapped()
     assert result == 'Got 123'
+
+
+def test_deprecated_module_configure_injection():
+    class Test(Module):
+        @inject(name=int)
+        def configure(self, binder, name):
+            pass
+
+    @inject(name=int)
+    def configure(binder, name):
+        pass
+
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        Injector([Test(), configure])
+        assert len(w) == 2

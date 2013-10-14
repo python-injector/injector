@@ -21,6 +21,7 @@ import logging
 import sys
 import types
 import threading
+import warnings
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
 
@@ -354,6 +355,15 @@ class Binder(object):
 
             binder.install(MyModule)
         """
+        if hasattr(module, '__bindings__') or \
+                hasattr(module, 'configure') and hasattr(module.configure, '__bindings__'):
+            warnings.warn(
+                'Injector Modules (ie. %s) should not be injected. This can result in non-deterministic '
+                'initialization. Support will be removed in the next release of Injector.' %
+                module.__name__ if hasattr(module, '__name__') else module.__class__.__name__,
+                RuntimeWarning,
+                stacklevel=3,
+                )
         if type(module) is type and issubclass(module, Module):
             instance = self.injector.create_object(module)
             instance(self)
