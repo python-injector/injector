@@ -6,6 +6,13 @@ Injector Change Log
 
 - Binding annotations are removed. Use :func:`~injector.Key` to create unique types instead.
 
+
+0.7.9
+-----
+
+- Fixed regression with injecting unbound key resulting in None instead of raising an exception
+
+
 0.7.8
 -----
 

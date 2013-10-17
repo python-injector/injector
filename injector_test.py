@@ -81,9 +81,13 @@ def test_scopes_are_only_bound_to_root_injector():
 
 
 def test_key_cannot_be_instantiated():
+    Interface = Key('Interface')
+
     with pytest.raises(Exception):
-        Interface = Key('Interface')
         Interface()
+
+    with pytest.raises(Exception):
+        Injector().get(Interface)
 
 
 def test_get_default_injected_instances():

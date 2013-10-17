@@ -399,7 +399,7 @@ class Binder(object):
         elif isinstance(interface, (tuple, type)) and isinstance(to, interface):
             return InstanceProvider(to)
         elif issubclass(type(interface), type) or isinstance(interface, (tuple, list)):
-            if issubclass(interface, (BaseKey, BaseMappingKey, BaseSequenceKey)):
+            if issubclass(interface, (BaseKey, BaseMappingKey, BaseSequenceKey)) and to is not None:
                 return InstanceProvider(to)
             return ClassProvider(interface, self.injector)
         elif hasattr(interface, '__call__'):
