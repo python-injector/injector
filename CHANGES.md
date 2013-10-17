@@ -1,5 +1,9 @@
 # ChangeLog for Injector
 
+## 0.7.9
+
+- Fixed regression with injecting unbound key resulting in None instead of raising an exception
+
 ## 0.7.8
 
 - Exception is raised when Injector can't install itself into a class instance due to __slots__ presence

@@ -34,7 +34,7 @@ except AttributeError:
             pass
 
 __author__ = 'Alec Thomas <alec@swapoff.org>'
-__version__ = '0.7.8'
+__version__ = '0.7.9'
 __version_tag__ = ''
 
 log = logging.getLogger('injector')
@@ -336,7 +336,7 @@ class Binder(object):
         elif isinstance(interface, (tuple, type)) and isinstance(to, interface):
             return InstanceProvider(to)
         elif issubclass(type(interface), type) or isinstance(interface, (tuple, list)):
-            if issubclass(interface, (BaseKey, BaseMappingKey, BaseSequenceKey)):
+            if issubclass(interface, (BaseKey, BaseMappingKey, BaseSequenceKey)) and to is not None:
                 return InstanceProvider(to)
             return ClassProvider(interface, self.injector)
         elif hasattr(interface, '__call__'):
