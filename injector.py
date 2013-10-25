@@ -384,15 +384,19 @@ class Binder(object):
     def provider_for(self, interface, to=None):
         if isinstance(to, Provider):
             return to
+        elif isinstance(interface, Provider):
+            return interface
         elif isinstance(to, (types.FunctionType, types.LambdaType,
                              types.MethodType, types.BuiltinFunctionType,
                              types.BuiltinMethodType)):
             return CallableProvider(to)
         elif issubclass(type(to), type):
             return ClassProvider(to, self.injector)
-        elif isinstance(interface, ParameterizedBuilder):
-            builder = AssistedBuilderImplementation(self.injector, interface.interface, None, None)
-            return CallableProvider(lambda: builder.build(**interface.kwargs))
+        elif isinstance(interface, BoundKey):
+            @inject(**interface.kwargs)
+            def proxy(**kwargs):
+                return interface.interface(**kwargs)
+            return CallableProvider(lambda: self.injector.call_with_injection(proxy))
         elif isinstance(interface, AssistedBuilder):
             builder = AssistedBuilderImplementation(self.injector, *interface)
             return InstanceProvider(builder)
@@ -1034,10 +1038,23 @@ def SequenceKey(name):
     return type(name, (BaseSequenceKey,), {})
 
 
-class ParameterizedBuilder(tuple):
+class BoundKey(tuple):
+    """A BoundKey provides a key to a type with pre-injected arguments.
+
+    >>> class A(object):
+    ...   def __init__(self, a, b):
+    ...     self.a = a
+    ...     self.b = b
+    >>> InjectedA = BoundKey(A, a=InstanceProvider(1), b=InstanceProvider(2))
+    >>> injector = Injector()
+    >>> a = injector.get(InjectedA)
+    >>> a.a, a.b
+    (1, 2)
+    """
+
     def __new__(cls, interface, **kwargs):
         kwargs = tuple(sorted(kwargs.items()))
-        return super(ParameterizedBuilder, cls).__new__(cls, (interface, kwargs))
+        return super(BoundKey, cls).__new__(cls, (interface, kwargs))
 
     @property
     def interface(self):
