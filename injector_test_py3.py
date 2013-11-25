@@ -5,8 +5,7 @@ from injector import Injector, CallError
 
 def test_implicit_injection_for_python3():
     class A(object):
-        def __init__(self):
-            pass
+        pass
 
     class B(object):
         def __init__(self, a:A):

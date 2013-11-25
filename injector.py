@@ -664,7 +664,11 @@ class Injector(object):
         additional_kwargs = additional_kwargs or {}
         log.debug('%sCreating %r object with %r', self._log_prefix, cls, additional_kwargs)
 
-        if self.use_annotations and hasattr(cls, '__init__') and not hasattr(cls.__init__, '__binding__'):
+        # (cls.__init__ is not object.__init__) is a workaround for Python 3.3
+        # where object.__init__ is a slot wrapper that can't be inspected
+        if self.use_annotations and hasattr(cls, '__init__') and \
+           not hasattr(cls.__init__, '__binding__') and \
+           cls.__init__ is not object.__init__:
             bindings = self._infer_injected_bindings(cls.__init__)
             cls.__init__ = inject(**bindings)(cls.__init__)
 
