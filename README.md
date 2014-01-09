@@ -115,7 +115,7 @@ Next, for the sake of the example, we'll create a "configuration" annotated type
 
 ```
 
-Key is used to uniquely identifies the configuration dictionary. Next, we bind the configuration to the injector, using a module:
+Key is used to uniquely identify the configuration dictionary. Next, we bind the configuration to the injector, using a module:
 
 
 ```pycon
