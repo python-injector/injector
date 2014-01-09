@@ -32,7 +32,7 @@ Injector works with CPython 2.6+/3.2+ and PyPy 1.9+.
 
 Example:
 
-```python
+```pycon
 >>> from injector import Injector, inject, Key
 >>> GreetingType = Key('GreetingType')
 >>>
