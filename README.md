@@ -155,7 +155,7 @@ Finally, we initialise an `Injector` and use it to instantiate a `RequestHandler
 
 ```
 
-We can also veryify that our `Configuration` and `SQLite` connections are indeed singletons within the Injector:
+We can also verify that our `Configuration` and `SQLite` connections are indeed singletons within the Injector:
 
 
 ```pycon
