@@ -146,29 +146,14 @@ class CallableProvider(Provider):
     """Provides something using a callable.
 
     The callable is called every time new value is requested from the provider.
+    """
 
-    ::
-
-        >>> key = Key('key')
-        >>> def factory():
-        ...     print('providing')
-        ...     return []
-        ...
-        >>> def configure(binder):
-        ...     binder.bind(key, to=CallableProvider(factory))
-        ...
-        >>> injector = Injector(configure)
-        >>> injector.get(key) is injector.get(key)
-        providing
-        providing
-        False
-        """
-
-    def __init__(self, callable):
+    def __init__(self, callable, injector):
         self._callable = callable
+        self.injector = injector
 
     def get(self):
-        return self._callable()
+        return self.injector.call_with_injection(self._callable)
 
 
 class InstanceProvider(Provider):
@@ -390,14 +375,14 @@ class Binder(object):
         elif isinstance(to, (types.FunctionType, types.LambdaType,
                              types.MethodType, types.BuiltinFunctionType,
                              types.BuiltinMethodType)):
-            return CallableProvider(to)
+            return CallableProvider(to, self.injector)
         elif issubclass(type(to), type):
             return ClassProvider(to, self.injector)
         elif isinstance(interface, BoundKey):
             @inject(**interface.kwargs)
             def proxy(**kwargs):
                 return interface.interface(**kwargs)
-            return CallableProvider(lambda: self.injector.call_with_injection(proxy))
+            return CallableProvider(proxy, self.injector)
         elif isinstance(interface, AssistedBuilder):
             builder = AssistedBuilderImplementation(self.injector, *interface)
             return InstanceProvider(builder)
