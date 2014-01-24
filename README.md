@@ -32,7 +32,7 @@ Injector works with CPython 2.6+/3.2+ and PyPy 1.9+.
 
 Example:
 
-```python
+```pycon
 >>> from injector import Injector, inject, Key
 >>> GreetingType = Key('GreetingType')
 >>>
@@ -115,7 +115,7 @@ Next, for the sake of the example, we'll create a "configuration" annotated type
 
 ```
 
-Key is used to uniquely identifies the configuration dictionary. Next, we bind the configuration to the injector, using a module:
+Key is used to uniquely identify the configuration dictionary. Next, we bind the configuration to the injector, using a module:
 
 
 ```pycon
@@ -155,7 +155,7 @@ Finally, we initialise an `Injector` and use it to instantiate a `RequestHandler
 
 ```
 
-We can also veryify that our `Configuration` and `SQLite` connections are indeed singletons within the Injector:
+We can also verify that our `Configuration` and `SQLite` connections are indeed singletons within the Injector:
 
 
 ```pycon
