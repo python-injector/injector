@@ -14,16 +14,17 @@
 :license: BSD
 """
 
-import itertools
 import functools
 import inspect
+import itertools
 import logging
 import sys
-import types
 import threading
+import types
 import warnings
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
+
 
 try:
     NullHandler = logging.NullHandler
@@ -33,7 +34,7 @@ except AttributeError:
             pass
 
 __author__ = 'Alec Thomas <alec@swapoff.org>'
-__version__ = '0.8.0c1'
+__version__ = '0.8.0'
 __version_tag__ = ''
 
 log = logging.getLogger('injector')
@@ -474,8 +475,8 @@ class ScopeDecorator(object):
         binding = getattr(cls, '__binding__', None)
         if binding:
             new_binding = Binding(interface=binding.interface,
-                provider=binding.provider,
-                scope=self.scope)
+                                  provider=binding.provider,
+                                  scope=self.scope)
             setattr(cls, '__binding__', new_binding)
         return cls
 
