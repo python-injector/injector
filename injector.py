@@ -126,6 +126,10 @@ class Provider(object):
 
     __metaclass__ = ABCMeta
 
+    _injector = None
+    """For internal use. Will be set to an :class:`Injector` the :class:`Provider` is configured
+    for before :meth:`get` is called"""
+
     @abstractmethod
     def get(self):
         raise NotImplementedError
@@ -134,41 +138,49 @@ class Provider(object):
 class ClassProvider(Provider):
     """Provides instances from a given class, created using an Injector."""
 
-    def __init__(self, cls, injector):
+    def __init__(self, cls, injector=None):
         self._cls = cls
-        self.injector = injector
+
+        if injector:
+            warnings.warn(
+                'ClassProvider constructor no longer uses `injector` constructor argument. '
+                'The argument will be removed in the next release of Injector'
+            )
 
     def get(self):
-        return self.injector.create_object(self._cls)
+        return self._injector.create_object(self._cls)
 
 
 class CallableProvider(Provider):
     """Provides something using a callable.
 
     The callable is called every time new value is requested from the provider.
+    The callable may contain injectable parameters.
 
     ::
 
-        >>> key = Key('key')
-        >>> def factory():
+        >>> Name = Key("Name")
+        >>> Message = Key("Message")
+        >>>
+        >>> @inject(name=Name)
+        ... def create_message(name):
         ...     print('providing')
-        ...     return []
-        ...
+        ...     return "Hello, " + name
+        >>>
         >>> def configure(binder):
-        ...     binder.bind(key, to=CallableProvider(factory))
-        ...
-        >>> injector = Injector(configure)
-        >>> injector.get(key) is injector.get(key)
+        ...     binder.bind(Name, to="John")
+        ...     binder.bind(Message, to=create_message)
+        >>> injector = Injector([configure])
+        >>> injector.get(Message)
         providing
-        providing
-        False
-        """
+        'Hello, John'
+    """
 
     def __init__(self, callable):
         self._callable = callable
 
     def get(self):
-        return self._callable()
+        return self._injector.call_with_injection(self._callable)
 
 
 class InstanceProvider(Provider):
@@ -384,39 +396,43 @@ class Binder(object):
 
     def provider_for(self, interface, to=None):
         if isinstance(to, Provider):
-            return to
+            provider = to
         elif isinstance(interface, Provider):
-            return interface
+            provider = interface
         elif isinstance(to, (types.FunctionType, types.LambdaType,
                              types.MethodType, types.BuiltinFunctionType,
                              types.BuiltinMethodType)):
-            return CallableProvider(to)
+            provider = CallableProvider(to)
         elif issubclass(type(to), type):
-            return ClassProvider(to, self.injector)
+            provider = ClassProvider(to)
         elif isinstance(interface, BoundKey):
             @inject(**interface.kwargs)
             def proxy(**kwargs):
                 return interface.interface(**kwargs)
-            return CallableProvider(lambda: self.injector.call_with_injection(proxy))
+            provider = CallableProvider(proxy)
         elif isinstance(interface, AssistedBuilder):
             builder = AssistedBuilderImplementation(self.injector, *interface)
-            return InstanceProvider(builder)
+            provider = InstanceProvider(builder)
         elif isinstance(interface, (tuple, type)) and isinstance(to, interface):
-            return InstanceProvider(to)
+            provider = InstanceProvider(to)
         elif issubclass(type(interface), type) or isinstance(interface, (tuple, list)):
             if issubclass(interface, (BaseKey, BaseMappingKey, BaseSequenceKey)) and to is not None:
-                return InstanceProvider(to)
-            return ClassProvider(interface, self.injector)
+                provider = InstanceProvider(to)
+            else:
+                provider = ClassProvider(interface)
         elif hasattr(interface, '__call__'):
             function = to or interface
             if hasattr(function, '__bindings__'):
                 function = self.injector.wrap_function(function)
 
-            return InstanceProvider(function)
+            provider = InstanceProvider(function)
 
         else:
             raise UnknownProvider('couldn\'t determine provider for %r to %r' %
                                   (interface, to))
+
+        provider._injector = self.injector
+        return provider
 
     def _get_binding(self, key):
         binding = self._bindings.get(key)
@@ -500,15 +516,6 @@ class SingletonScope(Scope):
     """A :class:`Scope` that returns a per-Injector instance for a key.
 
     :data:`singleton` can be used as a convenience class decorator.
-
-    >>> class A(object): pass
-    >>> injector = Injector()
-    >>> provider = ClassProvider(A, injector)
-    >>> singleton = SingletonScope(injector)
-    >>> a = singleton.get(A, provider)
-    >>> b = singleton.get(A, provider)
-    >>> a is b
-    True
     """
     def configure(self):
         self._context = {}
