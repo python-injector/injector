@@ -69,6 +69,26 @@ def test_child_injector_overrides_parent_bindings():
 
     assert ((parent.get(str), child.get(str)) == ('asd', 'qwe'))
 
+def test_child_injector_rebinds_arguments_for_parent_scope():
+    I = Key("interface")
+    Cls = Key("test_class")
+
+    class A(object):
+        @inject(val=I)
+        def __init__(self, val):
+            self.val = val
+
+    def configureParent(binder):
+        binder.bind(Cls, to=A)
+        binder.bind(I, to="Parent")
+
+    def configureChild(binder):
+        binder.bind(I, to="Child")
+
+    parent = Injector(configureParent)
+    assert (parent.get(Cls).val == "Parent")
+    child = parent.create_child_injector(configureChild)
+    assert (child.get(Cls).val == "Child")
 
 def test_scopes_are_only_bound_to_root_injector():
     parent, child = prepare_nested_injectors()
@@ -580,7 +600,7 @@ def test_custom_scope():
             try:
                 return self.context[key]
             except KeyError:
-                provider = InstanceProvider(provider.get())
+                provider = InstanceProvider(provider.get(self.injector))
                 self.context[key] = provider
                 return provider
 
@@ -664,24 +684,27 @@ def test_binder_install():
 
 
 def test_binder_provider_for_method_with_explicit_provider():
-    binder = Injector().binder
+    injector = Injector()
+    binder = injector.binder
     provider = binder.provider_for(int, to=InstanceProvider(1))
     assert (type(provider) is InstanceProvider)
-    assert (provider.get() == 1)
+    assert (provider.get(injector) == 1)
 
 
 def test_binder_provider_for_method_with_instance():
-    binder = Injector().binder
+    injector = Injector()
+    binder = injector.binder
     provider = binder.provider_for(int, to=1)
     assert (type(provider) is InstanceProvider)
-    assert (provider.get() == 1)
+    assert (provider.get(injector) == 1)
 
 
 def test_binder_provider_for_method_with_class():
-    binder = Injector().binder
+    injector = Injector()
+    binder = injector.binder
     provider = binder.provider_for(int)
     assert (type(provider) is ClassProvider)
-    assert (provider.get() == 0)
+    assert (provider.get(injector) == 0)
 
 
 def test_binder_provider_for_method_with_class_to_specific_subclass():
@@ -691,10 +714,11 @@ def test_binder_provider_for_method_with_class_to_specific_subclass():
     class B(A):
         pass
 
-    binder = Injector().binder
+    injector = Injector()
+    binder = injector.binder
     provider = binder.provider_for(A, B)
     assert (type(provider) is ClassProvider)
-    assert (isinstance(provider.get(), B))
+    assert (isinstance(provider.get(injector), B))
 
 
 def test_binder_provider_for_type_with_metaclass():
@@ -704,8 +728,9 @@ def test_binder_provider_for_type_with_metaclass():
     #    passa
     A = abc.ABCMeta('A', (object, ), {})
 
-    binder = Injector().binder
-    assert (isinstance(binder.provider_for(A, None).get(), A))
+    injector = Injector()
+    binder = injector.binder
+    assert (isinstance(binder.provider_for(A, None).get(injector), A))
 
 
 def test_injecting_undecorated_class_with_missing_dependencies_raises_the_right_error():

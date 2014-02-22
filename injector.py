@@ -127,19 +127,18 @@ class Provider(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get(self):
+    def get(self, injector):
         raise NotImplementedError
 
 
 class ClassProvider(Provider):
     """Provides instances from a given class, created using an Injector."""
 
-    def __init__(self, cls, injector):
+    def __init__(self, cls):
         self._cls = cls
-        self.injector = injector
 
-    def get(self):
-        return self.injector.create_object(self._cls)
+    def get(self, injector):
+        return injector.create_object(self._cls)
 
 
 class CallableProvider(Provider):
@@ -167,7 +166,7 @@ class CallableProvider(Provider):
     def __init__(self, callable):
         self._callable = callable
 
-    def get(self):
+    def get(self, injector):
         return self._callable()
 
 
@@ -191,7 +190,7 @@ class InstanceProvider(Provider):
     def __init__(self, instance):
         self._instance = instance
 
-    def get(self):
+    def get(self, injector):
         return self._instance
 
 
@@ -205,25 +204,25 @@ class ListOfProviders(Provider):
     def append(self, provider):
         self._providers.append(provider)
 
-    def get(self):
-        return [provider.get() for provider in self._providers]
+    def get(self, injector):
+        return [provider.get(injector) for provider in self._providers]
 
 
 class MultiBindProvider(ListOfProviders):
     """Used by :meth:`Binder.multibind` to flatten results of providers that
     return sequences."""
 
-    def get(self):
-        return [i for provider in self._providers for i in provider.get()]
+    def get(self, injector):
+        return [i for provider in self._providers for i in provider.get(injector)]
 
 
 class MapBindProvider(ListOfProviders):
     """A provider for map bindings."""
 
-    def get(self):
+    def get(self, injector):
         map = {}
         for provider in self._providers:
-            map.update(provider.get())
+            map.update(provider.get(injector))
         return map
 
 
@@ -392,7 +391,7 @@ class Binder(object):
                              types.BuiltinMethodType)):
             return CallableProvider(to)
         elif issubclass(type(to), type):
-            return ClassProvider(to, self.injector)
+            return ClassProvider(to)
         elif isinstance(interface, BoundKey):
             @inject(**interface.kwargs)
             def proxy(**kwargs):
@@ -406,7 +405,7 @@ class Binder(object):
         elif issubclass(type(interface), type) or isinstance(interface, (tuple, list)):
             if issubclass(interface, (BaseKey, BaseMappingKey, BaseSequenceKey)) and to is not None:
                 return InstanceProvider(to)
-            return ClassProvider(interface, self.injector)
+            return ClassProvider(interface)
         elif hasattr(interface, '__call__'):
             function = to or interface
             if hasattr(function, '__bindings__'):
@@ -503,7 +502,7 @@ class SingletonScope(Scope):
 
     >>> class A(object): pass
     >>> injector = Injector()
-    >>> provider = ClassProvider(A, injector)
+    >>> provider = ClassProvider(A)
     >>> singleton = SingletonScope(injector)
     >>> a = singleton.get(A, provider)
     >>> b = singleton.get(A, provider)
@@ -518,7 +517,7 @@ class SingletonScope(Scope):
         try:
             return self._context[key]
         except KeyError:
-            provider = InstanceProvider(provider.get())
+            provider = InstanceProvider(provider.get(self.injector))
             self._context[key] = provider
             return provider
 
@@ -535,7 +534,7 @@ class ThreadLocalScope(Scope):
         try:
             return getattr(self._locals, repr(key))
         except AttributeError:
-            provider = InstanceProvider(provider.get())
+            provider = InstanceProvider(provider.get(self.injector))
             setattr(self._locals, repr(key), provider)
             return provider
 
@@ -646,14 +645,14 @@ class Injector(object):
         scope_key = BindingKey(scope)
         try:
             scope_binding = self.binder.get_binding(None, scope_key)
-            scope_instance = scope_binding.provider.get()
+            scope_instance = scope_binding.provider.get(self)
         except UnsatisfiedRequirement as e:
             raise Error('%s; scopes must be explicitly bound '
                         'with Binder.bind_scope(scope_cls)' % e)
 
         log.debug('%sInjector.get(%r, scope=%r) using %r',
                   self._log_prefix, interface, scope, binding.provider)
-        result = scope_instance.get(key, binding.provider).get()
+        result = scope_instance.get(key, binding.provider).get(self)
         log.debug('%s -> %r', self._log_prefix, result)
         return result
 
