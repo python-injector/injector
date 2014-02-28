@@ -85,9 +85,9 @@ def test_child_injector_rebinds_arguments_for_parent_scope():
     def configure_child(binder):
         binder.bind(I, to="Child")
 
-    parent = Injector(configureParent)
+    parent = Injector(configure_parent)
     assert (parent.get(Cls).val == "Parent")
-    child = parent.create_child_injector(configureChild)
+    child = parent.create_child_injector(configure_child)
     assert (child.get(Cls).val == "Child")
 
 def test_scopes_are_only_bound_to_root_injector():
