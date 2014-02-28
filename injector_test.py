@@ -78,11 +78,11 @@ def test_child_injector_rebinds_arguments_for_parent_scope():
         def __init__(self, val):
             self.val = val
 
-    def configureParent(binder):
+    def configure_parent(binder):
         binder.bind(Cls, to=A)
         binder.bind(I, to="Parent")
 
-    def configureChild(binder):
+    def configure_child(binder):
         binder.bind(I, to="Child")
 
     parent = Injector(configureParent)
