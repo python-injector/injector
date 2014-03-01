@@ -394,7 +394,12 @@ class Binder(object):
         return Binding(interface, provider, scope)
 
     def provider_for(self, interface, to=None):
-        if isinstance(to, Provider):
+        if isinstance(interface, ProviderOf):
+            if to is not None:
+                raise Exception('ProviderOf cannot be bound to anything')
+            return InstanceProvider(
+                BoundedProvider(self.injector, interface.interface))
+        elif isinstance(to, Provider):
             return to
         elif isinstance(interface, Provider):
             return interface
@@ -1131,3 +1136,41 @@ def _describe(c):
     if type(c) in (tuple, list):
         return '[%s]' % c[0].__name__
     return str(c)
+
+
+class ProviderOf(object):
+    """Can be used to get a :class:`BoundedProvider` of an interface, for example:
+
+        >>> def provide_int():
+        ...     print('providing')
+        ...     return 123
+        >>>
+        >>> def configure(binder):
+        ...     binder.bind(int, to=provide_int)
+        >>>
+        >>> injector = Injector(configure)
+        >>> provider = injector.get(ProviderOf(int))
+        >>> type(provider)
+        <class 'injector.BoundedProvider'>
+        >>> value = provider.get()
+        providing
+        >>> value
+        123
+    """
+
+    def __init__(self, interface):
+        self.interface = interface
+
+
+class BoundedProvider(object):
+    def __init__(self, injector, interface):
+        self._injector = injector
+        self._interface = interface
+
+    def __repr__(self):
+        return 'BoundedProvider(%r, %r)' % (
+            type(self).__name__, self._injector, self._interface)
+
+    def get(self):
+        """Get an implementation for the specified interface."""
+        return self._injector.get(self._interface)
