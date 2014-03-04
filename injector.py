@@ -127,17 +127,21 @@ class Provider(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get(self, injector):
+    def get(self, injector=None):
         raise NotImplementedError
 
 
 class ClassProvider(Provider):
     """Provides instances from a given class, created using an Injector."""
 
-    def __init__(self, cls):
+    def __init__(self, cls, defaultInjector=None):
         self._cls = cls
+        self._injector = defaultInjector
 
-    def get(self, injector):
+    def get(self, injector=None):
+        if injector is None:
+            warnings.warn("Injector object was not provided for the {!r}. Using legacy fallback method.".format(self))
+            injector = self._injector
         return injector.create_object(self._cls)
 
 
@@ -166,7 +170,7 @@ class CallableProvider(Provider):
     def __init__(self, callable):
         self._callable = callable
 
-    def get(self, injector):
+    def get(self, injector=None):
         return self._callable()
 
 
@@ -190,7 +194,7 @@ class InstanceProvider(Provider):
     def __init__(self, instance):
         self._instance = instance
 
-    def get(self, injector):
+    def get(self, injector=None):
         return self._instance
 
 
@@ -204,7 +208,7 @@ class ListOfProviders(Provider):
     def append(self, provider):
         self._providers.append(provider)
 
-    def get(self, injector):
+    def get(self, injector=None):
         return [provider.get(injector) for provider in self._providers]
 
 
@@ -219,7 +223,7 @@ class MultiBindProvider(ListOfProviders):
 class MapBindProvider(ListOfProviders):
     """A provider for map bindings."""
 
-    def get(self, injector):
+    def get(self, injector=None):
         map = {}
         for provider in self._providers:
             map.update(provider.get(injector))
@@ -391,7 +395,7 @@ class Binder(object):
                              types.BuiltinMethodType)):
             return CallableProvider(to)
         elif issubclass(type(to), type):
-            return ClassProvider(to)
+            return ClassProvider(to, defaultInjector=self.injector)
         elif isinstance(interface, BoundKey):
             @inject(**interface.kwargs)
             def proxy(**kwargs):

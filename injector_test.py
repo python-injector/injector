@@ -691,6 +691,13 @@ def test_binder_provider_for_method_with_explicit_provider():
     assert (provider.get(injector) == 1)
 
 
+def test_legacy_provider_interface():
+    injector = Injector()
+    binder = injector.binder
+    provider = binder.provider_for(int, to=InstanceProvider(1))
+    assert (type(provider) is InstanceProvider)
+    assert (provider.get() == 1)
+
 def test_binder_provider_for_method_with_instance():
     injector = Injector()
     binder = injector.binder
