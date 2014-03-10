@@ -134,9 +134,9 @@ class Provider(object):
 class ClassProvider(Provider):
     """Provides instances from a given class, created using an Injector."""
 
-    def __init__(self, cls, defaultInjector=None):
+    def __init__(self, cls, default_injector=None):
         self._cls = cls
-        self._injector = defaultInjector
+        self._injector = default_injector
 
     def get(self, injector=None):
         if injector is None:
@@ -395,7 +395,7 @@ class Binder(object):
                              types.BuiltinMethodType)):
             return CallableProvider(to)
         elif issubclass(type(to), type):
-            return ClassProvider(to, defaultInjector=self.injector)
+            return ClassProvider(to, default_injector=self.injector)
         elif isinstance(interface, BoundKey):
             @inject(**interface.kwargs)
             def proxy(**kwargs):
