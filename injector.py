@@ -171,7 +171,15 @@ class CallableProvider(Provider):
         self._callable = callable
 
     def get(self, injector=None):
-        return self._callable()
+        if injector is None:
+            warnings.warn(
+                "Injector object was not provided for the {!r}. Using legacy fallback method.".format(
+                    self
+                )
+            )
+            return self._callable()
+        else:
+            return injector.call_with_injection(self._callable)
 
 
 class InstanceProvider(Provider):
@@ -400,7 +408,7 @@ class Binder(object):
             @inject(**interface.kwargs)
             def proxy(**kwargs):
                 return interface.interface(**kwargs)
-            return CallableProvider(lambda: self.injector.call_with_injection(proxy))
+            return CallableProvider(proxy)
         elif isinstance(interface, AssistedBuilder):
             builder = AssistedBuilderImplementation(self.injector, *interface)
             return InstanceProvider(builder)

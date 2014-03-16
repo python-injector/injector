@@ -1107,3 +1107,20 @@ def test_deprecated_module_configure_injection():
         warnings.simplefilter("always")
         Injector([Test(), configure])
         assert len(w) == 2
+
+
+def test_callable_provider_injection():
+    Name = Key("Name")
+    Message = Key("Message")
+
+    @inject(name=Name)
+    def create_message(name):
+        return "Hello, " + name
+
+    def configure(binder):
+        binder.bind(Name, to="John")
+        binder.bind(Message, to=create_message)
+
+    injector = Injector([configure])
+    msg = injector.get(Message)
+    assert msg == "Hello, John"
