@@ -23,7 +23,7 @@ from injector import (
     inject, singleton, threadlocal, UnsatisfiedRequirement,
     CircularDependency, Module, provides, Key, SingletonScope,
     ScopeDecorator, with_injector, AssistedBuilder, BindingKey,
-    SequenceKey, MappingKey
+    SequenceKey, MappingKey, ProviderOf,
     )
 
 
@@ -1124,3 +1124,54 @@ def test_callable_provider_injection():
     injector = Injector([configure])
     msg = injector.get(Message)
     assert msg == "Hello, John"
+
+
+def test_providerof():
+    counter = [0]
+
+    def provide_str():
+        counter[0] += 1
+        return 'content'
+
+    def configure(binder):
+        binder.bind(str, to=provide_str)
+
+    injector = Injector(configure)
+
+    assert counter[0] == 0
+
+    provider = injector.get(ProviderOf(str))
+    assert counter[0] == 0
+
+    assert provider.get() == 'content'
+    assert counter[0] == 1
+
+    assert provider.get() == injector.get(str)
+    assert counter[0] == 3
+
+
+def test_providerof_cannot_be_bound():
+    def configure(binder):
+        binder.bind(ProviderOf(int), to=InstanceProvider(None))
+
+    with pytest.raises(Exception):
+        Injector(configure)
+
+
+def test_providerof_is_safe_to_use_with_multiple_injectors():
+    def configure1(binder):
+        binder.bind(int, to=1)
+
+    def configure2(binder):
+        binder.bind(int, to=2)
+
+    injector1 = Injector(configure1)
+    injector2 = Injector(configure2)
+
+    provider_of = ProviderOf(int)
+
+    provider1 = injector1.get(provider_of)
+    provider2 = injector2.get(provider_of)
+
+    assert provider1.get() == 1
+    assert provider2.get() == 2
