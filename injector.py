@@ -398,7 +398,7 @@ class Binder(object):
             if to is not None:
                 raise Exception('ProviderOf cannot be bound to anything')
             return InstanceProvider(
-                BoundedProvider(self.injector, interface.interface))
+                BoundProvider(self.injector, interface.interface))
         elif isinstance(to, Provider):
             return to
         elif isinstance(interface, Provider):
@@ -1139,7 +1139,7 @@ def _describe(c):
 
 
 class ProviderOf(object):
-    """Can be used to get a :class:`BoundedProvider` of an interface, for example:
+    """Can be used to get a :class:`BoundProvider` of an interface, for example:
 
         >>> def provide_int():
         ...     print('providing')
@@ -1151,7 +1151,7 @@ class ProviderOf(object):
         >>> injector = Injector(configure)
         >>> provider = injector.get(ProviderOf(int))
         >>> type(provider)
-        <class 'injector.BoundedProvider'>
+        <class 'injector.BoundProvider'>
         >>> value = provider.get()
         providing
         >>> value
@@ -1162,13 +1162,13 @@ class ProviderOf(object):
         self.interface = interface
 
 
-class BoundedProvider(object):
+class BoundProvider(object):
     def __init__(self, injector, interface):
         self._injector = injector
         self._interface = interface
 
     def __repr__(self):
-        return 'BoundedProvider(%r, %r)' % (
+        return 'BoundProvider(%r, %r)' % (
             type(self).__name__, self._injector, self._interface)
 
     def get(self):
