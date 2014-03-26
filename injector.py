@@ -1163,6 +1163,8 @@ class ProviderOf(object):
 
 
 class BoundProvider(object):
+    """A :class:`Provider` tied with particular :class:`Injector` instance"""
+
     def __init__(self, injector, interface):
         self._injector = injector
         self._interface = interface
