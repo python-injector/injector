@@ -23,7 +23,7 @@ from injector import (
     inject, singleton, threadlocal, UnsatisfiedRequirement,
     CircularDependency, Module, provides, Key, SingletonScope,
     ScopeDecorator, with_injector, AssistedBuilder, BindingKey,
-    SequenceKey, MappingKey, ProviderOf,
+    SequenceKey, MappingKey, ProviderOf, BoundKey,
     )
 
 
@@ -1175,3 +1175,14 @@ def test_providerof_is_safe_to_use_with_multiple_injectors():
 
     assert provider1.get() == 1
     assert provider2.get() == 2
+
+
+def test_injections_arent_ignored_when_using_boundkey():
+    class A(object):
+        @inject(s=str)
+        def __init__(self, s):
+            self.s = s
+
+    injector = Injector()
+    a = injector.get(BoundKey(A))
+    assert a.s == ''

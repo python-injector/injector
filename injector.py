@@ -410,9 +410,21 @@ class Binder(object):
         elif issubclass(type(to), type):
             return ClassProvider(to, default_injector=self.injector)
         elif isinstance(interface, BoundKey):
-            @inject(**interface.kwargs)
-            def proxy(**kwargs):
-                return interface.interface(**kwargs)
+            if isinstance(interface.interface, type):
+                assert '__builder__' not in interface.kwargs
+
+                @inject(
+                    __builder__=AssistedBuilder(interface.interface),
+                    **(interface.kwargs)
+                )
+                def proxy(__builder__, **kwargs):
+                    return __builder__.build(**kwargs)
+            else:
+                assert '__injector__' not in interface.kwargs
+                @inject(__injector__=Injector, **(interface.kwargs))
+                def proxy(__injector__, **kwargs):
+                    return __injector__.call_with_injection(
+                        interface.interface, kwargs=kwargs)
             return CallableProvider(proxy)
         elif isinstance(interface, AssistedBuilder):
             builder = AssistedBuilderImplementation(self.injector, *interface)
