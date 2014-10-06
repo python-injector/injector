@@ -970,7 +970,7 @@ def inject(**bindings):
 
         original_keys = tuple(bindings.keys())
 
-        for k in bindings:
+        for k in list(bindings.keys()):
             bindings[k.lstrip('_')] = bindings.pop(k)
 
         @inject(**bindings)

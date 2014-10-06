@@ -1037,6 +1037,16 @@ class TestClassInjection(object):
         with pytest.raises(CallError):
             self.B('something')
 
+    def test_mutating_dict_while_iterating_it_bug(self):
+        bindings = dict(('_' + str(i), str) for i in range(1000))
+
+        @inject(**bindings)
+        class X(object):
+            pass
+
+        injector = Injector()
+        injector.get(X)
+
 
 def test_provides_and_scope_decorator_collaboration():
     @provides(int)
