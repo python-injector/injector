@@ -1170,7 +1170,7 @@ class BoundProvider(object):
         self._interface = interface
 
     def __repr__(self):
-        return 'BoundProvider(%r, %r)' % (
+        return '%s(%r, %r)' % (
             type(self).__name__, self._injector, self._interface)
 
     def get(self):
