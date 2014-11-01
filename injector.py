@@ -169,6 +169,9 @@ class CallableProvider(Provider):
     def get(self, injector):
         return injector.call_with_injection(self._callable)
 
+    def __repr__(self):
+        return '%s(%r)' % (type(self).__name__, self._callable)
+
 
 class InstanceProvider(Provider):
     """Provide a specific instance.
@@ -193,6 +196,10 @@ class InstanceProvider(Provider):
     def get(self, injector):
         return self._instance
 
+    def __repr__(self):
+        return '%s(%r)' % (type(self).__name__, self._instance)
+
+
 
 @private
 class ListOfProviders(Provider):
@@ -206,6 +213,9 @@ class ListOfProviders(Provider):
 
     def get(self, injector):
         return [provider.get(injector) for provider in self._providers]
+
+    def __repr__(self):
+        return '%s(%r)' % (type(self).__name__, self._providers)
 
 
 class MultiBindProvider(ListOfProviders):
