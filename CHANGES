@@ -1,6 +1,15 @@
 Injector Change Log
 ===================
 
+0.10.0 (not released yet)
+-------------------------
+
+- :meth:`injector.Provider.get()` now requires an :class:`injector.Injector` instance as
+  its parameter
+- deprecated injecting arguments into modules (be it functions/callables,
+  :class:`~injector.Module` constructors or :meth:`injector.Module.configure` methods)
+- removed `extends` decorator
+
 0.9.1
 -----
 - Bug fix release.

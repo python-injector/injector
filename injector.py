@@ -127,21 +127,17 @@ class Provider(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get(self, injector=None):
+    def get(self, injector):
         raise NotImplementedError
 
 
 class ClassProvider(Provider):
     """Provides instances from a given class, created using an Injector."""
 
-    def __init__(self, cls, default_injector=None):
+    def __init__(self, cls):
         self._cls = cls
-        self._injector = default_injector
 
-    def get(self, injector=None):
-        if injector is None:
-            warnings.warn("Injector object was not provided for the {!r}. Using legacy fallback method.".format(self))
-            injector = self._injector
+    def get(self, injector):
         return injector.create_object(self._cls)
 
 
@@ -170,16 +166,8 @@ class CallableProvider(Provider):
     def __init__(self, callable):
         self._callable = callable
 
-    def get(self, injector=None):
-        if injector is None:
-            warnings.warn(
-                "Injector object was not provided for the {!r}. Using legacy fallback method.".format(
-                    self
-                )
-            )
-            return self._callable()
-        else:
-            return injector.call_with_injection(self._callable)
+    def get(self, injector):
+        return injector.call_with_injection(self._callable)
 
 
 class InstanceProvider(Provider):
@@ -202,7 +190,7 @@ class InstanceProvider(Provider):
     def __init__(self, instance):
         self._instance = instance
 
-    def get(self, injector=None):
+    def get(self, injector):
         return self._instance
 
 
@@ -216,7 +204,7 @@ class ListOfProviders(Provider):
     def append(self, provider):
         self._providers.append(provider)
 
-    def get(self, injector=None):
+    def get(self, injector):
         return [provider.get(injector) for provider in self._providers]
 
 
@@ -231,7 +219,7 @@ class MultiBindProvider(ListOfProviders):
 class MapBindProvider(ListOfProviders):
     """A provider for map bindings."""
 
-    def get(self, injector=None):
+    def get(self, injector):
         map = {}
         for provider in self._providers:
             map.update(provider.get(injector))
@@ -367,15 +355,21 @@ class Binder(object):
 
             binder.install(MyModule)
         """
-        if hasattr(module, '__bindings__') or \
-                hasattr(module, 'configure') and hasattr(module.configure, '__bindings__'):
+        if (
+            hasattr(module, '__bindings__') or
+            hasattr(getattr(module, 'configure', None), '__bindings__') or
+            hasattr(getattr(module, '__init__', None), '__bindings__')
+        ):
             warnings.warn(
-                'Injector Modules (ie. %s) should not be injected. This can result in non-deterministic '
-                'initialization. Support will be removed in the next release of Injector.' %
+                'Injector Modules (ie. %s) constructors and their configure methods should '
+                'not have injectable parameters. This can result in non-deterministic '
+                'initialization. If you need injectable objects in order to provide something '
+                ' you can use @provides-decorated methods. \n'
+                ' This feature will be removed in next Injector release.' %
                 module.__name__ if hasattr(module, '__name__') else module.__class__.__name__,
                 RuntimeWarning,
                 stacklevel=3,
-                )
+            )
         if type(module) is type and issubclass(module, Module):
             instance = self.injector.create_object(module)
             instance(self)
@@ -408,7 +402,7 @@ class Binder(object):
                              types.BuiltinMethodType)):
             return CallableProvider(to)
         elif issubclass(type(to), type):
-            return ClassProvider(to, default_injector=self.injector)
+            return ClassProvider(to)
         elif isinstance(interface, BoundKey):
             @inject(**interface.kwargs)
             def proxy(**kwargs):
@@ -882,10 +876,6 @@ def provides(interface, scope=None, eager=False):
         return provider
 
     return wrapper
-
-
-def extends(interface, annotation=None, scope=None):
-    raise DeprecationWarning('@extends({}|[]) is deprecated, use @provides and SequenceKey or MappingKey')
 
 
 if hasattr(inspect, 'getfullargspec'):

@@ -435,35 +435,6 @@ def test_module_provides():
     assert injector.get(str) == 'Bob'
 
 
-def test_can_inject_into_modules():
-    counter = [0]
-
-    class M(Module):
-        @inject(f=float)
-        def __init__(self, f):
-            counter[0] += 1
-            assert (f == 0.0)
-
-        @inject(s=str)
-        def configure(self, binder, s):
-            counter[0] += 1
-            assert (s == '')
-
-    Injector(M)
-    assert (counter[0] == 2)
-
-    Injector(M(f=0.0))
-    assert (counter[0] == 4)
-
-    @inject(i=int)
-    def configure(binder, i):
-        counter[0] += 1
-        assert (i == 0)
-
-    Injector(configure)
-    assert (counter[0] == 5)
-
-
 def test_module_class_gets_instantiated():
     name = 'Meg'
 
@@ -690,13 +661,6 @@ def test_binder_provider_for_method_with_explicit_provider():
     assert (type(provider) is InstanceProvider)
     assert (provider.get(injector) == 1)
 
-
-def test_legacy_provider_interface():
-    injector = Injector()
-    binder = injector.binder
-    provider = binder.provider_for(int, to=InstanceProvider(1))
-    assert (type(provider) is InstanceProvider)
-    assert (provider.get() == 1)
 
 def test_binder_provider_for_method_with_instance():
     injector = Injector()
@@ -1109,14 +1073,24 @@ def test_deprecated_module_configure_injection():
         def configure(self, binder, name):
             pass
 
+    class Test2(Module):
+        @inject(name=int)
+        def __init__(self, name):
+            pass
+
+    @inject(name=int)
+    class Test3(Module):
+        pass
+
     @inject(name=int)
     def configure(binder, name):
         pass
 
-    with warnings.catch_warnings(record=True) as w:
-        warnings.simplefilter("always")
-        Injector([Test(), configure])
-        assert len(w) == 2
+    for module in [Test, Test2, Test3, configure, Test()]:
+        with warnings.catch_warnings(record=True) as w:
+            print(module)
+            Injector(module)
+        assert len(w) == 1, w
 
 
 def test_callable_provider_injection():
