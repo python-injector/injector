@@ -653,6 +653,32 @@ class Injector(object):
     def get(self, interface, scope=None):
         """Get an instance of the given interface.
 
+        .. note::
+
+            Although this method is part of :class:`Injector`'s public interface
+            it's meant to be used in limited set of circumstances.
+
+            For example, to create some kind of root object (application object)
+            of your application (note that only one `get` call is needed,
+            inside the `Application` class and any of its dependencies
+            :func:`inject` can and should be used):
+
+            .. code-block:: python
+
+                class Application(object):
+
+                    @inject(dep1=Dep1, dep2=dep2)
+                    def __init__(self, dep1, dep2):
+                        self.dep1 = dep1
+                        self.dep2 = dep2
+
+                    def run(self):
+                        self.dep1.something()
+
+                injector = Injector(configuration)
+                application = injector.get(Application)
+                application.run()
+
         :param interface: Interface whose implementation we want.
         :param scope: Class of the Scope in which to resolve.
         :returns: An implementation of interface.

@@ -164,3 +164,91 @@ Here's the output of the application::
     Sleeping...
     Sleeping...
     (...)
+
+
+Injecting Injector and abusing Injector.get
+```````````````````````````````````````````
+
+Sometimes code like this is written:
+
+.. code-block:: python
+
+    class A(object):
+        pass
+
+    class B(object):
+        pass
+
+    class C(object):
+        @inject(injector=Injector)
+        def __init__(self, injector):
+            self.a = injector.get(A)
+            self.b = injector.get(B)
+
+
+It is advised to use the following pattern instead:
+
+.. code-block:: python
+
+    class A(object):
+        pass
+
+    class B(object):
+        pass
+
+    class C(object):
+        @inject(a=A, b=B)
+        def __init__(self, a, b)
+            self.a = a
+            self.b = b
+
+
+The second form has the benefits of:
+
+* expressing clearly what the dependencies of ``C`` are
+* making testing of the ``C`` class easier - you can provide the dependencies
+  (whether they are mocks or not) directly, instead of having to mock
+  :class:`Injector` and make the mock handle :meth:`Injector.get` calls
+* following the common practice and being easier to understand
+
+
+Injecting dependencies only to pass them somewhere else
+```````````````````````````````````````````````````````
+
+A pattern similar to the one below can emerge:
+
+.. code-block:: python
+
+    class A(object):
+        pass
+
+    class B(object):
+        def __init__(self, a):
+            self.a = a
+
+    class C(object):
+        @inject(a=A)
+        def __init__(self, a):
+            self.b = B(a)
+
+Class ``C`` in this example has the responsibility of gathering dependencies of
+class ``B`` and constructing an object of type ``B``, there may be a valid reason
+for it but in general it defeats the purpose of using ``Injector`` and should
+be avoided.
+
+The appropriate pattern is:
+
+.. code-block:: python
+
+    class A(object):
+        pass
+
+    class B(object):
+        @inject(a=A)
+        def __init__(self, a):
+            self.a = a
+
+    class C(object):
+        @inject(b=B)
+        def __init__(self, b):
+            self.b = b
