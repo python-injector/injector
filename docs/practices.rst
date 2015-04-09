@@ -198,7 +198,7 @@ It is advised to use the following pattern instead:
 
     class C(object):
         @inject(a=A, b=B)
-        def __init__(self, a, b)
+        def __init__(self, a, b):
             self.a = a
             self.b = b
 
