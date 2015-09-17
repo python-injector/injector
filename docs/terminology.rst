@@ -144,7 +144,7 @@ is equivalent to::
     >>> x2._y
     2
 
-**Note 2**: When class is decorated with `inject` decorator you need to use keyword arguments when instantiating the class manually:
+**Note 2**: When class is decorated with `inject` decorator you need to use keyword arguments when instantiating the class manually::
 
     x = X(y=2)  # that's ok
     x = X(2)  # this'll raise CallError
