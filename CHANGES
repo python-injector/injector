@@ -10,6 +10,9 @@ Injector Change Log
   :class:`~injector.Module` constructors or :meth:`injector.Module.configure` methods)
 - removed `extends` decorator
 - few classes got useful __repr__ implementations
+- fixed injecting ProviderOf and AssistedBuilders when :class:`injector.Injector`
+  auto_bind is set to False (previously would result in `UnsatisfiedRequirement`
+  error)
 
 0.9.1
 -----

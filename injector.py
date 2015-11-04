@@ -452,11 +452,19 @@ class Binder(object):
         try:
             return self._get_binding(key)
         except (KeyError, UnsatisfiedRequirement):
-            if self._auto_bind:
+            # The special interface is added here so that requesting a special
+            # interface with auto_bind disabled works
+            if self._auto_bind or self._is_special_interface(key.interface):
                 binding = self.create_binding(key.interface)
                 self._bindings[key] = binding
                 return binding
             raise UnsatisfiedRequirement(cls, key)
+
+    def _is_special_interface(self, interface):
+        # "Special" interfaces are ones that you cannot bind yourself but
+        # you can request them (for example you cannot bind ProviderOf(SomeClass)
+        # to anything but you can inject ProviderOf(SomeClass) just fine
+        return isinstance(interface, (ProviderOf, AssistedBuilder))
 
 
 class Scope(object):

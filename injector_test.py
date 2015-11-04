@@ -1159,3 +1159,29 @@ def test_providerof_is_safe_to_use_with_multiple_injectors():
 
     assert provider1.get() == 1
     assert provider2.get() == 2
+
+
+def test_special_interfaces_work_with_auto_bind_disabled():
+    class InjectMe(object):
+        pass
+
+    def configure(binder):
+        binder.bind(InjectMe, to=InstanceProvider(InjectMe()))
+
+    injector = Injector(configure, auto_bind=False)
+
+    # This line used to fail with:
+    # Traceback (most recent call last):
+    #   File "/projects/injector/injector_test.py", line 1171,
+    #   in test_auto_bind_disabled_regressions
+    #     injector.get(ProviderOf(InjectMe))
+    #   File "/projects/injector/injector.py", line 687, in get
+    #     binding = self.binder.get_binding(None, key)
+    #   File "/projects/injector/injector.py", line 459, in get_binding
+    #     raise UnsatisfiedRequirement(cls, key)
+    # UnsatisfiedRequirement: unsatisfied requirement on
+    # <injector.ProviderOf object at 0x10ff01550>
+    injector.get(ProviderOf(InjectMe))
+
+    # This used to fail with an error similar to the ProviderOf one
+    injector.get(AssistedBuilder(cls=InjectMe))
