@@ -10,5 +10,5 @@ python:
   - "nightly"
   - "pypy"
 install:
-  - pip install pytest --use-mirrors
+  - pip install pytest
 script: py.test -vv
