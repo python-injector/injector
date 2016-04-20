@@ -13,6 +13,10 @@ Injector Change Log
 - fixed injecting ProviderOf and AssistedBuilders when :class:`injector.Injector`
   auto_bind is set to False (previously would result in `UnsatisfiedRequirement`
   error)
+- fixed crash occurring when Python 3-function annotation use is enabled and
+  __init__ method has a return value annotation ("injector.UnknownProvider:
+  couldn't determine provider for None to None"), should also apply to free
+  functions as well
 
 0.9.1
 -----

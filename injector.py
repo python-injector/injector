@@ -752,7 +752,13 @@ class Injector(object):
         if not getfullargspec or not self.use_annotations:
             return None
         spec = getfullargspec(callable)
-        return dict(spec.annotations.items())
+        bindings = dict(spec.annotations.items())
+
+        # We don't care about the return value annotation as it doesn't matter
+        # injection-wise.
+        bindings.pop('return', None)
+
+        return bindings
 
     def install_into(self, instance):
         """Put injector reference in given object.
