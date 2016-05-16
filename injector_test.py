@@ -1185,3 +1185,15 @@ def test_special_interfaces_work_with_auto_bind_disabled():
 
     # This used to fail with an error similar to the ProviderOf one
     injector.get(AssistedBuilder(cls=InjectMe))
+
+
+def test_binding_an_instance_regression():
+    text = b'hello'.decode()
+    def configure(binder):
+        # Yes, this binding doesn't make sense strictly speaking but
+        # it's just a sample case.
+        binder.bind(bytes, to=text)
+
+    injector = Injector(configure)
+    # This used to return empty bytes instead of the expected string
+    assert injector.get(bytes) == text
