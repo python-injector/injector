@@ -18,7 +18,7 @@ While being inspired by Guice, it does not slavishly replicate its API. Providin
 
 * PyPI (installable, stable distributions): https://pypi.python.org/pypi/injector. You can install it using pip:
 
-  ```python
+  ```bash
   pip install injector
   ```
 
@@ -32,7 +32,7 @@ Injector works with CPython 2.6+/3.2+ and PyPy 1.9+.
 
 Example:
 
-```pycon
+```python
 >>> from injector import Injector, inject, Key
 >>> GreetingType = Key('GreetingType')
 >>>
@@ -54,7 +54,7 @@ A Quick Example
 ---------------
 
 
-```pycon
+```python
 >>> from injector import Injector, inject
 >>> class Inner(object):
 ...     def __init__(self):
@@ -78,7 +78,7 @@ A Full Example
 Here's a full example to give you a taste of how Injector works:
 
 
-```pycon
+```python
 >>> from injector import Module, Key, provides, Injector, inject, singleton
 
 ```
@@ -86,7 +86,7 @@ Here's a full example to give you a taste of how Injector works:
 We'll use an in-memory SQLite database for our example:
 
 
-```pycon
+```python
 >>> import sqlite3
 
 ```
@@ -94,7 +94,7 @@ We'll use an in-memory SQLite database for our example:
 And make up an imaginary `RequestHandler` class that uses the SQLite connection:
 
 
-```pycon
+```python
 >>> class RequestHandler(object):
 ...   @inject(db=sqlite3.Connection)
 ...   def __init__(self, db):
@@ -110,7 +110,7 @@ And make up an imaginary `RequestHandler` class that uses the SQLite connection:
 Next, for the sake of the example, we'll create a "configuration" annotated type:
 
 
-```pycon
+```python
 >>> Configuration = Key('configuration')
 
 ```
@@ -118,7 +118,7 @@ Next, for the sake of the example, we'll create a "configuration" annotated type
 Key is used to uniquely identify the configuration dictionary. Next, we bind the configuration to the injector, using a module:
 
 
-```pycon
+```python
 >>> def configure_for_testing(binder):
 ...     configuration = {'db_connection_string': ':memory:'}
 ...     binder.bind(Configuration, to=configuration, scope=singleton)
@@ -128,7 +128,7 @@ Key is used to uniquely identify the configuration dictionary. Next, we bind the
 Next we create a module that initialises the DB. It depends on the configuration provided by the above module to create a new DB connection, then populates it with some dummy data, and provides a `Connection` object:
 
 
-```pycon
+```python
 >>> class DatabaseModule(Module):
 ...   @singleton
 ...   @provides(sqlite3.Connection)
@@ -147,7 +147,7 @@ Next we create a module that initialises the DB. It depends on the configuration
 Finally, we initialise an `Injector` and use it to instantiate a `RequestHandler` instance. This first transitively constructs a `sqlite3.Connection` object, and the Configuration dictionary that it in turn requires, then instantiates our `RequestHandler`:
 
 
-```pycon
+```python
 >>> injector = Injector([configure_for_testing, DatabaseModule()])
 >>> handler = injector.get(RequestHandler)
 >>> tuple(map(str, handler.get()[0]))  # py3/py2 compatibility hack
@@ -158,7 +158,7 @@ Finally, we initialise an `Injector` and use it to instantiate a `RequestHandler
 We can also verify that our `Configuration` and `SQLite` connections are indeed singletons within the Injector:
 
 
-```pycon
+```python
 >>> injector.get(Configuration) is injector.get(Configuration)
 True
 >>> injector.get(sqlite3.Connection) is injector.get(sqlite3.Connection)
