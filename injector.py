@@ -34,7 +34,7 @@ except AttributeError:
             pass
 
 __author__ = 'Alec Thomas <alec@swapoff.org>'
-__version__ = '0.10.0'
+__version__ = '0.10.1'
 __version_tag__ = ''
 
 log = logging.getLogger('injector')
@@ -862,10 +862,12 @@ class Injector(object):
         :returns: Dictionary of resolved arguments.
         """
         dependencies = {}
-        key = (owner_key, function)
+
+        key = (owner_key, function, tuple(sorted(bindings.items())))
 
         def repr_key(k):
-            return '%s.%s()' % tuple(map(_describe, k))
+            owner_key, function, bindings = k
+            return '%s.%s(injecting %s)' % (tuple(map(_describe, k[:2])) + (dict(k[2]),))
 
         log.debug('%sProviding %r for %r', self._log_prefix, bindings, function)
 

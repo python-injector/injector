@@ -1,6 +1,12 @@
 Injector Change Log
 ===================
 
+0.10.1
+------
+
+- Fixed a false positive bug in dependency cycle detection (AssistedBuilder can be
+  used to break dependency cycles now)
+
 0.10.0
 ------
 

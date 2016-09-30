@@ -373,6 +373,33 @@ def test_cyclic_dependencies():
         injector.get(A)
 
 
+def test_dependency_cycle_can_be_worked_broken_by_assisted_building():
+    class Interface(object):
+        pass
+
+    class A(object):
+        @inject(i=Interface)
+        def __init__(self, i):
+            self.i = i
+
+    class B(object):
+        @inject(a_builder=AssistedBuilder(A))
+        def __init__(self, a_builder):
+            self.a = a_builder.build(i=self)
+
+    def configure(binder):
+        binder.bind(Interface, to=B)
+        binder.bind(A)
+
+    injector = Injector(configure)
+
+    # Previously it'd detect a circular dependency here:
+    # 1. Constructing A requires Interface (bound to B)
+    # 2. Constructing B requires assisted build of A
+    # 3. Constructing A triggers circular dependency check
+    assert isinstance(injector.get(A), A)
+
+
 def test_avoid_circular_dependency_with_method_injection():
     class Interface(object):
         pass
