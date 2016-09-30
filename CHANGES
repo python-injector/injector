@@ -1,8 +1,8 @@
 Injector Change Log
 ===================
 
-0.10.0 (not released yet)
--------------------------
+0.10.0
+------
 
 - :meth:`injector.Provider.get()` now requires an :class:`injector.Injector` instance as
   its parameter
