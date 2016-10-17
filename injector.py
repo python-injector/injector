@@ -722,7 +722,8 @@ class Injector(object):
            not hasattr(cls.__init__, '__binding__') and \
            cls.__init__ is not object.__init__:
             bindings = self._infer_injected_bindings(cls.__init__)
-            cls.__init__ = inject(**bindings)(cls.__init__)
+        else:
+            bindings = {}
 
         instance = cls.__new__(cls)
         try:
@@ -734,7 +735,10 @@ class Injector(object):
 
             # Else do nothing - some builtin types can not be modified.
         try:
-            instance.__init__(**additional_kwargs)
+            init = cls.__init__
+            if bindings:
+                init = inject(**bindings)(init)
+            init(instance, **additional_kwargs)
         except TypeError as e:
             # The reason why getattr() fallback is used here is that
             # __init__.__func__ apparently doesn't exist for Key-type objects
