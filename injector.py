@@ -428,12 +428,7 @@ class Binder(object):
                 return InstanceProvider(to)
             return ClassProvider(interface)
         elif hasattr(interface, '__call__'):
-            function = to or interface
-            if hasattr(function, '__bindings__'):
-                function = self.injector.wrap_function(function)
-
-            return InstanceProvider(function)
-
+            raise TypeError('Injecting partially applied functions is no longer supported.')
         else:
             raise UnknownProvider('couldn\'t determine provider for %r to %r' %
                                   (interface, to))
