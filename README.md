@@ -26,30 +26,6 @@ While being inspired by Guice, it does not slavishly replicate its API. Providin
 
 Injector works with CPython 2.6+/3.2+ and PyPy 1.9+.
 
-### Recent Notable Changes
-
-#### If you inject a function, an injection-aware wrapper is provided
-
-Example:
-
-```python
->>> from injector import Injector, inject, Key
->>> GreetingType = Key('GreetingType')
->>>
->>> @inject(greeting_type=GreetingType)
-... def greet(greeting_type, who):
-...     print('%s, %s!' % (greeting_type, who))
-...
->>> def configure(binder):
-...     binder.bind(GreetingType, to='Hello')
-...
->>> injector = Injector(configure)
->>> greet_wrapper = injector.get(greet)
->>> greet_wrapper(who='John')
-Hello, John!
-
-```
-
 A Quick Example
 ---------------
 
