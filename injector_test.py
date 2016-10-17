@@ -931,114 +931,6 @@ class TestThreadSafety(object):
         assert (a is b)
 
 
-class TestClassInjection(object):
-    def setup(self):
-        class A(object):
-            counter = 0
-
-            def __init__(self):
-                A.counter += 1
-
-        @inject(a=A)
-        class B(object):
-            pass
-
-        @inject(injectable=A)
-        class C(object):
-            def __init__(self, noninjectable):
-                self.noninjectable = noninjectable
-
-        self.injector = Injector()
-        self.A = A
-        self.B = B
-        self.C = C
-
-    def test_inject_decorator_works_when_metaclass_used(self):
-        WithABCMeta = abc.ABCMeta(str('WithABCMeta'), (object,), {})
-
-        @inject(y=int)
-        class X(WithABCMeta):
-            pass
-
-        self.injector.get(X)
-
-    def test_instantiation_still_requires_parameters(self):
-        for cls in (self.B, self.C):
-            with pytest.raises(Exception):
-                cls()
-
-        try:
-            self.C(noninjectable=1)
-            assert False, 'Should have raised an exception'
-        except Exception as e:
-            check_exception_contains_stuff(e, ('C.__init__', 'injectable'))
-
-        with pytest.raises(Exception):
-            self.C(injectable=self.A())
-
-    def test_injection_works(self):
-        b = self.injector.get(self.B)
-        a = b.a
-        assert (type(a) == self.A)
-
-    def test_assisted_injection_works(self):
-        builder = self.injector.get(AssistedBuilder(self.C))
-        c = builder.build(noninjectable=5)
-
-        assert((type(c.injectable), c.noninjectable) == (self.A, 5))
-
-    def test_members_are_injected_only_once(self):
-        b = self.injector.get(self.B)
-        _1 = b.a
-        _2 = b.a
-        assert (self.A.counter == 1 and _1 is _2)
-
-    def test_each_instance_gets_new_injection(self):
-        count = 3
-        objs = [self.injector.get(self.B).a for i in range(count)]
-
-        assert (self.A.counter == count)
-        assert (len(set(objs)) == count)
-
-    def test_members_can_be_overwritten(self):
-        b = self.injector.get(self.B)
-        b.a = 123
-
-        assert (b.a == 123)
-
-    def test_injected_members_starting_with_underscore_generate_sane_constructor(self):
-        @inject(_b=self.B)
-        class X(object):
-            pass
-
-        x = self.injector.get(X)
-        assert (type(x._b) == self.B)
-
-        x = X(b=314)
-        assert (x._b == 314)
-
-    def test_correct_exception_is_raised_when_argument_is_missing(self):
-        @inject(s=str)
-        class X(object):
-            pass
-
-        with pytest.raises(CallError):
-            self.B()
-
-        with pytest.raises(CallError):
-            self.B('something')
-
-    def test_mutating_dict_while_iterating_it_bug(self):
-        bindings = dict(('_' + str(i), str) for i in range(1000))
-
-        @inject(**bindings)
-        class X(object):
-            pass
-
-        injector = Injector()
-        injector.get(X)
-
-
 def test_provides_and_scope_decorator_collaboration():
     @provides(int)
     @singleton
@@ -1106,14 +998,10 @@ def test_deprecated_module_configure_injection():
             pass
 
     @inject(name=int)
-    class Test3(Module):
-        pass
-
-    @inject(name=int)
     def configure(binder, name):
         pass
 
-    for module in [Test, Test2, Test3, configure, Test()]:
+    for module in [Test, Test2, configure, Test()]:
         with warnings.catch_warnings(record=True) as w:
             print(module)
             Injector(module)

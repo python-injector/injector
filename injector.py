@@ -1007,32 +1007,10 @@ def inject(**bindings):
         inject.__bindings__ = merged_bindings
         return inject
 
-    def class_wrapper(cls):
-        orig_init = cls.__init__
-
-        original_keys = tuple(bindings.keys())
-
-        for k in list(bindings.keys()):
-            bindings[k.lstrip('_')] = bindings.pop(k)
-
-        @inject(**bindings)
-        def init(self, *args, **kwargs):
-            try:
-                for key in original_keys:
-                    normalized_key = key.lstrip('_')
-                    setattr(self, key, kwargs.pop(normalized_key))
-            except KeyError as e:
-                reraise(e, CallError(
-                    'Keyword argument %s not found when calling %s' % (
-                        normalized_key, '%s.%s' % (cls.__name__, '__init__'))))
-
-            orig_init(self, *args, **kwargs)
-        cls.__init__ = init
-        return cls
-
     def multi_wrapper(something):
         if isinstance(something, type):
-            return class_wrapper(something)
+            raise TypeError('Decorating classes with @inject is no longer supported, ' +
+                            'provide constructor and decorate it')
         else:
             return method_wrapper(something)
 
