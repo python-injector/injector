@@ -18,6 +18,11 @@ You should avoid creating side effects in your modules for two reasons:
 Injecting into constructors vs injecting into other methods
 ```````````````````````````````````````````````````````````
 
+.. note::
+
+  Injector 0.11+ doesn't support injecting into non-constructor methods,
+  this section is kept for historical reasons.
+
 In general you should prefer injecting into constructors to injecting into
 other methods because:
 

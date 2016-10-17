@@ -49,6 +49,8 @@ Backwards incompatible:
     builder2 = injector.get(ClassAssistedBuilder[cls=SomethingElse])
     provider = injector.get(ProviderOf[SomeOtherThing])
 
+* Removed support for injecting into non-constructor methods
+
 0.10.1
 ------
 

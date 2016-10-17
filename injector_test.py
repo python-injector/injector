@@ -400,35 +400,6 @@ def test_dependency_cycle_can_be_worked_broken_by_assisted_building():
     assert isinstance(injector.get(A), A)
 
 
-def test_avoid_circular_dependency_with_method_injection():
-    class Interface(object):
-        pass
-
-    class A(object):
-        @inject(i=Interface)
-        def __init__(self, i):
-            self.i = i
-
-    # Even though A needs B (via Interface) and B.method() needs A, they are
-    # resolved at different times, avoiding circular dependencies.
-    class B(object):
-        @inject(a=A)
-        def method(self, a):
-            self.a = a
-
-    def configure(binder):
-        binder.bind(Interface, to=B)
-        binder.bind(A)
-        binder.bind(B)
-
-    injector = Injector(configure)
-    a = injector.get(A)
-    assert (isinstance(a.i, B))
-    b = injector.get(B)
-    b.method()
-    assert (isinstance(b.a, A))
-
-
 def test_that_injection_is_lazy():
     class Interface(object):
         constructed = False
@@ -758,54 +729,6 @@ def test_call_to_method_with_legitimate_call_error_raises_type_error():
         injector.get(A)
 
 
-def test_call_to_method_containing_noninjectable_and_unsatisfied_dependencies_raises_the_right_error():
-    class A(object):
-        @inject(something=str)
-        def fun(self, something, something_different):
-            pass
-
-    injector = Injector()
-    a = injector.get(A)
-    try:
-        a.fun()
-    except CallError as ce:
-        assert (ce.args[0] == a)
-
-        # We cannot really check for function identity here... Error is raised after calling
-        # original function but from outside we have access to function already decorated
-        function = A.fun
-
-        # Python 3 compatibility
-        try:
-            function = function.__func__
-        except AttributeError:
-            pass
-        assert (ce.args[1].__name__ == function.__name__)
-
-        assert (ce.args[2] == ())
-        assert (ce.args[3] == {'something': str()})
-
-
-def test_call_error_is_raised_with_correct_traceback():
-    class A(object):
-        @inject(x=str)
-        def fun_a(self, x='irrelevant'):
-            raise TypeError('Something happened')
-
-    class B(object):
-        @inject(a=A)
-        def fun_b(self, a):
-            a.fun_a()
-
-    injector = Injector()
-    b = injector.get(B)
-    try:
-        b.fun_b()
-    except:
-        tb = traceback.format_exc()
-        assert 'in fun_a' in tb
-
-
 def test_call_error_str_representation_handles_single_arg():
     ce = CallError('zxc')
     assert str(ce) == 'zxc'
@@ -864,12 +787,12 @@ def test_assisted_builder_uses_concrete_class_when_specified():
 def test_assisted_builder_injection_is_safe_to_use_with_multiple_injectors():
     class X(object):
         @inject(builder=AssistedBuilder[NeedsAssistance])
-        def y(self, builder):
-            return builder
+        def __init__(self, builder):
+            self.builder = builder
 
     i1, i2 = Injector(), Injector()
-    b1 = i1.get(X).y()
-    b2 = i2.get(X).y()
+    b1 = i1.get(X).builder
+    b2 = i2.get(X).builder
     assert ((b1._injector, b2._injector) == (i1, i2))
 
 

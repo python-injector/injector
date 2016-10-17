@@ -728,26 +728,32 @@ class Injector(object):
         instance = cls.__new__(cls)
         try:
             self.install_into(instance)
+            installed = True
         except AttributeError:
+            installed = False
             if hasattr(instance, '__slots__'):
                 raise Error('Can\'t create an instance of type %r due to presence of __slots__, '
                             'remove __slots__ to fix that' % (cls,))
 
             # Else do nothing - some builtin types can not be modified.
         try:
-            init = cls.__init__
-            if bindings:
-                init = inject(**bindings)(init)
-            init(instance, **additional_kwargs)
-        except TypeError as e:
-            # The reason why getattr() fallback is used here is that
-            # __init__.__func__ apparently doesn't exist for Key-type objects
-            reraise(e, CallError(
-                instance,
-                getattr(instance.__init__, '__func__', instance.__init__),
-                (), additional_kwargs, e, self._stack,)
-            )
-        return instance
+            try:
+                init = cls.__init__
+                if bindings:
+                    init = inject(**bindings)(init)
+                init(instance, **additional_kwargs)
+            except TypeError as e:
+                # The reason why getattr() fallback is used here is that
+                # __init__.__func__ apparently doesn't exist for Key-type objects
+                reraise(e, CallError(
+                    instance,
+                    getattr(instance.__init__, '__func__', instance.__init__),
+                    (), additional_kwargs, e, self._stack,)
+                )
+            return instance
+        finally:
+            if installed:
+                self._uninstall_from(instance)
 
     def _infer_injected_bindings(self, callable):
         if not getfullargspec or not self.use_annotations:
@@ -800,6 +806,9 @@ class Injector(object):
 
         """
         instance.__injector__ = self
+
+    def _uninstall_from(self, instance):
+        del instance.__injector__
 
     @private
     def wrap_function(self, function):
@@ -905,7 +914,10 @@ def with_injector(*injector_args, **injector_kwargs):
         def setup(self_, *args, **kwargs):
             injector = Injector(*injector_args, **injector_kwargs)
             injector.install_into(self_)
-            return f(self_, *args, **kwargs)
+            try:
+                return f(self_, *args, **kwargs)
+            finally:
+                injector._uninstall_from(self_)
 
         return setup
 
@@ -950,31 +962,17 @@ def inject(**bindings):
     ...     @inject(number=int, name=str, sizes=Sizes)
     ...     def __init__(self, number, name, sizes):
     ...         print([number, name, sizes])
-    ...
-    ...     @inject(names=Names)
-    ...     def friends(self, names):
-    ...       '''Get my friends'''
-    ...       return ', '.join(names)
 
     >>> def configure(binder):
     ...     binder.bind(A)
     ...     binder.bind(int, to=123)
     ...     binder.bind(str, to='Bob')
     ...     binder.bind(Sizes, to=[1, 2, 3])
-    ...     binder.bind(Names, to=['Fred', 'Barney'])
 
     Use the Injector to get a new instance of A:
 
     >>> a = Injector(configure).get(A)
     [123, 'Bob', [1, 2, 3]]
-
-    Call a method with arguments satisfied by the Injector:
-
-    >>> a.friends()
-    'Fred, Barney'
-
-    >>> a.friends.__doc__
-    'Get my friends'
     """
 
     def method_wrapper(f):
