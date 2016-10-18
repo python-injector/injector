@@ -110,44 +110,6 @@ Here is an example of injection on a module provider method, and on the construc
         def describe(self, name):
             return '%s is a man of astounding insight' % name
 
-You can also :func:`inject`-decorate class itself. This code::
-
-    @inject(name=Name)
-    class Item(object):
-        pass
-
-is equivalent to::
-
-    class Item(object):
-        @inject(name=Name)
-        def __init__(self, name):
-            self.name = name
-
-
-**Note 1**: You can also begin the name of injected member with an underscore(s) (to indicate the member being private for example). In such case the member will be injected using the name you specified, but corresponding parameter in a constructor (let's say you instantiate the class manually) will have the underscore prefix stripped (it makes it consistent with most of the usual parameter names)::
-
-
-    >>> @inject(_y=int)
-    ... class X(object):
-    ...     pass
-    ...
-    >>> x1 = injector.get(X)
-    >>> x1.y
-    Traceback (most recent call last):
-    AttributeError: 'X' object has no attribute 'y'
-    >>> x1._y
-    0
-    >>> x2 = X(y=2)
-    >>> x2.y
-    Traceback (most recent call last):
-    AttributeError: 'X' object has no attribute 'y'
-    >>> x2._y
-    2
-
-**Note 2**: When class is decorated with `inject` decorator you need to use keyword arguments when instantiating the class manually::
-
-    x = X(y=2)  # that's ok
-    x = X(2)  # this'll raise CallError
 
 Injector
 ````````
@@ -191,9 +153,9 @@ Sometimes there are classes that have injectable and non-injectable parameters i
             self.name = name
 
 
-    @inject(db=Database)
     class UserUpdater(object):
-        def __init__(self, user):
+        @inject(db=Database)
+        def __init__(self, db, user):
             pass
 
 You may want to have database connection `db` injected into `UserUpdater` constructor, but in the same time provide `user` object by yourself, and assuming that `user` object is a value object and there's many users in your application it doesn't make much sense to inject objects of class `User`.
@@ -210,8 +172,11 @@ This way we don't get `UserUpdater` directly but rather a builder object. Such b
 
 `AssistedBuilder(...)` is injectable just as anything else, if you need instance of it you just ask for it like that::
 
-    @inject(updater_builder=AssistedBuilder(cls=UserUpdater))
     class NeedsUserUpdater(object):
+        @inject(updater_builder=AssistedBuilder(cls=UserUpdater))
+        def __init__(self, builder):
+            self.updater_builder = builder
+
         def method(self):
             updater = self.updater_builder.build(user=None)
 

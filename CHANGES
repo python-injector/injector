@@ -1,6 +1,38 @@
 Injector Change Log
 ===================
 
+0.11.0 (not released yet)
+-------------------------
+
+Backwards incompatible:
+
+* Removed support for decorating classes with @inject. Previously:
+
+  @inject(something=Something)
+  class Class:
+      pass
+
+  Now:
+
+  class Class:
+      @inject(something=Something)
+      def __init__(self, something):
+          self.something = something
+
+* Removed support for injecting partially applied functions, previously:
+
+  @inject(something=Something)
+  def some_function(something):
+      pass
+
+
+  class Class:
+      @inject(function=some_function)
+      def __init__(self, function):
+          # ...
+
+  Now you need to move the function with injectable dependencies to a class.
+
 0.10.1
 ------
 
