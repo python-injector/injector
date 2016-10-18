@@ -2,7 +2,7 @@ import pytest
 
 from injector import (
     AssistedBuilder, inject, Injector, CallError,
-    Module, provider, provides, singleton,
+    Module, noninjectable, provider, provides, singleton,
 )
 
 
@@ -86,14 +86,25 @@ def test_assisted_building_is_supported():
             return {'name': 'John'}
 
     class Processor:
+        @noninjectable('provider_id')
         @inject
-        def __init__(self, fetcher: Fetcher, user_id: int):
+        @noninjectable('user_id')
+        def __init__(self, fetcher: Fetcher, user_id: int, provider_id: str):
+            assert provider_id == 'not injected'
             data = fetcher.fetch(user_id)
             self.name = data['name']
 
-    injector = Injector()
+    def configure(binder):
+        binder.bind(int, to=897)
+        binder.bind(str, to='injected')
+
+    injector = Injector(configure)
     processor_builder = injector.get(AssistedBuilder[Processor])
-    processor = processor_builder.build(user_id=333)
+
+    with pytest.raises(CallError):
+        processor_builder.build()
+
+    processor = processor_builder.build(user_id=333, provider_id='not injected')
     assert processor.name == 'John'
 
 

@@ -49,6 +49,9 @@ Injector Change Log
 
   The provider decorator will be removed in the future.
 
+* Added a noninjectable decorator to mark parameters as not injectable
+  (this serves as documentation and a way to avoid some runtime errors)
+
 
 Backwards incompatible:
 

@@ -831,7 +831,11 @@ class Injector(object):
         :return: Value returned by callable.
         """
         bindings = getattr(callable, '__bindings__', None) or {}
-        needed = dict((k, v) for (k, v) in bindings.items() if k not in kwargs)
+        noninjectables = getattr(callable, '__noninjectables__', set())
+        needed = dict(
+            (k, v) for (k, v) in bindings.items()
+            if k not in kwargs and k not in noninjectables
+        )
 
         dependencies = self.args_to_inject(
             function=callable,
@@ -1027,6 +1031,36 @@ def inject(function=None, **bindings):
             return method_wrapper(something, bindings)
 
     return multi_wrapper
+
+
+def noninjectable(*args):
+    """Mark some parameters as not injectable.
+
+    This serves as documentation for people reading the code and will prevent
+    Injector from ever attempting to provide the parameters.
+
+    For example:
+
+    >>> class Service:
+    ...    pass
+
+    >>> class SomeClass:
+    ...     @inject
+    ...     @noninjectable('user_id')
+    ...     def __init__(self, service: Service, user_id: int):
+    ...         # ...
+    ...         pass
+
+    @noninjectable decorations can be stacked on top of each other and
+    the order in which a function is decorated with @inject and @noninjectable
+    doesn't matter.
+    """
+    def decorator(function):
+        existing = getattr(function, '__noninjectables__', set())
+        merged = existing | set(args)
+        function.__noninjectables__ = merged
+        return function
+    return decorator
 
 
 def method_wrapper(f, bindings):
