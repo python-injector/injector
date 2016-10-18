@@ -1,6 +1,12 @@
 Injector Change Log
 ===================
 
+0.11.1
+------
+
+- 0.11.0 packages uploaded to PyPI are broken (can't be installed), this is
+  a fix-only release.
+
 0.11.0
 ------
 
