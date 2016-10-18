@@ -90,8 +90,8 @@ Here is an example of injection on a module provider method, and on the construc
     from injector import inject
 
     class User(object):
-        @inject(name=Name, description=Description)
-        def __init__(self, name, description):
+        @inject
+        def __init__(self, name: Name, description: Description):
             self.name = name
             self.description = description
 
@@ -106,8 +106,8 @@ Here is an example of injection on a module provider method, and on the construc
             binder.bind(Name, to='Sherlock')
 
         @provides(Description)
-        @inject(name=Name)
-        def describe(self, name):
+        @inject
+        def describe(self, name: Name):
             return '%s is a man of astounding insight' % name
 
 
@@ -154,8 +154,7 @@ Sometimes there are classes that have injectable and non-injectable parameters i
 
 
     class UserUpdater(object):
-        @inject(db=Database)
-        def __init__(self, db, user):
+        def __init__(self, db: Database, user):
             pass
 
 You may want to have database connection `db` injected into `UserUpdater` constructor, but in the same time provide `user` object by yourself, and assuming that `user` object is a value object and there's many users in your application it doesn't make much sense to inject objects of class `User`.
@@ -174,8 +173,8 @@ This way we don't get `UserUpdater` directly but rather a builder object. Such b
 else, if you need instance of it you just ask for it like that::
 
     class NeedsUserUpdater(object):
-        @inject(updater_builder=ClassAssistedBuilder[UserUpdater])
-        def __init__(self, builder):
+        @inject
+        def __init__(self, builder: ClassAssistedBuilder[UserUpdater]):
             self.updater_builder = builder
 
         def method(self):

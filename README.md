@@ -37,8 +37,8 @@ A Quick Example
 ...         self.forty_two = 42
 ...
 >>> class Outer(object):
-...     @inject(inner=Inner)
-...     def __init__(self, inner):
+...     @inject
+...     def __init__(self, inner: Inner):
 ...         self.inner = inner
 ...
 >>> injector = Injector()
@@ -72,8 +72,8 @@ And make up an imaginary `RequestHandler` class that uses the SQLite connection:
 
 ```python
 >>> class RequestHandler(object):
-...   @inject(db=sqlite3.Connection)
-...   def __init__(self, db):
+...   @inject
+...   def __init__(self, db: sqlite3.Connection):
 ...     self._db = db
 ...
 ...   def get(self):
@@ -108,8 +108,8 @@ Next we create a module that initialises the DB. It depends on the configuration
 >>> class DatabaseModule(Module):
 ...   @singleton
 ...   @provides(sqlite3.Connection)
-...   @inject(configuration=Configuration)
-...   def provide_sqlite_connection(self, configuration):
+...   @inject
+...   def provide_sqlite_connection(self, configuration: Configuration):
 ...     conn = sqlite3.connect(configuration['db_connection_string'])
 ...     cursor = conn.cursor()
 ...     cursor.execute('CREATE TABLE IF NOT EXISTS data (key PRIMARY KEY, value)')

@@ -17,8 +17,8 @@ Example code:
 .. code-block:: python
 
     class X(object):
-        @inject(s=str)
-        def __init__(self, s):
+        @inject
+        def __init__(self, s: str):
             self.s = s
 
     def configure(binder):

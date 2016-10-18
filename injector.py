@@ -720,8 +720,8 @@ class Injector(object):
         # where object.__init__ is a slot wrapper that can't be inspected
         if self.use_annotations and hasattr(cls, '__init__') and \
            not hasattr(cls.__init__, '__binding__') and \
-           cls.__init__ is not object.__init__:
-            bindings = self._infer_injected_bindings(cls.__init__)
+           cls.__init__ is not object.__init__ and self.use_annotations:
+            bindings = _infer_injected_bindings(cls.__init__)
         else:
             bindings = {}
 
@@ -754,18 +754,6 @@ class Injector(object):
         finally:
             if installed:
                 self._uninstall_from(instance)
-
-    def _infer_injected_bindings(self, callable):
-        if not getfullargspec or not self.use_annotations:
-            return None
-        spec = getfullargspec(callable)
-        bindings = dict(spec.annotations.items())
-
-        # We don't care about the return value annotation as it doesn't matter
-        # injection-wise.
-        bindings.pop('return', None)
-
-        return bindings
 
     def install_into(self, instance):
         """Put injector reference in given object.
@@ -903,6 +891,19 @@ class Injector(object):
         return dependencies
 
 
+def _infer_injected_bindings(callable):
+    if not getfullargspec:
+        return None
+    spec = getfullargspec(callable)
+    bindings = dict(spec.annotations.items())
+
+    # We don't care about the return value annotation as it doesn't matter
+    # injection-wise.
+    bindings.pop('return', None)
+
+    return bindings
+
+
 def with_injector(*injector_args, **injector_kwargs):
     """Decorator for a method. Installs Injector object which the method
     belongs to before the decorated method is executed.
@@ -950,7 +951,7 @@ else:
     getfullargspec = None
 
 
-def inject(**bindings):
+def inject(function=None, **bindings):
     """Decorator declaring parameters to be injected.
 
     eg.
@@ -958,6 +959,13 @@ def inject(**bindings):
     >>> Sizes = Key('sizes')
     >>> Names = Key('names')
 
+    >>> # Recommended, Python 3+ style
+    >>> class A:
+    ...     @inject
+    ...     def __init__(self, number: int, name: str, sizes: Sizes):
+    ...         print([number, name, sizes])
+
+    >>> # Or older, Python 2-compatible style
     >>> class A(object):
     ...     @inject(number=int, name=str, sizes=Sizes)
     ...     def __init__(self, number, name, sizes):
@@ -974,46 +982,51 @@ def inject(**bindings):
     >>> a = Injector(configure).get(A)
     [123, 'Bob', [1, 2, 3]]
     """
-
-    def method_wrapper(f):
-        for key, value in bindings.items():
-            bindings[key] = BindingKey(value)
-        argspec = getargspec(f)
-        if argspec.args and argspec.args[0] == 'self':
-            @functools.wraps(f)
-            def inject(self_, *args, **kwargs):
-                injector = getattr(self_, '__injector__', None)
-                if injector:
-                    return injector.call_with_injection(
-                        callable=f,
-                        self_=self_,
-                        args=args,
-                        kwargs=kwargs
-                    )
-                else:
-                    return f(self_, *args, **kwargs)
-
-            # Propagate @provides bindings to wrapper function
-            if hasattr(f, '__binding__'):
-                inject.__binding__ = f.__binding__
-        else:
-            inject = f
-
-        function_bindings = getattr(f, '__bindings__', None) or {}
-        merged_bindings = dict(function_bindings, **bindings)
-
-        f.__bindings__ = merged_bindings
-        inject.__bindings__ = merged_bindings
-        return inject
+    if function:
+        assert not bindings, 'You can only pass either function or bindings here'
+        bindings = _infer_injected_bindings(function)
+        return method_wrapper(function, bindings)
 
     def multi_wrapper(something):
         if isinstance(something, type):
             raise TypeError('Decorating classes with @inject is no longer supported, ' +
                             'provide constructor and decorate it')
         else:
-            return method_wrapper(something)
+            return method_wrapper(something, bindings)
 
     return multi_wrapper
+
+
+def method_wrapper(f, bindings):
+    for key, value in bindings.items():
+        bindings[key] = BindingKey(value)
+    argspec = getargspec(f)
+    if argspec.args and argspec.args[0] == 'self':
+        @functools.wraps(f)
+        def inject(self_, *args, **kwargs):
+            injector = getattr(self_, '__injector__', None)
+            if injector:
+                return injector.call_with_injection(
+                    callable=f,
+                    self_=self_,
+                    args=args,
+                    kwargs=kwargs
+                )
+            else:
+                return f(self_, *args, **kwargs)
+
+        # Propagate @provides bindings to wrapper function
+        if hasattr(f, '__binding__'):
+            inject.__binding__ = f.__binding__
+    else:
+        inject = f
+
+    function_bindings = getattr(f, '__bindings__', None) or {}
+    merged_bindings = dict(function_bindings, **bindings)
+
+    f.__bindings__ = merged_bindings
+    inject.__bindings__ = merged_bindings
+    return inject
 
 
 @private

@@ -23,6 +23,11 @@ Injecting into constructors vs injecting into other methods
   Injector 0.11+ doesn't support injecting into non-constructor methods,
   this section is kept for historical reasons.
 
+.. note::
+
+  Injector 0.11 deprecates using @inject with keyword arguments to declare
+  bindings, this section remains unchanged for historical reasons.
+
 In general you should prefer injecting into constructors to injecting into
 other methods because:
 
@@ -130,8 +135,8 @@ As an illustration:
 
     class BadModule(Module):
         @provides(A)
-        @inject(suba=SubA)
-        def provide_a(self, suba):
+        @inject
+        def provide_a(self, suba: SubA):
             return suba
 
         @provides(SubA)
@@ -185,8 +190,8 @@ Sometimes code like this is written:
         pass
 
     class C(object):
-        @inject(injector=Injector)
-        def __init__(self, injector):
+        @inject
+        def __init__(self, injector: Injector):
             self.a = injector.get(A)
             self.b = injector.get(B)
 
@@ -202,8 +207,8 @@ It is advised to use the following pattern instead:
         pass
 
     class C(object):
-        @inject(a=A, b=B)
-        def __init__(self, a, b):
+        @inject
+        def __init__(self, a: A, b: B):
             self.a = a
             self.b = b
 
@@ -232,8 +237,8 @@ A pattern similar to the one below can emerge:
             self.a = a
 
     class C(object):
-        @inject(a=A)
-        def __init__(self, a):
+        @inject
+        def __init__(self, a: A):
             self.b = B(a)
 
 Class ``C`` in this example has the responsibility of gathering dependencies of
@@ -249,11 +254,11 @@ The appropriate pattern is:
         pass
 
     class B(object):
-        @inject(a=A)
-        def __init__(self, a):
+        @inject
+        def __init__(self, a: A):
             self.a = a
 
     class C(object):
-        @inject(b=B)
-        def __init__(self, b):
+        @inject
+        def __init__(self, b: B):
             self.b = b
