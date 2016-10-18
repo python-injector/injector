@@ -23,7 +23,7 @@ from injector import (
     inject, singleton, threadlocal, UnsatisfiedRequirement,
     CircularDependency, Module, provides, Key, SingletonScope,
     ScopeDecorator, with_injector, AssistedBuilder, BindingKey,
-    SequenceKey, MappingKey, ProviderOf,
+    SequenceKey, MappingKey, ProviderOf, ClassAssistedBuilder,
     )
 
 
@@ -150,7 +150,7 @@ def test_providers_arent_called_for_dependencies_that_are_already_provided():
             pass
 
     injector = Injector(configure)
-    builder = injector.get(AssistedBuilder(A))
+    builder = injector.get(AssistedBuilder[A])
 
     with pytest.raises(ZeroDivisionError):
         builder.build()
@@ -383,7 +383,7 @@ def test_dependency_cycle_can_be_worked_broken_by_assisted_building():
             self.i = i
 
     class B(object):
-        @inject(a_builder=AssistedBuilder(A))
+        @inject(a_builder=AssistedBuilder[A])
         def __init__(self, a_builder):
             self.a = a_builder.build(i=self)
 
@@ -820,14 +820,14 @@ class NeedsAssistance(object):
 
 def test_assisted_builder_works_when_got_directly_from_injector():
     injector = Injector()
-    builder = injector.get(AssistedBuilder(NeedsAssistance))
+    builder = injector.get(AssistedBuilder[NeedsAssistance])
     obj = builder.build(b=123)
     assert ((obj.a, obj.b) == (str(), 123))
 
 
 def test_assisted_builder_works_when_injected():
     class X(object):
-        @inject(builder=AssistedBuilder(NeedsAssistance))
+        @inject(builder=AssistedBuilder[NeedsAssistance])
         def __init__(self, builder):
             self.obj = builder.build(b=234)
 
@@ -843,7 +843,7 @@ def test_assisted_builder_uses_bindings():
         binder.bind(Interface, to=NeedsAssistance)
 
     injector = Injector(configure)
-    builder = injector.get(AssistedBuilder(Interface))
+    builder = injector.get(AssistedBuilder[Interface])
     x = builder.build(b=333)
     assert ((type(x), x.b) == (NeedsAssistance, 333))
 
@@ -857,25 +857,25 @@ def test_assisted_builder_uses_concrete_class_when_specified():
         binder.bind(X, to=lambda: 1 / 0)
 
     injector = Injector(configure)
-    builder = injector.get(AssistedBuilder(cls=X))
+    builder = injector.get(ClassAssistedBuilder[X])
     builder.build()
 
 
 def test_assisted_builder_injection_is_safe_to_use_with_multiple_injectors():
     class X(object):
-        @inject(builder=AssistedBuilder(NeedsAssistance))
+        @inject(builder=AssistedBuilder[NeedsAssistance])
         def y(self, builder):
             return builder
 
     i1, i2 = Injector(), Injector()
     b1 = i1.get(X).y()
     b2 = i2.get(X).y()
-    assert ((b1.injector, b2.injector) == (i1, i2))
+    assert ((b1._injector, b2._injector) == (i1, i2))
 
 
 def test_assisted_builder_injection_uses_the_same_binding_key_every_time():
     # if we have different BindingKey for every AssistedBuilder(...) we will get memory leak
-    gen_key = lambda: BindingKey(AssistedBuilder(NeedsAssistance))
+    gen_key = lambda: BindingKey(AssistedBuilder[NeedsAssistance])
     assert gen_key() == gen_key()
 
 
@@ -1018,7 +1018,7 @@ def test_providerof():
 
     assert counter[0] == 0
 
-    provider = injector.get(ProviderOf(str))
+    provider = injector.get(ProviderOf[str])
     assert counter[0] == 0
 
     assert provider.get() == 'content'
@@ -1030,7 +1030,7 @@ def test_providerof():
 
 def test_providerof_cannot_be_bound():
     def configure(binder):
-        binder.bind(ProviderOf(int), to=InstanceProvider(None))
+        binder.bind(ProviderOf[int], to=InstanceProvider(None))
 
     with pytest.raises(Exception):
         Injector(configure)
@@ -1046,7 +1046,7 @@ def test_providerof_is_safe_to_use_with_multiple_injectors():
     injector1 = Injector(configure1)
     injector2 = Injector(configure2)
 
-    provider_of = ProviderOf(int)
+    provider_of = ProviderOf[int]
 
     provider1 = injector1.get(provider_of)
     provider2 = injector2.get(provider_of)
@@ -1075,10 +1075,10 @@ def test_special_interfaces_work_with_auto_bind_disabled():
     #     raise UnsatisfiedRequirement(cls, key)
     # UnsatisfiedRequirement: unsatisfied requirement on
     # <injector.ProviderOf object at 0x10ff01550>
-    injector.get(ProviderOf(InjectMe))
+    injector.get(ProviderOf[InjectMe])
 
     # This used to fail with an error similar to the ProviderOf one
-    injector.get(AssistedBuilder(cls=InjectMe))
+    injector.get(ClassAssistedBuilder[InjectMe])
 
 
 def test_binding_an_instance_regression():

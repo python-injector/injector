@@ -24,7 +24,7 @@ While being inspired by Guice, it does not slavishly replicate its API. Providin
 
 * Documentation: http://injector.readthedocs.org
 
-Injector works with CPython 2.6+/3.2+ and PyPy 1.9+.
+Injector works with CPython 2.7/3.2+ and PyPy 1.9+.
 
 A Quick Example
 ---------------

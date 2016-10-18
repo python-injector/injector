@@ -162,27 +162,28 @@ You may want to have database connection `db` injected into `UserUpdater` constr
 
 In this situation there's technique called Assisted injection::
 
-    from injector import AssistedBuilder
+    from injector import ClassAssistedBuilder
     injector = Injector()
-    builder = injector.get(AssistedBuilder(cls=UserUpdater))
+    builder = injector.get(ClassAssistedBuilder[UserUpdater])
     user = User('John')
     user_updater = builder.build(user=user)
 
 This way we don't get `UserUpdater` directly but rather a builder object. Such builder has `build(**kwargs)` method which takes non-injectable parameters, combines them with injectable dependencies of `UserUpdater` and calls `UserUpdater` initializer using all of them.
 
-`AssistedBuilder(...)` is injectable just as anything else, if you need instance of it you just ask for it like that::
+`AssistedBuilder[T]` and `ClassAssistedBuilder[T]` are injectable just as anything
+else, if you need instance of it you just ask for it like that::
 
     class NeedsUserUpdater(object):
-        @inject(updater_builder=AssistedBuilder(cls=UserUpdater))
+        @inject(updater_builder=ClassAssistedBuilder[UserUpdater])
         def __init__(self, builder):
             self.updater_builder = builder
 
         def method(self):
             updater = self.updater_builder.build(user=None)
 
-`cls` needs to be a concrete class and no bindings will be used.
+`ClassAssistedBuilder` means it'll construct a concrete class and no bindings will be used.
 
-If you want `AssistedBuilder` to follow bindings and construct class pointed to by a key you can do it like this::
+If you want to follow bindings and construct class pointed to by a key you use `AssistedBuilder` and can do it like this::
 
     >>> DB = Key('DB')
     >>> class DBImplementation(object):
@@ -193,11 +194,9 @@ If you want `AssistedBuilder` to follow bindings and construct class pointed to 
     ...     binder.bind(DB, to=DBImplementation)
     ...
     >>> injector = Injector(configure)
-    >>> builder = injector.get(AssistedBuilder(interface=DB))
+    >>> builder = injector.get(AssistedBuilder[DB])
     >>> isinstance(builder.build(uri='x'), DBImplementation)
     True
-
-Note: ``AssistedBuilder(X)`` is a shortcut for ``AssistedBuilder(interface=X)``
 
 More information on this topic:
 

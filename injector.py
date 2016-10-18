@@ -24,6 +24,7 @@ import types
 import warnings
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
+from typing import Generic, TypeVar
 
 
 try:
@@ -398,11 +399,11 @@ class Binder(object):
         return Binding(interface, provider, scope)
 
     def provider_for(self, interface, to=None):
-        if isinstance(interface, ProviderOf):
+        if isinstance(interface, type) and issubclass(interface, ProviderOf):
+            (target,) = interface.__args__
             if to is not None:
                 raise Exception('ProviderOf cannot be bound to anything')
-            return InstanceProvider(
-                BoundProvider(self.injector, interface.interface))
+            return InstanceProvider(ProviderOf(self.injector, target))
         elif isinstance(to, Provider):
             return to
         elif isinstance(interface, Provider):
@@ -418,8 +419,9 @@ class Binder(object):
             def proxy(**kwargs):
                 return interface.interface(**kwargs)
             return CallableProvider(proxy)
-        elif isinstance(interface, AssistedBuilder):
-            builder = AssistedBuilderImplementation(self.injector, *interface)
+        elif isinstance(interface, type) and issubclass(interface, AssistedBuilder):
+            (target,) = interface.__args__
+            builder = interface(self.injector, target)
             return InstanceProvider(builder)
         elif isinstance(interface, (tuple, type)) and isinstance(to, interface):
             return InstanceProvider(to)
@@ -459,7 +461,7 @@ class Binder(object):
         # "Special" interfaces are ones that you cannot bind yourself but
         # you can request them (for example you cannot bind ProviderOf(SomeClass)
         # to anything but you can inject ProviderOf(SomeClass) just fine
-        return isinstance(interface, (ProviderOf, AssistedBuilder))
+        return issubclass(interface, (ProviderOf, AssistedBuilder))
 
 
 class Scope(object):
@@ -1101,30 +1103,18 @@ class BoundKey(tuple):
         return dict(self[1])
 
 
-class AssistedBuilder(namedtuple('_AssistedBuilder', 'interface cls')):
-    def __new__(cls_, interface=None, cls=None):
-        if len([x for x in (interface, cls) if x is not None]) != 1:
-            raise Error('You need to specify exactly one of the following '
-                        'arguments: interface or cls')
-
-        return super(AssistedBuilder, cls_).__new__(cls_, interface, cls)
+T = TypeVar('T')
 
 
-class AssistedBuilderImplementation(namedtuple(
-        '_AssistedBuilderImplementation', 'injector interface cls')):
+class AssistedBuilder(Generic[T]):
+
+    def __init__(self, injector, target):
+        self._injector = injector
+        self._target = target
 
     def build(self, **kwargs):
-        if self.interface is not None:
-            return self.build_interface(**kwargs)
-        else:
-            return self.build_class(self.cls, **kwargs)
-
-    def build_class(self, cls, **kwargs):
-        return self.injector.create_object(cls, additional_kwargs=kwargs)
-
-    def build_interface(self, **kwargs):
-        key = BindingKey(self.interface)
-        binder = self.injector.binder
+        key = BindingKey(self._target)
+        binder = self._injector.binder
         binding = binder.get_binding(None, key)
         provider = binding.provider
         if not isinstance(provider, ClassProvider):
@@ -1132,7 +1122,15 @@ class AssistedBuilderImplementation(namedtuple(
                 'Assisted interface building works only with ClassProviders, '
                 'got %r for %r' % (provider, self.interface))
 
-        return self.build_class(provider._cls, **kwargs)
+        return self._build_class(provider._cls, **kwargs)
+
+    def _build_class(self, cls, **kwargs):
+        return self._injector.create_object(cls, additional_kwargs=kwargs)
+
+
+class ClassAssistedBuilder(AssistedBuilder[T]):
+    def build(self, **kwargs):
+        return self._build_class(self._target, **kwargs)
 
 
 def _describe(c):
@@ -1143,8 +1141,8 @@ def _describe(c):
     return str(c)
 
 
-class ProviderOf(object):
-    """Can be used to get a :class:`BoundProvider` of an interface, for example:
+class ProviderOf(Generic[T]):
+    """Can be used to get a provider of an interface, for example:
 
         >>> def provide_int():
         ...     print('providing')
@@ -1154,21 +1152,12 @@ class ProviderOf(object):
         ...     binder.bind(int, to=provide_int)
         >>>
         >>> injector = Injector(configure)
-        >>> provider = injector.get(ProviderOf(int))
-        >>> type(provider)
-        <class 'injector.BoundProvider'>
+        >>> provider = injector.get(ProviderOf[int])
         >>> value = provider.get()
         providing
         >>> value
         123
     """
-
-    def __init__(self, interface):
-        self.interface = interface
-
-
-class BoundProvider(object):
-    """A :class:`Provider` tied with particular :class:`Injector` instance"""
 
     def __init__(self, injector, interface):
         self._injector = injector

@@ -34,6 +34,20 @@ Backwards incompatible:
   Now you need to move the function with injectable dependencies to a class.
 
 * Removed support for getting AssistedBuilder(callable=...)
+* Dropped Python 2.6 support
+* Changed the way AssistedBuilder and ProviderOf are used.
+  Previously:
+
+    builder1 = injector.get(AssistedBuilder(Something))
+    # or: builder1 = injector.get(AssistedBuilder(interface=Something))
+    builder2 = injector.get(AssistedBuilder(cls=SomethingElse))
+    provider = injector.get(ProviderOf(SomeOtherThing))
+
+  Now:
+
+    builder1 = injector.get(AssistedBuilder[Something])
+    builder2 = injector.get(ClassAssistedBuilder[cls=SomethingElse])
+    provider = injector.get(ProviderOf[SomeOtherThing])
 
 0.10.1
 ------

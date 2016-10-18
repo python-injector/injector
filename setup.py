@@ -47,6 +47,7 @@ setup(
     author_email='alec@swapoff.org',
     install_requires=[
         'setuptools >= 0.6b1',
+        'typing; python_version < "3.5"',
     ],
     cmdclass={'test': PyTest},
     keywords=[
