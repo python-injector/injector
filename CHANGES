@@ -1,8 +1,8 @@
 Injector Change Log
 ===================
 
-0.11.0 (not released yet)
--------------------------
+0.11.0
+------
 
 * The following way to declare dependencies is introduced and recommended
   now:
