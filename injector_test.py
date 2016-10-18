@@ -861,12 +861,6 @@ def test_assisted_builder_uses_concrete_class_when_specified():
     builder.build()
 
 
-def test_assisted_builder_accepts_callables():
-    injector = Injector()
-    builder = injector.get(AssistedBuilder(callable=lambda x: x * 2))
-    assert builder.build(x=3) == 6
-
-
 def test_assisted_builder_injection_is_safe_to_use_with_multiple_injectors():
     class X(object):
         @inject(builder=AssistedBuilder(NeedsAssistance))

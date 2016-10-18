@@ -1101,26 +1101,23 @@ class BoundKey(tuple):
         return dict(self[1])
 
 
-class AssistedBuilder(namedtuple('_AssistedBuilder', 'interface cls callable')):
-    def __new__(cls_, interface=None, cls=None, callable=None):
-        if len([x for x in (interface, cls, callable) if x is not None]) != 1:
+class AssistedBuilder(namedtuple('_AssistedBuilder', 'interface cls')):
+    def __new__(cls_, interface=None, cls=None):
+        if len([x for x in (interface, cls) if x is not None]) != 1:
             raise Error('You need to specify exactly one of the following '
-                        'arguments: interface, cls or callable')
+                        'arguments: interface or cls')
 
-        return super(AssistedBuilder, cls_).__new__(
-            cls_, interface, cls, callable)
+        return super(AssistedBuilder, cls_).__new__(cls_, interface, cls)
 
 
 class AssistedBuilderImplementation(namedtuple(
-        '_AssistedBuilderImplementation', 'injector interface cls callable')):
+        '_AssistedBuilderImplementation', 'injector interface cls')):
 
     def build(self, **kwargs):
         if self.interface is not None:
             return self.build_interface(**kwargs)
-        elif self.cls is not None:
-            return self.build_class(self.cls, **kwargs)
         else:
-            return self.build_callable(**kwargs)
+            return self.build_class(self.cls, **kwargs)
 
     def build_class(self, cls, **kwargs):
         return self.injector.create_object(cls, additional_kwargs=kwargs)
@@ -1136,13 +1133,6 @@ class AssistedBuilderImplementation(namedtuple(
                 'got %r for %r' % (provider, self.interface))
 
         return self.build_class(provider._cls, **kwargs)
-
-    def build_callable(self, **kwargs):
-        return self.injector.call_with_injection(
-            callable=self.callable,
-            self_=None,
-            kwargs=kwargs
-        )
 
 
 def _describe(c):
