@@ -1,7 +1,5 @@
 from setuptools import setup, Command
 import sys
-sys.path.insert(0, '.')
-import injector
 
 
 class PyTest(Command):
@@ -19,8 +17,17 @@ class PyTest(Command):
         raise SystemExit(errno)
 
 
-version = injector.__version__
-version_tag = injector.__version_tag__
+def read_injector_variable(name):
+    prefix = '%s = ' % (name,)
+    with open('injector.py') as f:
+        for line in f:
+            if line.startswith(prefix):
+                return line.replace(prefix, '').strip().strip("'")
+    raise AssertionError('variable %s not found' % (name,))
+
+
+version = read_injector_variable('__version__')
+version_tag = read_injector_variable('__version_tag__')
 
 try:
     import pypandoc
@@ -47,7 +54,7 @@ setup(
     author_email='alec@swapoff.org',
     install_requires=[
         'setuptools >= 0.6b1',
-        'typing; python_version < "3.5"',
+        'typing',
     ],
     cmdclass={'test': PyTest},
     keywords=[
