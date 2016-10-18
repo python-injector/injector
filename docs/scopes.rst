@@ -9,7 +9,7 @@ Singletons
 Singletons are declared by binding them in the SingletonScope. This can be done in three ways:
 
 1.  Decorating the class with `@singleton`.
-2.  Decorating a `@provides(X)` decorated Module method with `@singleton`.
+2.  Decorating a `@provider` decorated Module method with `@singleton`.
 3.  Explicitly calling `binder.bind(X, scope=singleton)`.
 
 A (redundant) example showing all three methods::
@@ -20,8 +20,8 @@ A (redundant) example showing all three methods::
         def configure(self, binder):
             binder.bind(Thing, scope=singleton)
         @singleton
-        @provides(Thing)
-        def provide_thing(self):
+        @provider
+        def provide_thing(self) -> Thing:
             return Thing()
 
 Implementing new Scopes

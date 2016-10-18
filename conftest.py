@@ -1,11 +1,11 @@
 import sys
 import os.path
 
-test_sources = ['injector.py', 'injector_test.py', 'README.md']
+test_sources = ['injector_test.py']
 
 
 if sys.version_info[0] >= 3:
-    test_sources.append('injector_test_py3.py')
+    test_sources.extend(['injector.py', 'injector_test_py3.py', 'README.md'])
 
 
 def pytest_ignore_collect(path, config):

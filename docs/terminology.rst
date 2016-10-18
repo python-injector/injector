@@ -69,15 +69,15 @@ A `Module` configures bindings. It provides methods that simplify the process of
     ...         binder.bind(Name, to='Sherlock')
     ...         binder.bind(Description, to='A man of astounding insight')
 
-For more complex instance construction, methods decorated with `@provides` will be called to resolve binding keys::
+For more complex instance construction, methods decorated with `@provider` will be called to resolve binding keys::
 
-    >>> from injector import provides
+    >>> from injector import provider
     >>> class MyModule(Module):
     ...     def configure(self, binder):
     ...         binder.bind(Name, to='Sherlock')
     ...
-    ...     @provides(Description)
-    ...     def describe(self):
+    ...     @provider
+    ...     def describe(self) -> Description:
     ...         return 'A man of astounding insight (at %s)' % time.time()
 
 Injection
@@ -105,9 +105,8 @@ Here is an example of injection on a module provider method, and on the construc
         def configure(self, binder):
             binder.bind(Name, to='Sherlock')
 
-        @provides(Description)
-        @inject
-        def describe(self, name: Name):
+        @provider
+        def describe(self, name: Name) -> Description:
             return '%s is a man of astounding insight' % name
 
 

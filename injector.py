@@ -928,6 +928,8 @@ def with_injector(*injector_args, **injector_kwargs):
 def provides(interface, scope=None, eager=False):
     """Decorator for :class:`Module` methods, registering a provider of a type.
 
+    .. warning:: Deprecated, use :func:`provider` instead.
+
     >>> class MyModule(Module):
     ...   @provides(str)
     ...   def provide_name(self):
@@ -942,6 +944,36 @@ def provides(interface, scope=None, eager=False):
         return provider
 
     return wrapper
+
+
+def provider(function):
+    """Decorator for :class:`Module` methods, registering a provider of a type.
+
+    >>> class MyModule(Module):
+    ...   @provider
+    ...   def provide_name(self) -> str:
+    ...       return 'Bob'
+
+    @provider-decoration implies @inject so you can omit it and things will
+    work just the same:
+
+    >>> class MyModule2(Module):
+    ...     def configure(self, binder):
+    ...         binder.bind(int, to=654)
+    ...
+    ...     @provider
+    ...     def provide_str(self, i: int) -> str:
+    ...         return str(i)
+
+    >>> injector = Injector(MyModule2)
+    >>> injector.get(str)
+    '654'
+    """
+    scope_ = getattr(provider, '__scope__', None)
+    annotations = getfullargspec(function).annotations
+    return_type = annotations['return']
+    function.__binding__ = Binding(return_type, inject(function), scope_)
+    return function
 
 
 if hasattr(inspect, 'getfullargspec'):

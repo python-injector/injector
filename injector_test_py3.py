@@ -1,6 +1,9 @@
 import pytest
 
-from injector import AssistedBuilder, inject, Injector, CallError, Module, provides
+from injector import (
+    AssistedBuilder, inject, Injector, CallError,
+    Module, provider, provides, singleton,
+)
 
 
 def test_implicit_injection_for_python3_old_style():
@@ -43,7 +46,7 @@ def test_implicit_injection_for_python3_old_style():
     assert isinstance(c.b.a, A)
 
 
-def test_annotation_based_injection_works_in_provider_methods():
+def test_annotation_based_injection_works_in_provider_methods_old_style():
     class MyModule(Module):
         def configure(self, binder):
             binder.bind(int, to=42)
@@ -55,6 +58,25 @@ def test_annotation_based_injection_works_in_provider_methods():
 
     injector = Injector(MyModule)
     assert injector.get(str) == '42'
+
+
+def test_annotation_based_injection_works_in_provider_methods():
+    class MyModule(Module):
+        def configure(self, binder):
+            binder.bind(int, to=42)
+
+        @provider
+        def provide_str(self, i: int) -> str:
+            return str(i)
+
+        @singleton
+        @provider
+        def provide_object(self) -> object:
+            return object()
+
+    injector = Injector(MyModule)
+    assert injector.get(str) == '42'
+    assert injector.get(object) is injector.get(object)
 
 
 def test_assisted_building_is_supported():

@@ -126,7 +126,7 @@ As an illustration:
     from threading import Thread
     from time import sleep
 
-    from injector import inject, Injector, Key, Module, provides
+    from injector import inject, Injector, Key, Module, provider
 
     SubA = Key('SubA')
     A = Key('A')
@@ -134,13 +134,12 @@ As an illustration:
 
 
     class BadModule(Module):
-        @provides(A)
-        @inject
-        def provide_a(self, suba: SubA):
+        @provider
+        def provide_a(self, suba: SubA) -> A:
             return suba
 
-        @provides(SubA)
-        def provide_suba(self):
+        @provider
+        def provide_suba(self) -> SubA:
             print('Providing SubA...')
             while True:
                 print('Sleeping...')
@@ -149,8 +148,8 @@ As an illustration:
             # This never executes
             return 'suba'
 
-        @provides(B)
-        def provide_b(self):
+        @provider
+        def provide_b(self) -> B:
             return 'b'
 
 
