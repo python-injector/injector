@@ -10,6 +10,11 @@ python:
   - "nightly"
   - "pypy"
   - "pypy3"
+matrix:
+  allow_failures:
+    - python: "3.5-dev"
+    - python: "nightly"
+
 install:
   - pip install pytest typing
 script: py.test -vv
