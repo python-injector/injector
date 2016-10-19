@@ -829,7 +829,6 @@ class Injector(object):
 
         return wrapper
 
-    @private
     def call_with_injection(self, callable, self_=None, args=(), kwargs={}):
         """Call a callable and provide it's dependencies if needed.
 
