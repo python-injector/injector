@@ -1268,3 +1268,24 @@ class ProviderOf(Generic[T]):
     def get(self):
         """Get an implementation for the specified interface."""
         return self._injector.get(self._interface)
+
+
+def is_decorated_with_inject(function):
+    """See if given callable is declared to want some dependencies injected.
+
+    Example use:
+
+    >>> def fun(i: int) -> str:
+    ...     return str(i)
+
+    >>> is_decorated_with_inject(fun)
+    False
+    >>>
+    >>> @inject
+    ... def fun2(i: int) -> str:
+    ...     return str(i)
+
+    >>> is_decorated_with_inject(fun2)
+    True
+    """
+    return hasattr(function, '__bindings__')
