@@ -7,6 +7,12 @@ Injector Change Log
 - Fixed binding inference in presence of * and ** arguments (previously Injector
   would generate extra arguments, now it just ignores them)
 
+Technically backwards incompatible:
+
+- Forward references as PEP 484 understands them are being resolved now when
+  Python 3-style annotations are used. See
+  https://www.python.org/dev/peps/pep-0484/#forward-references for details.
+
 0.11.1
 ------
 

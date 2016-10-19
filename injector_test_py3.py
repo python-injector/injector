@@ -207,3 +207,16 @@ def test_things_dont_break_in_presence_of_args_or_kwargs():
     #     assert not kwargs
     #   AssertionError: assert not {'args': 0, 'kwargs': ''}
     injector.get(A)
+
+
+def test_forward_references_in_annotations_are_handled():
+    # See https://www.python.org/dev/peps/pep-0484/#forward-references for details
+    def configure(binder):
+        binder.bind(str, to='hello')
+
+    @inject
+    def fun(s: 'str') -> None:
+        return s
+
+    injector = Injector(configure)
+    injector.call_with_injection(fun) == 'hello'

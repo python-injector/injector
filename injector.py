@@ -24,7 +24,7 @@ import types
 import warnings
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
-from typing import Generic, TypeVar
+from typing import Generic, get_type_hints, TypeVar
 
 
 try:
@@ -899,7 +899,7 @@ def _infer_injected_bindings(callable):
     if not getfullargspec:
         return None
     spec = getfullargspec(callable)
-    bindings = dict(spec.annotations.items())
+    bindings = get_type_hints(callable)
 
     # We don't care about the return value annotation as it doesn't matter
     # injection-wise.
