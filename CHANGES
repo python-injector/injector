@@ -74,7 +74,7 @@ Technically backwards incompatible:
         def provide_something(self, dependency: Dependency):
             # ...
 
-  The :func:`~injector.provider` decorator will be removed in the future.
+  The :func:`~injector.provides` decorator will be removed in the future.
 
 * Added a :func:`~injector.noninjectable` decorator to mark parameters as not injectable
   (this serves as documentation and a way to avoid some runtime errors)
