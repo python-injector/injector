@@ -26,85 +26,101 @@ Technically backwards incompatible:
 * The following way to declare dependencies is introduced and recommended
   now:
 
-  class SomeClass:
-      @inject
-      def __init__(self, other: OtherClass):
-          # ...
+  .. code-block:: python
+
+    class SomeClass:
+        @inject
+        def __init__(self, other: OtherClass):
+            # ...
 
   The following ways are still supported but are deprecated and will be
   removed in the future:
 
-  # Python 2-compatible style
-  class SomeClass
-      @inject(other=OtherClass)
-      def __init__(self, other):
-          # ...
+  .. code-block:: python
 
-  # Python 3 style without @inject-decoration but with use_annotations
-  class SomeClass:
-      def __init__(self, other: OtherClass):
-          # ...
+    # Python 2-compatible style
+    class SomeClass
+        @inject(other=OtherClass)
+        def __init__(self, other):
+            # ...
 
-  injector = Injector(use_annotations=True)
-  # ...
+    # Python 3 style without @inject-decoration but with use_annotations
+    class SomeClass:
+        def __init__(self, other: OtherClass):
+            # ...
+
+    injector = Injector(use_annotations=True)
+    # ...
 
 * The following way to declare Module provider methods is introduced and
   recommended now:
 
-  class MyModule(Module):
-      @provider
-      def provide_something(self, dependency: Dependency) -> Something:
-          # ...
+  .. code-block:: python
+
+    class MyModule(Module):
+        @provider
+        def provide_something(self, dependency: Dependency) -> Something:
+            # ...
 
   @provider implies @inject.
 
   Previously it would look like this:
 
-  class MyModule(Module):
-      @provides(Something)
-      @inject
-      def provide_something(self, dependency: Dependency):
-          # ...
+  .. code-block:: python
 
-  The provider decorator will be removed in the future.
+    class MyModule(Module):
+        @provides(Something)
+        @inject
+        def provide_something(self, dependency: Dependency):
+            # ...
 
-* Added a noninjectable decorator to mark parameters as not injectable
+  The :func:`~injector.provider` decorator will be removed in the future.
+
+* Added a :func:`~injector.noninjectable` decorator to mark parameters as not injectable
   (this serves as documentation and a way to avoid some runtime errors)
 
 
 Backwards incompatible:
 
-* Removed support for decorating classes with @inject. Previously:
+* Removed support for decorating classes with :func:`@inject <injector.inject>`. Previously:
 
-  @inject(something=Something)
-  class Class:
-      pass
+  .. code-block:: python
+
+    @inject(something=Something)
+    class Class:
+        pass
 
   Now:
 
-  class Class:
-      @inject
-      def __init__(self, something: Something):
-          self.something = something
+  .. code-block:: python
+
+    class Class:
+        @inject
+        def __init__(self, something: Something):
+            self.something = something
 
 * Removed support for injecting partially applied functions, previously:
 
-  @inject(something=Something)
-  def some_function(something):
-      pass
+  .. code-block:: python
+
+    @inject(something=Something)
+    def some_function(something):
+        pass
 
 
-  class Class:
-      @inject(function=some_function)
-      def __init__(self, function):
-          # ...
+    class Class:
+        @inject(function=some_function)
+        def __init__(self, function):
+            # ...
 
   Now you need to move the function with injectable dependencies to a class.
 
-* Removed support for getting AssistedBuilder(callable=...)
+* Removed support for getting :class:`AssistedBuilder(callable=...) <injector.AssistedBuilder>`
 * Dropped Python 2.6 support
-* Changed the way AssistedBuilder and ProviderOf are used.
+* Changed the way :class:`~injector.AssistedBuilder` and :class:`~injector.ProviderOf` are used.
   Previously:
+
+  .. code-block:: python
 
     builder1 = injector.get(AssistedBuilder(Something))
     # or: builder1 = injector.get(AssistedBuilder(interface=Something))
@@ -112,6 +128,8 @@ Backwards incompatible:
     provider = injector.get(ProviderOf(SomeOtherThing))
 
   Now:
+
+  .. code-block:: python
 
     builder1 = injector.get(AssistedBuilder[Something])
     builder2 = injector.get(ClassAssistedBuilder[cls=SomethingElse])

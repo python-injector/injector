@@ -984,7 +984,7 @@ def provider(function):
     ...     @provider
     ...     def provide_str(self, i: int) -> str:
     ...         return str(i)
-
+    ...
     >>> injector = Injector(MyModule2)
     >>> injector.get(str)
     '654'
@@ -1010,19 +1010,19 @@ def inject(function=None, **bindings):
 
     >>> Sizes = Key('sizes')
     >>> Names = Key('names')
-
+    >>>
     >>> # Recommended, Python 3+ style
     >>> class A:
     ...     @inject
     ...     def __init__(self, number: int, name: str, sizes: Sizes):
     ...         print([number, name, sizes])
-
+    ...
     >>> # Or older, Python 2-compatible style
     >>> class A(object):
     ...     @inject(number=int, name=str, sizes=Sizes)
     ...     def __init__(self, number, name, sizes):
     ...         print([number, name, sizes])
-
+    ...
     >>> def configure(binder):
     ...     binder.bind(A)
     ...     binder.bind(int, to=123)
@@ -1059,7 +1059,7 @@ def noninjectable(*args):
 
     >>> class Service:
     ...    pass
-
+    ...
     >>> class SomeClass:
     ...     @inject
     ...     @noninjectable('user_id')
@@ -1067,8 +1067,9 @@ def noninjectable(*args):
     ...         # ...
     ...         pass
 
-    @noninjectable decorations can be stacked on top of each other and
-    the order in which a function is decorated with @inject and @noninjectable
+    :func:`noninjectable` decorations can be stacked on top of
+    each other and the order in which a function is decorated with
+    :func:`inject` and :func:`noninjectable`
     doesn't matter.
     """
     def decorator(function):
