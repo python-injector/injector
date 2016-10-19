@@ -24,7 +24,7 @@ import types
 import warnings
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
-from typing import Generic, get_type_hints, TypeVar
+from typing import Any, Generic, get_type_hints, TypeVar
 
 
 try:
@@ -62,10 +62,10 @@ def synchronized(lock):
 lock = threading.RLock()
 
 
-def reraise(original, exception):
+def reraise(original, exception, maximum_frames=1):
     prev_cls, prev, tb = sys.exc_info()
     frames = inspect.getinnerframes(tb)
-    if len(frames) > 1:
+    if len(frames) > maximum_frames:
         exception = original
     try:
         raise exception.with_traceback(tb)
@@ -399,7 +399,8 @@ class Binder(object):
         return Binding(interface, provider, scope)
 
     def provider_for(self, interface, to=None):
-        if isinstance(interface, type) and issubclass(interface, ProviderOf):
+        generic_but_not_any = isinstance(interface, type) and interface is not Any
+        if generic_but_not_any and issubclass(interface, ProviderOf):
             (target,) = interface.__args__
             if to is not None:
                 raise Exception('ProviderOf cannot be bound to anything')
@@ -419,11 +420,15 @@ class Binder(object):
             def proxy(**kwargs):
                 return interface.interface(**kwargs)
             return CallableProvider(proxy)
-        elif isinstance(interface, type) and issubclass(interface, AssistedBuilder):
+        elif generic_but_not_any and issubclass(interface, AssistedBuilder):
             (target,) = interface.__args__
             builder = interface(self.injector, target)
             return InstanceProvider(builder)
-        elif isinstance(interface, (tuple, type)) and isinstance(to, interface):
+        elif (
+            isinstance(interface, (tuple, type)) and
+            interface is not Any and
+            isinstance(to, interface)
+        ):
             return InstanceProvider(to)
         elif issubclass(type(interface), type) or isinstance(interface, (tuple, list)):
             if to is not None:
@@ -725,7 +730,14 @@ class Injector(object):
         else:
             bindings = {}
 
-        instance = cls.__new__(cls)
+        try:
+            instance = cls.__new__(cls)
+        except TypeError as e:
+            reraise(e, CallError(
+                cls,
+                getattr(cls.__new__, '__func__', cls.__new__),
+                (), {}, e, self._stack,),
+                maximum_frames=2)
         try:
             self.install_into(instance)
             installed = True

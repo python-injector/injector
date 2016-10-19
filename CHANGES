@@ -6,6 +6,7 @@ Injector Change Log
 
 - Fixed binding inference in presence of * and ** arguments (previously Injector
   would generate extra arguments, now it just ignores them)
+- Improved error reporting
 
 Technically backwards incompatible:
 

@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 
 from injector import (
@@ -220,3 +222,25 @@ def test_forward_references_in_annotations_are_handled():
 
     injector = Injector(configure)
     injector.call_with_injection(fun) == 'hello'
+
+
+def test_more_useful_exception_is_raised_when_parameters_type_is_any():
+    @inject
+    def fun(a: Any) -> None:
+        pass
+
+    injector = Injector()
+
+    # This was the exception before:
+    #
+    # TypeError: Cannot instantiate <class 'typing.AnyMeta'>
+    #
+    # Now:
+    #
+    # injector.CallError: Call to AnyMeta.__new__() failed: Cannot instantiate
+    #   <class 'typing.AnyMeta'> (injection stack: ['injector_test_py3'])
+    #
+    # In this case the injection stack doesn't provide too much information but
+    # it quickly gets helpful when the stack gets deeper.
+    with pytest.raises(CallError):
+        injector.call_with_injection(fun)
