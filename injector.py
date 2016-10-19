@@ -905,6 +905,11 @@ def _infer_injected_bindings(callable):
     # injection-wise.
     bindings.pop('return', None)
 
+    # variadic arguments aren't supported at the moment (this may change
+    # in the future if someone has a good idea how to utilize them)
+    bindings.pop(spec.varargs, None)
+    bindings.pop(spec.varkw, None)
+
     return bindings
 
 

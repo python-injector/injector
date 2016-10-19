@@ -177,3 +177,33 @@ def test_injection_works_in_presence_of_return_value_annotation():
     # we're good but just in case the return value annotation handling changed
     # something:
     assert a.s == 'this is string'
+
+
+def test_things_dont_break_in_presence_of_args_or_kwargs():
+    class A:
+        @inject
+        def __init__(self, s: str, *args: int, **kwargs: str):
+            assert not args
+            assert not kwargs
+
+    injector = Injector()
+
+    # The following line used to fail with something like this:
+    # Traceback (most recent call last):
+    #   File "/ve/injector/injector_test_py3.py", line 192,
+    #     in test_things_dont_break_in_presence_of_args_or_kwargs
+    #     injector.get(A)
+    #   File "/ve/injector/injector.py", line 707, in get
+    #     result = scope_instance.get(key, binding.provider).get(self)
+    #   File "/ve/injector/injector.py", line 142, in get
+    #     return injector.create_object(self._cls)
+    #   File "/ve/injector/injector.py", line 744, in create_object
+    #     init(instance, **additional_kwargs)
+    #   File "/ve/injector/injector.py", line 1082, in inject
+    #     kwargs=kwargs
+    #   File "/ve/injector/injector.py", line 851, in call_with_injection
+    #     **dependencies)
+    #   File "/ve/injector/injector_test_py3.py", line 189, in __init__
+    #     assert not kwargs
+    #   AssertionError: assert not {'args': 0, 'kwargs': ''}
+    injector.get(A)
