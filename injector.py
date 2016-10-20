@@ -24,7 +24,7 @@ import types
 import warnings
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
-from typing import Any, Generic, get_type_hints, TypeVar
+from typing import Any, Generic, get_type_hints, TypeVar, Union
 
 
 try:
@@ -920,6 +920,14 @@ def _infer_injected_bindings(callable):
     # in the future if someone has a good idea how to utilize them)
     bindings.pop(spec.varargs, None)
     bindings.pop(spec.varkw, None)
+
+    for k, v in list(bindings.items()):
+        if v is not Any and issubclass(v, Union):
+            # We don't treat Optional parameters in any special way at the moment
+            union_members = v.__union_params__
+            new_members = tuple(set(union_members) - {type(None)})
+            new_union = Union[new_members]
+            bindings[k] = new_union
 
     return bindings
 

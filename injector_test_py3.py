@@ -244,3 +244,11 @@ def test_more_useful_exception_is_raised_when_parameters_type_is_any():
     # it quickly gets helpful when the stack gets deeper.
     with pytest.raises(CallError):
         injector.call_with_injection(fun)
+
+
+def test_optionals_are_ignored_for_now():
+    @inject
+    def fun(s: str = None):
+        return s
+
+    assert Injector().call_with_injection(fun) == ''

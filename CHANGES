@@ -14,6 +14,8 @@ Technically backwards incompatible:
   Python 3-style annotations are used. See
   https://www.python.org/dev/peps/pep-0484/#forward-references for details.
 
+  Optional parameters are treated as compulsory for the purpose of injection.
+
 0.11.1
 ------
 
