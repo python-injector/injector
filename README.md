@@ -56,7 +56,7 @@ Here's a full example to give you a taste of how Injector works:
 
 
 ```python
->>> from injector import Module, Key, provides, Injector, inject, singleton
+>>> from injector import Module, Key, provider, Injector, inject, singleton
 
 ```
 
@@ -108,9 +108,8 @@ Next we create a module that initialises the DB. It depends on the configuration
 ```python
 >>> class DatabaseModule(Module):
 ...   @singleton
-...   @provides(sqlite3.Connection)
-...   @inject
-...   def provide_sqlite_connection(self, configuration: Configuration):
+...   @provider
+...   def provide_sqlite_connection(self, configuration: Configuration) -> sqlite3.Connection:
 ...     conn = sqlite3.connect(configuration['db_connection_string'])
 ...     cursor = conn.cursor()
 ...     cursor.execute('CREATE TABLE IF NOT EXISTS data (key PRIMARY KEY, value)')
