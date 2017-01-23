@@ -217,7 +217,7 @@ def test_forward_references_in_annotations_are_handled():
         binder.bind(str, to='hello')
 
     @inject
-    def fun(s: 'str') -> None:
+    def fun(s: 'str') -> str:
         return s
 
     injector = Injector(configure)
