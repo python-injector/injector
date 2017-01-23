@@ -26,6 +26,8 @@ from abc import ABCMeta, abstractmethod
 from collections import namedtuple
 from typing import Any, Generic, get_type_hints, TypeVar, Union
 
+TYPING353 = hasattr(Union[str, int], '__origin__')
+
 
 try:
     NullHandler = logging.NullHandler
@@ -399,8 +401,9 @@ class Binder(object):
         return Binding(interface, provider, scope)
 
     def provider_for(self, interface, to=None):
-        generic_but_not_any = isinstance(interface, type) and interface is not Any
-        if generic_but_not_any and issubclass(interface, ProviderOf):
+        if interface is Any:
+            raise TypeError('Injecting Any is not supported')
+        elif _is_specialization(interface, ProviderOf):
             (target,) = interface.__args__
             if to is not None:
                 raise Exception('ProviderOf cannot be bound to anything')
@@ -420,7 +423,7 @@ class Binder(object):
             def proxy(**kwargs):
                 return interface.interface(**kwargs)
             return CallableProvider(proxy)
-        elif generic_but_not_any and issubclass(interface, AssistedBuilder):
+        elif _is_specialization(interface, AssistedBuilder):
             (target,) = interface.__args__
             builder = interface(self.injector, target)
             return InstanceProvider(builder)
@@ -434,6 +437,7 @@ class Binder(object):
             if to is not None:
                 return InstanceProvider(to)
             return ClassProvider(interface)
+
         elif hasattr(interface, '__call__'):
             raise TypeError('Injecting partially applied functions is no longer supported.')
         else:
@@ -466,7 +470,29 @@ class Binder(object):
         # "Special" interfaces are ones that you cannot bind yourself but
         # you can request them (for example you cannot bind ProviderOf(SomeClass)
         # to anything but you can inject ProviderOf(SomeClass) just fine
-        return issubclass(interface, (ProviderOf, AssistedBuilder))
+        return any(
+            _is_specialization(interface, cls)
+            for cls in [AssistedBuilder, ProviderOf]
+        )
+
+
+if TYPING353:
+    def _is_specialization(cls, generic_class):
+        # Starting with typing 3.5.3/Python 3.6 it is no longer necessarily true that
+        # issubclass(SomeGeneric[X], SomeGeneric) so we need some other way to
+        # determine whether a particular object is a generic class with type parameters
+        # provided. Fortunately there seems to be __origin__ attribute that's useful here.
+        return (
+            hasattr(cls, '__origin__') and
+            # __origin__ is generic_class is a special case to handle Union as
+            # Union cannot be used in issubclass() check (it raises an exception
+            # by design).
+            (cls.__origin__ is generic_class or issubclass(cls.__origin__, generic_class))
+        )
+else:
+    # To maintain compatibility we fall back to an issubclass check.
+    def _is_specialization(cls, generic_class):
+        return isinstance(cls, type) and cls is not Any and issubclass(cls, generic_class)
 
 
 class Scope(object):
@@ -922,9 +948,12 @@ def _infer_injected_bindings(callable):
     bindings.pop(spec.varkw, None)
 
     for k, v in list(bindings.items()):
-        if v is not Any and issubclass(v, Union):
-            # We don't treat Optional parameters in any special way at the moment
-            union_members = v.__union_params__
+        if _is_specialization(v, Union):
+            # We don't treat Optional parameters in any special way at the moment.
+            if TYPING353:
+                union_members = v.__args__
+            else:
+                union_members = v.__union_params__
             new_members = tuple(set(union_members) - {type(None)})
             new_union = Union[new_members]
             bindings[k] = new_union

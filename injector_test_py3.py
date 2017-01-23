@@ -242,7 +242,7 @@ def test_more_useful_exception_is_raised_when_parameters_type_is_any():
     #
     # In this case the injection stack doesn't provide too much information but
     # it quickly gets helpful when the stack gets deeper.
-    with pytest.raises(CallError):
+    with pytest.raises((CallError, TypeError)):
         injector.call_with_injection(fun)
 
 

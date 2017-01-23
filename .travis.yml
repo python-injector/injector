@@ -10,11 +10,14 @@ python:
   - "nightly"
   - "pypy"
   - "pypy3"
+env:
+  - TYPING_VERSION="<3.5.3"
+  - TYPING_VERSION=">=3.5.3"
 matrix:
   allow_failures:
     - python: "3.5-dev"
     - python: "nightly"
 
 install:
-  - pip install pytest typing
+  - pip install pytest "typing$TYPING_VERSION"
 script: py.test -vv
