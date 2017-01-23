@@ -27,7 +27,7 @@ def test_implicit_injection_for_python3_old_style():
     assert isinstance(c.b.a, A)
 
 
-def test_implicit_injection_for_python3_old_style():
+def test_implicit_injection_for_python3():
     class A(object):
         pass
 
