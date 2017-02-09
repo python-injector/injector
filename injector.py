@@ -867,7 +867,16 @@ class Injector(object):
         :type kwargs: dict of string -> object
         :return: Value returned by callable.
         """
-        bindings = getattr(callable, '__bindings__', None) or {}
+        def _get_callable_bindings(callable):
+            if not hasattr(callable, '__bindings__'):
+                return {}
+
+            if callable.__bindings__ == 'deferred':
+                callable.__read_and_store_bindings__(_infer_injected_bindings(callable))
+                del callable.__read_and_store_bindings__
+            return callable.__bindings__
+
+        bindings = _get_callable_bindings(callable)
         noninjectables = getattr(callable, '__noninjectables__', set())
         needed = dict(
             (k, v) for (k, v) in bindings.items()
@@ -932,11 +941,18 @@ class Injector(object):
         return dependencies
 
 
+class _BindingNotYetAvailable(Exception):
+    pass
+
+
 def _infer_injected_bindings(callable):
     if not getfullargspec:
         return None
     spec = getfullargspec(callable)
-    bindings = get_type_hints(callable)
+    try:
+        bindings = get_type_hints(callable)
+    except NameError as e:
+        raise _BindingNotYetAvailable(e)
 
     # We don't care about the return value annotation as it doesn't matter
     # injection-wise.
@@ -1073,7 +1089,10 @@ def inject(function=None, **bindings):
     """
     if function:
         assert not bindings, 'You can only pass either function or bindings here'
-        bindings = _infer_injected_bindings(function)
+        try:
+            bindings = _infer_injected_bindings(function)
+        except _BindingNotYetAvailable:
+            bindings = 'deferred'
         return method_wrapper(function, bindings)
 
     def multi_wrapper(something):
@@ -1118,8 +1137,6 @@ def noninjectable(*args):
 
 
 def method_wrapper(f, bindings):
-    for key, value in bindings.items():
-        bindings[key] = BindingKey(value)
     argspec = getargspec(f)
     if argspec.args and argspec.args[0] == 'self':
         @functools.wraps(f)
@@ -1141,11 +1158,22 @@ def method_wrapper(f, bindings):
     else:
         inject = f
 
-    function_bindings = getattr(f, '__bindings__', None) or {}
-    merged_bindings = dict(function_bindings, **bindings)
+    def read_and_store_bindings(bindings):
+        for key, value in bindings.items():
+            bindings[key] = BindingKey(value)
+        function_bindings = getattr(f, '__bindings__', None) or {}
+        if function_bindings == 'deferred':
+            function_bindings = {}
+        merged_bindings = dict(function_bindings, **bindings)
 
-    f.__bindings__ = merged_bindings
-    inject.__bindings__ = merged_bindings
+        f.__bindings__ = merged_bindings
+        inject.__bindings__ = merged_bindings
+
+    if isinstance(bindings, dict):
+        read_and_store_bindings(bindings)
+    else:
+        f.__bindings__ = 'deferred'
+        f.__read_and_store_bindings__ = read_and_store_bindings
     return inject
 
 

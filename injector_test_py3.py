@@ -214,14 +214,26 @@ def test_things_dont_break_in_presence_of_args_or_kwargs():
 def test_forward_references_in_annotations_are_handled():
     # See https://www.python.org/dev/peps/pep-0484/#forward-references for details
     def configure(binder):
-        binder.bind(str, to='hello')
+        binder.bind(X, to=X('hello'))
 
     @inject
-    def fun(s: 'str') -> str:
+    def fun(s: 'X') -> 'X':
         return s
 
-    injector = Injector(configure)
-    injector.call_with_injection(fun) == 'hello'
+    # The class needs to be module-global in order for the string -> object
+    # resolution mechanism to work. I could make it work with locals but it
+    # doesn't seem worth it.
+    global X
+
+    class X:
+        def __init__(self, message: str) -> None:
+            self.message = message
+
+    try:
+        injector = Injector(configure)
+        injector.call_with_injection(fun).message == 'hello'
+    finally:
+        del X
 
 
 def test_more_useful_exception_is_raised_when_parameters_type_is_any():
