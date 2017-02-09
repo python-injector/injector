@@ -7,6 +7,8 @@ Injector Change Log
 - Fixed binding inference in presence of * and ** arguments (previously Injector
   would generate extra arguments, now it just ignores them)
 - Improved error reporting
+- Fixed compatibility with newer typing versions (that includes the one
+  bundled with Python 3.6)
 
 Technically backwards incompatible:
 
