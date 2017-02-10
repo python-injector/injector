@@ -482,13 +482,19 @@ if TYPING353:
         # issubclass(SomeGeneric[X], SomeGeneric) so we need some other way to
         # determine whether a particular object is a generic class with type parameters
         # provided. Fortunately there seems to be __origin__ attribute that's useful here.
-        return (
-            hasattr(cls, '__origin__') and
-            # __origin__ is generic_class is a special case to handle Union as
-            # Union cannot be used in issubclass() check (it raises an exception
-            # by design).
-            (cls.__origin__ is generic_class or issubclass(cls.__origin__, generic_class))
-        )
+        try:
+            return (
+                hasattr(cls, '__origin__') and
+                # __origin__ is generic_class is a special case to handle Union as
+                # Union cannot be used in issubclass() check (it raises an exception
+                # by design).
+                (cls.__origin__ is generic_class or issubclass(cls.__origin__, generic_class))
+            )
+        except TypeError:
+            # In typing 3.5.3/Python 3.6, Union, Any and some others are not classes any
+            # more and will happily throw exceptions when used in issubclass().
+            return False
+
 else:
     # To maintain compatibility we fall back to an issubclass check.
     def _is_specialization(cls, generic_class):
