@@ -482,18 +482,13 @@ if TYPING353:
         # issubclass(SomeGeneric[X], SomeGeneric) so we need some other way to
         # determine whether a particular object is a generic class with type parameters
         # provided. Fortunately there seems to be __origin__ attribute that's useful here.
-        try:
-            return (
-                hasattr(cls, '__origin__') and
-                # __origin__ is generic_class is a special case to handle Union as
-                # Union cannot be used in issubclass() check (it raises an exception
-                # by design).
-                (cls.__origin__ is generic_class or issubclass(cls.__origin__, generic_class))
-            )
-        except TypeError:
-            # In typing 3.5.3/Python 3.6, Union, Any and some others are not classes any
-            # more and will happily throw exceptions when used in issubclass().
-            return False
+        return (
+            hasattr(cls, '__origin__') and
+            # __origin__ is generic_class is a special case to handle Union as
+            # Union cannot be used in issubclass() check (it raises an exception
+            # by design).
+            (cls.__origin__ is generic_class or issubclass(cls.__origin__, generic_class))
+        )
 
 else:
     # To maintain compatibility we fall back to an issubclass check.
@@ -970,7 +965,7 @@ def _infer_injected_bindings(callable):
     bindings.pop(spec.varkw, None)
 
     for k, v in list(bindings.items()):
-        if _is_specialization(v, Union):
+        if _is_specialization(v, type(Union) if TYPING353 else Union):
             # We don't treat Optional parameters in any special way at the moment.
             if TYPING353:
                 union_members = v.__args__
