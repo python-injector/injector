@@ -1014,3 +1014,25 @@ def test_binding_an_instance_regression():
     injector = Injector(configure)
     # This used to return empty bytes instead of the expected string
     assert injector.get(bytes) == text
+
+
+def test_class_assisted_builder_of_partially_injected_class():
+    class A(object):
+        pass
+
+    class B(object):
+        @inject(a=A, b=str)
+        def __init__(self, a, b):
+            self.a = a
+            self.b = b
+
+    class C(object):
+        @inject(a=A, builder=ClassAssistedBuilder[B])
+        def __init__(self, a, builder):
+            self.a = a
+            self.b = builder.build(b='C')
+
+    c = Injector().get(C)
+    assert isinstance(c, C)
+    assert isinstance(c.b, B)
+    assert isinstance(c.b.a, A)

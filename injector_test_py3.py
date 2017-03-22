@@ -3,7 +3,7 @@ from typing import Any
 import pytest
 
 from injector import (
-    AssistedBuilder, inject, Injector, CallError,
+    AssistedBuilder, ClassAssistedBuilder, inject, Injector, CallError,
     Module, noninjectable, provider, provides, singleton,
 )
 
@@ -264,3 +264,25 @@ def test_optionals_are_ignored_for_now():
         return s
 
     assert Injector().call_with_injection(fun) == ''
+
+
+def test_class_assisted_builder_of_partially_injected_class():
+    class A(object):
+        pass
+
+    class B(object):
+        @inject
+        def __init__(self, a: A, b: str):
+            self.a = a
+            self.b = b
+
+    class C(object):
+        @inject
+        def __init__(self, a: A, builder: ClassAssistedBuilder[B]):
+            self.a = a
+            self.b = builder.build(b='C')
+
+    c = Injector().get(C)
+    assert isinstance(c, C)
+    assert isinstance(c.b, B)
+    assert isinstance(c.b.a, A)
