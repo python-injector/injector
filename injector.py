@@ -993,10 +993,7 @@ def with_injector(*injector_args, **injector_kwargs):
         def setup(self_, *args, **kwargs):
             injector = Injector(*injector_args, **injector_kwargs)
             injector.install_into(self_)
-            try:
-                return f(self_, *args, **kwargs)
-            finally:
-                injector._uninstall_from(self_)
+            return f(self_, *args, **kwargs)
 
         return setup
 
