@@ -1,6 +1,11 @@
 Injector Change Log
 ===================
 
+0.13.0 (not released yet)
+-------------------------
+
+- Dropped Python 3.2 support
+
 0.12.0
 ------
 
