@@ -1043,6 +1043,8 @@ def provider(function):
     >>> injector = Injector(MyModule2)
     >>> injector.get(str)
     '654'
+
+    .. note:: This function works only on Python 3
     """
     scope_ = getattr(provider, '__scope__', None)
     annotations = getfullargspec(function).annotations
