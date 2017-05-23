@@ -4,6 +4,8 @@ Injector Change Log
 0.13.0 (not released yet)
 -------------------------
 
+Backwards incompatible:
+
 - Dropped Python 3.2 support
 
 0.12.0
