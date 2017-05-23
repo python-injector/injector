@@ -17,5 +17,5 @@ matrix:
     - python: "nightly"
 
 install:
-  - pip install pytest "typing$TYPING_VERSION"
-script: py.test -vv
+  - pip install pytest "typing$TYPING_VERSION" "pytest-cov>=2.5.1"
+script: py.test -vv --cov=injector --cov-branch --cov-report html --cov-report term
