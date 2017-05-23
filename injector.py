@@ -29,19 +29,12 @@ from typing import Any, Generic, get_type_hints, TypeVar, Union
 TYPING353 = hasattr(Union[str, int], '__origin__')
 
 
-try:
-    NullHandler = logging.NullHandler
-except AttributeError:
-    class NullHandler(logging.Handler):
-        def emit(self, record):
-            pass
-
 __author__ = 'Alec Thomas <alec@swapoff.org>'
 __version__ = '0.12.1'
 __version_tag__ = ''
 
 log = logging.getLogger('injector')
-log.addHandler(NullHandler())
+log.addHandler(logging.NullHandler())
 
 if log.level == logging.NOTSET:
     log.setLevel(logging.WARN)
