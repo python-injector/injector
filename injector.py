@@ -1025,7 +1025,7 @@ def provider(function):
 
     .. note:: This function works only on Python 3
     """
-    scope_ = getattr(provider, '__scope__', None)
+    scope_ = getattr(function, '__scope__', None)
     annotations = getfullargspec(function).annotations
     return_type = annotations['return']
     function.__binding__ = Binding(return_type, inject(function), scope_)

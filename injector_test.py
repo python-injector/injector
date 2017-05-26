@@ -22,7 +22,7 @@ import pytest
 from injector import (
     Binder, CallError, Injector, Scope, InstanceProvider, ClassProvider,
     inject, noninjectable, singleton, threadlocal, UnsatisfiedRequirement,
-    CircularDependency, Module, provides, Key, SingletonScope,
+    CircularDependency, Module, Key, SingletonScope,
     ScopeDecorator, with_injector, AssistedBuilder, BindingKey,
     SequenceKey, MappingKey, provider, ProviderOf, ClassAssistedBuilder,
     )
@@ -423,10 +423,10 @@ def test_that_injection_is_lazy():
     assert (Interface.constructed)
 
 
-def test_module_provides():
+def test_module_provider():
     class MyModule(Module):
-        @provides(str)
-        def provide_name(self):
+        @provider
+        def provide_name(self) -> str:
             return 'Bob'
 
     module = MyModule()
@@ -466,8 +466,8 @@ def test_bind_using_key():
     Age = Key('age')
 
     class MyModule(Module):
-        @provides(Name)
-        def provides_name(self):
+        @provider
+        def provider_name(self) -> Name:
             return 'Bob'
 
         def configure(self, binder):
@@ -483,13 +483,13 @@ def test_inject_using_key():
     Description = Key('description')
 
     class MyModule(Module):
-        @provides(Name)
-        def provide_name(self):
+        @provider
+        def provide_name(self) -> Name:
             return 'Bob'
 
-        @provides(Description)
+        @provider
         @inject(name=Name)
-        def provide_description(self, name):
+        def provide_description(self, name) -> Description:
             return '%s is cool!' % name
 
     assert (Injector(MyModule()).get(Description) == 'Bob is cool!')
@@ -497,18 +497,18 @@ def test_inject_using_key():
 
 def test_inject_and_provide_coexist_happily():
     class MyModule(Module):
-        @provides(float)
-        def provide_weight(self):
+        @provider
+        def provide_weight(self) -> float:
             return 50.0
 
-        @provides(int)
-        def provide_age(self):
+        @provider
+        def provide_age(self) -> int:
             return 25
 
-        # TODO(alec) Make provides/inject order independent.
-        @provides(str)
+        # TODO(alec) Make provider/inject order independent.
+        @provider
         @inject(age=int, weight=float)
-        def provide_description(self, age, weight):
+        def provide_description(self, age, weight) -> str:
             return 'Bob is %d and weighs %0.1fkg' % (age, weight)
 
     assert (Injector(MyModule()).get(str) == 'Bob is 25 and weighs 50.0kg')
@@ -526,16 +526,16 @@ def test_multibind():
     assert (Injector([configure_one, configure_two]).get(Names) == ['Bob', 'Tom'])
 
 
-def test_provides_sequence_decorator():
+def test_provider_sequence_decorator():
     Names = SequenceKey('names')
 
     class MyModule(Module):
-        @provides(Names)
-        def bob(self):
+        @provider
+        def bob(self) -> Names:
             return ['Bob']
 
-        @provides(Names)
-        def tom(self):
+        @provider
+        def tom(self) -> Names:
             return ['Tom']
 
     assert (Injector(MyModule()).get(Names) == ['Bob', 'Tom'])
@@ -588,9 +588,9 @@ def test_custom_scope():
         def configure(self, binder):
             binder.bind_scope(RequestScope)
 
-        @provides(Handler)
+        @provider
         @inject(request=Request)
-        def handler(self, request):
+        def handler(self, request) -> Handler:
             return Handler(request)
 
     injector = Injector([RequestModule()], auto_bind=False)
@@ -619,7 +619,7 @@ def test_bind_interface_of_list_of_types():
     assert (injector.get([int]) == [1, 2, 3, 4, 5, 6])
 
 
-def test_provides_mapping():
+def test_provider_mapping():
 
     StrInt = MappingKey('StrInt')
 
@@ -628,12 +628,12 @@ def test_provides_mapping():
         binder.multibind(StrInt, to={'two': 2})
 
     class MyModule(Module):
-        @provides(StrInt)
-        def provide_numbers(self):
+        @provider
+        def provide_numbers(self) -> StrInt:
             return {'three': 3}
 
-        @provides(StrInt)
-        def provide_more_numbers(self):
+        @provider
+        def provide_more_numbers(self) -> StrInt:
             return {'four': 4}
 
     injector = Injector([configure, MyModule()])
@@ -849,19 +849,19 @@ class TestThreadSafety:
         assert (a is b)
 
 
-def test_provides_and_scope_decorator_collaboration():
-    @provides(int)
+def test_provider_and_scope_decorator_collaboration():
+    @provider
     @singleton
-    def provides_singleton():
+    def provider_singleton() -> int:
         return 10
 
     @singleton
-    @provides(int)
-    def singleton_provides():
+    @provider
+    def singleton_provider() -> int:
         return 10
 
-    assert provides_singleton.__binding__.scope == SingletonScope
-    assert singleton_provides.__binding__.scope == SingletonScope
+    assert provider_singleton.__binding__.scope == SingletonScope
+    assert singleton_provider.__binding__.scope == SingletonScope
 
 
 def test_injecting_into_method_of_object_that_is_falseish_works():
@@ -1058,20 +1058,6 @@ def test_implicit_injection_for_python3():
     assert isinstance(c, C)
     assert isinstance(c.b, B)
     assert isinstance(c.b.a, A)
-
-
-def test_annotation_based_injection_works_in_provider_methods_old_style():
-    class MyModule(Module):
-        def configure(self, binder):
-            binder.bind(int, to=42)
-
-        @provides(str)
-        @inject
-        def provide_str(self, i: int):
-            return str(i)
-
-    injector = Injector(MyModule)
-    assert injector.get(str) == '42'
 
 
 def test_annotation_based_injection_works_in_provider_methods():
