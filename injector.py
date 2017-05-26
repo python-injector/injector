@@ -62,12 +62,7 @@ def reraise(original, exception, maximum_frames=1):
     frames = inspect.getinnerframes(tb)
     if len(frames) > maximum_frames:
         exception = original
-    try:
-        raise exception.with_traceback(tb)
-    except AttributeError:
-        # This syntax is not a valid Python 3 syntax so we have
-        # to work around that
-        exec('raise exception.__class__, exception, tb')
+    raise exception.with_traceback(tb)
 
 
 class Error(Exception):
