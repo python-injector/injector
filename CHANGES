@@ -9,6 +9,7 @@ Backwards incompatible:
 - Dropped Python 3.2 support
 - Dropped Injector use_annotations constructor parameter. Whenever @inject is
   used parameter annotations will be used automatically.
+- Dropped Python 2 support (this includes PyPy)
 
 0.12.0
 ------

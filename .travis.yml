@@ -1,13 +1,11 @@
 sudo: false
 language: python
 python:
-  - "2.7"
   - "3.3"
   - "3.4"
   - "3.5"
   - "3.6"
   - "nightly"
-  - "pypy"
   - "pypy3.3-5.2-alpha1"
 env:
   - TYPING_VERSION="<3.5.3"
