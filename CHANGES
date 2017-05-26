@@ -10,6 +10,7 @@ Backwards incompatible:
 - Dropped Injector use_annotations constructor parameter. Whenever @inject is
   used parameter annotations will be used automatically.
 - Dropped Python 2 support (this includes PyPy)
+- Removed @provides decorator, use @provider instead
 
 0.12.0
 ------

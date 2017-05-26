@@ -370,7 +370,7 @@ class Binder:
                 'Injector Modules (ie. %s) constructors and their configure methods should '
                 'not have injectable parameters. This can result in non-deterministic '
                 'initialization. If you need injectable objects in order to provide something '
-                ' you can use @provides-decorated methods. \n'
+                ' you can use @provider-decorated methods. \n'
                 ' This feature will be removed in next Injector release.' %
                 module.__name__ if hasattr(module, '__name__') else module.__class__.__name__,
                 RuntimeWarning,
@@ -979,27 +979,6 @@ def with_injector(*injector_args, **injector_kwargs):
     return wrapper
 
 
-def provides(interface, scope=None, eager=False):
-    """Decorator for :class:`Module` methods, registering a provider of a type.
-
-    .. warning:: Deprecated, use :func:`provider` instead.
-
-    >>> class MyModule(Module):
-    ...   @provides(str)
-    ...   def provide_name(self):
-    ...       return 'Bob'
-
-    :param interface: Interface to provide.
-    :param scope: Optional scope of provided value.
-    """
-    def wrapper(provider):
-        scope_ = scope or getattr(provider, '__scope__', getattr(wrapper, '__scope__', None))
-        provider.__binding__ = Binding(interface, provider, scope_)
-        return provider
-
-    return wrapper
-
-
 def provider(function):
     """Decorator for :class:`Module` methods, registering a provider of a type.
 
@@ -1135,7 +1114,7 @@ def method_wrapper(f, bindings):
             else:
                 return f(self_, *args, **kwargs)
 
-        # Propagate @provides bindings to wrapper function
+        # Propagate @provider bindings to wrapper function
         if hasattr(f, '__binding__'):
             inject.__binding__ = f.__binding__
     else:
