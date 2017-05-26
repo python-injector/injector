@@ -627,7 +627,6 @@ class Injector(object):
 
     :param auto_bind: Whether to automatically bind missing types.
     :param parent: Parent injector.
-    :param use_annotations: Attempt to infer injected arguments using Python3 argument annotations.
 
     If you use Python 3 you can make Injector use constructor parameter annotations to
     determine class dependencies. The following code::
@@ -643,21 +642,19 @@ class Injector(object):
             def __init__(self, a:A):
                 self.a = a
 
-    To enable Python 3 annotation support, instantiate your :class:`Injector` with
-    ``use_annotations=True``.
-
-
     .. versionadded:: 0.7.5
         ``use_annotations`` parameter
+
+    .. versionchanged:: 0.13.0
+        ``use_annotations`` parameter is removed
     """
 
-    def __init__(self, modules=None, auto_bind=True, parent=None, use_annotations=False):
+    def __init__(self, modules=None, auto_bind=True, parent=None):
         # Stack of keys currently being injected. Used to detect circular
         # dependencies.
         self._stack = ()
 
         self.parent = parent
-        self.use_annotations = use_annotations
 
         # Binder
         self.binder = Binder(self, auto_bind=auto_bind, parent=parent and parent.binder)
@@ -745,15 +742,6 @@ class Injector(object):
         additional_kwargs = additional_kwargs or {}
         log.debug('%sCreating %r object with %r', self._log_prefix, cls, additional_kwargs)
 
-        # (cls.__init__ is not object.__init__) is a workaround for Python 3.3
-        # where object.__init__ is a slot wrapper that can't be inspected
-        if self.use_annotations and hasattr(cls, '__init__') and \
-           not hasattr(cls.__init__, '__binding__') and \
-           cls.__init__ is not object.__init__ and self.use_annotations:
-            bindings = _infer_injected_bindings(cls.__init__)
-        else:
-            bindings = {}
-
         try:
             instance = cls.__new__(cls)
         except TypeError as e:
@@ -775,8 +763,6 @@ class Injector(object):
         try:
             try:
                 init = cls.__init__
-                if bindings:
-                    init = inject(**bindings)(init)
                 init(instance, **additional_kwargs)
             except TypeError as e:
                 # The reason why getattr() fallback is used here is that
