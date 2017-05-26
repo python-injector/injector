@@ -16,7 +16,7 @@ Example code:
 
 .. code-block:: python
 
-    class X(object):
+    class X:
         @inject
         def __init__(self, s: str):
             self.s = s

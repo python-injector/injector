@@ -182,13 +182,13 @@ Sometimes code like this is written:
 
 .. code-block:: python
 
-    class A(object):
+    class A:
         pass
 
-    class B(object):
+    class B:
         pass
 
-    class C(object):
+    class C:
         @inject
         def __init__(self, injector: Injector):
             self.a = injector.get(A)
@@ -199,13 +199,13 @@ It is advised to use the following pattern instead:
 
 .. code-block:: python
 
-    class A(object):
+    class A:
         pass
 
-    class B(object):
+    class B:
         pass
 
-    class C(object):
+    class C:
         @inject
         def __init__(self, a: A, b: B):
             self.a = a
@@ -228,14 +228,14 @@ A pattern similar to the one below can emerge:
 
 .. code-block:: python
 
-    class A(object):
+    class A:
         pass
 
-    class B(object):
+    class B:
         def __init__(self, a):
             self.a = a
 
-    class C(object):
+    class C:
         @inject
         def __init__(self, a: A):
             self.b = B(a)
@@ -249,15 +249,15 @@ The appropriate pattern is:
 
 .. code-block:: python
 
-    class A(object):
+    class A:
         pass
 
-    class B(object):
+    class B:
         @inject
         def __init__(self, a: A):
             self.a = a
 
-    class C(object):
+    class C:
         @inject
         def __init__(self, b: B):
             self.b = b

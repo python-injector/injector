@@ -15,7 +15,7 @@ Singletons are declared by binding them in the SingletonScope. This can be done 
 A (redundant) example showing all three methods::
 
     @singleton
-    class Thing(object): pass
+    class Thing: pass
     class ThingModule(Module):
         def configure(self, binder):
             binder.bind(Thing, scope=singleton)
@@ -44,7 +44,7 @@ Then create a global instance of :class:`ScopeDecorator` to allow classes to be 
 This can be used like so::
 
     @customscope
-    class MyClass(object):
+    class MyClass:
         pass
 
 Scopes are bound in modules with the :meth:`Binder.bind_scope` method::

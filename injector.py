@@ -117,7 +117,7 @@ class UnknownProvider(Error):
     """Tried to bind to a type whose provider couldn't be determined."""
 
 
-class Provider(object):
+class Provider:
     """Provides class instances."""
 
     __metaclass__ = ABCMeta
@@ -262,7 +262,7 @@ class Binding(_BindingBase):
     """A binding from an (interface,) to a provider in a scope."""
 
 
-class Binder(object):
+class Binder:
     """Bind interfaces to implementations.
 
     .. note:: This class is instantiated internally for you and there's no need
@@ -493,7 +493,7 @@ else:
         return isinstance(cls, type) and cls is not Any and issubclass(cls, generic_class)
 
 
-class Scope(object):
+class Scope:
     """A Scope looks up the Provider for a binding.
 
     By default (ie. :class:`NoScope` ) this simply returns the default
@@ -520,7 +520,7 @@ class Scope(object):
         raise NotImplementedError
 
 
-class ScopeDecorator(object):
+class ScopeDecorator:
     def __init__(self, scope):
         self.scope = scope
 
@@ -555,7 +555,7 @@ class SingletonScope(Scope):
 
     :data:`singleton` can be used as a convenience class decorator.
 
-    >>> class A(object): pass
+    >>> class A: pass
     >>> injector = Injector()
     >>> provider = ClassProvider(A)
     >>> singleton = SingletonScope(injector)
@@ -597,7 +597,7 @@ class ThreadLocalScope(Scope):
 threadlocal = ScopeDecorator(ThreadLocalScope)
 
 
-class Module(object):
+class Module:
     """Configures injector and providers."""
 
     def __call__(self, binder):
@@ -618,7 +618,7 @@ class Module(object):
         """Override to configure bindings."""
 
 
-class Injector(object):
+class Injector:
     """
     :param modules: Optional - a configuration module or iterable of configuration modules.
         Each module will be installed in current :class:`Binder` using :meth:`Binder.install`.
@@ -631,14 +631,14 @@ class Injector(object):
     If you use Python 3 you can make Injector use constructor parameter annotations to
     determine class dependencies. The following code::
 
-        class B(object):
+        class B:
             @inject(a=A):
             def __init__(self, a):
                 self.a = a
 
     can now be written as::
 
-        class B(object):
+        class B:
             def __init__(self, a:A):
                 self.a = a
 
@@ -696,7 +696,7 @@ class Injector(object):
 
             .. code-block:: python
 
-                class Application(object):
+                class Application:
 
                     @inject(dep1=Dep1, dep2=dep2)
                     def __init__(self, dep1, dep2):
@@ -791,7 +791,7 @@ class Injector(object):
 
                 from injector import Injector
 
-                class Main(object):
+                class Main:
                     def __init__(self):
                         def configure(binder):
                             binder.bind(str, to='Hello!')
@@ -1054,7 +1054,7 @@ def inject(function=None, **bindings):
     ...         print([number, name, sizes])
     ...
     >>> # Or older, Python 2-compatible style
-    >>> class A(object):
+    >>> class A:
     ...     @inject(number=int, name=str, sizes=Sizes)
     ...     def __init__(self, number, name, sizes):
     ...         print([number, name, sizes])
@@ -1161,7 +1161,7 @@ def method_wrapper(f, bindings):
 
 
 @private
-class BaseKey(object):
+class BaseKey:
     """Base type for binding keys."""
 
     def __init__(self):
@@ -1225,7 +1225,7 @@ def SequenceKey(name):
 class BoundKey(tuple):
     """A BoundKey provides a key to a type with pre-injected arguments.
 
-    >>> class A(object):
+    >>> class A:
     ...   def __init__(self, a, b):
     ...     self.a = a
     ...     self.b = b

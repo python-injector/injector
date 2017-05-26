@@ -29,10 +29,10 @@ from injector import (
 
 
 def prepare_basic_injection():
-    class B(object):
+    class B:
         pass
 
-    class A(object):
+    class A:
         @inject(b=B)
         def __init__(self, b):
             """Construct a new A."""
@@ -74,7 +74,7 @@ def test_child_injector_rebinds_arguments_for_parent_scope():
     I = Key("interface")
     Cls = Key("test_class")
 
-    class A(object):
+    class A:
         @inject(val=I)
         def __init__(self, val):
             self.val = val
@@ -94,7 +94,7 @@ def test_child_injector_rebinds_arguments_for_parent_scope():
 def test_scopes_are_only_bound_to_root_injector():
     parent, child = prepare_nested_injectors()
 
-    class A(object):
+    class A:
         pass
 
     parent.binder.bind(A, to=A, scope=singleton)
@@ -145,7 +145,7 @@ def test_providers_arent_called_for_dependencies_that_are_already_provided():
     def configure(binder):
         binder.bind(int, to=lambda: 1 / 0)
 
-    class A(object):
+    class A:
         @inject(i=int)
         def __init__(self, i):
             pass
@@ -199,10 +199,10 @@ def test_inject_with_missing_dependency():
 
 
 def test_inject_named_interface():
-    class B(object):
+    class B:
         pass
 
-    class A(object):
+    class A:
         @inject(b=B)
         def __init__(self, b):
             self.b = b
@@ -218,15 +218,15 @@ def test_inject_named_interface():
 
 
 def prepare_transitive_injection():
-    class C(object):
+    class C:
         pass
 
-    class B(object):
+    class B:
         @inject(c=C)
         def __init__(self, c):
             self.c = c
 
-    class A(object):
+    class A:
         @inject(b=B)
         def __init__(self, b):
             self.b = b
@@ -264,10 +264,10 @@ def test_transitive_injection_with_missing_dependency():
 
 
 def test_inject_singleton():
-    class B(object):
+    class B:
         pass
 
-    class A(object):
+    class A:
         @inject(b=B)
         def __init__(self, b):
             self.b = b
@@ -284,10 +284,10 @@ def test_inject_singleton():
 
 def test_inject_decorated_singleton_class():
     @singleton
-    class B(object):
+    class B:
         pass
 
-    class A(object):
+    class A:
         @inject(b=B)
         def __init__(self, b):
             self.b = b
@@ -304,7 +304,7 @@ def test_inject_decorated_singleton_class():
 
 def test_threadlocal():
     @threadlocal
-    class A(object):
+    class A:
         def __init__(self):
             pass
 
@@ -331,13 +331,13 @@ def test_threadlocal():
 
 
 def test_injecting_interface_implementation():
-    class Interface(object):
+    class Interface:
         pass
 
-    class Implementation(object):
+    class Implementation:
         pass
 
-    class A(object):
+    class A:
         @inject(i=Interface)
         def __init__(self, i):
             self.i = i
@@ -352,15 +352,15 @@ def test_injecting_interface_implementation():
 
 
 def test_cyclic_dependencies():
-    class Interface(object):
+    class Interface:
         pass
 
-    class A(object):
+    class A:
         @inject(i=Interface)
         def __init__(self, i):
             self.i = i
 
-    class B(object):
+    class B:
         @inject(a=A)
         def __init__(self, a):
             self.a = a
@@ -375,15 +375,15 @@ def test_cyclic_dependencies():
 
 
 def test_dependency_cycle_can_be_worked_broken_by_assisted_building():
-    class Interface(object):
+    class Interface:
         pass
 
-    class A(object):
+    class A:
         @inject(i=Interface)
         def __init__(self, i):
             self.i = i
 
-    class B(object):
+    class B:
         @inject(a_builder=AssistedBuilder[A])
         def __init__(self, a_builder):
             self.a = a_builder.build(i=self)
@@ -402,13 +402,13 @@ def test_dependency_cycle_can_be_worked_broken_by_assisted_building():
 
 
 def test_that_injection_is_lazy():
-    class Interface(object):
+    class Interface:
         constructed = False
 
         def __init__(self):
             Interface.constructed = True
 
-    class A(object):
+    class A:
         @inject(i=Interface)
         def __init__(self, i):
             self.i = i
@@ -451,7 +451,7 @@ def test_with_injector_works():
     def configure(binder):
         binder.bind(str, to=name)
 
-    class Aaa(object):
+    class Aaa:
         @with_injector(configure)
         @inject(username=str)
         def __init__(self, username):
@@ -543,7 +543,7 @@ def test_provides_sequence_decorator():
 
 def test_auto_bind():
 
-    class A(object):
+    class A:
         pass
 
     injector = Injector()
@@ -576,11 +576,11 @@ def test_custom_scope():
 
     request = ScopeDecorator(RequestScope)
 
-    class Request(object):
+    class Request:
         pass
 
     @request
-    class Handler(object):
+    class Handler:
         def __init__(self, request):
             self.request = request
 
@@ -678,7 +678,7 @@ def test_binder_provider_for_method_with_class():
 
 
 def test_binder_provider_for_method_with_class_to_specific_subclass():
-    class A(object):
+    class A:
         pass
 
     class B(A):
@@ -704,11 +704,11 @@ def test_binder_provider_for_type_with_metaclass():
 
 
 def test_injecting_undecorated_class_with_missing_dependencies_raises_the_right_error():
-    class ClassA(object):
+    class ClassA:
         def __init__(self, parameter):
             pass
 
-    class ClassB(object):
+    class ClassB:
         @inject(a=ClassA)
         def __init__(self, a):
             pass
@@ -721,7 +721,7 @@ def test_injecting_undecorated_class_with_missing_dependencies_raises_the_right_
 
 
 def test_call_to_method_with_legitimate_call_error_raises_type_error():
-    class A(object):
+    class A:
         def __init__(self):
             max()
 
@@ -735,7 +735,7 @@ def test_call_error_str_representation_handles_single_arg():
     assert str(ce) == 'zxc'
 
 
-class NeedsAssistance(object):
+class NeedsAssistance:
     @inject(a=str)
     def __init__(self, a, b):
         self.a = a
@@ -750,7 +750,7 @@ def test_assisted_builder_works_when_got_directly_from_injector():
 
 
 def test_assisted_builder_works_when_injected():
-    class X(object):
+    class X:
         @inject(builder=AssistedBuilder[NeedsAssistance])
         def __init__(self, builder):
             self.obj = builder.build(b=234)
@@ -773,7 +773,7 @@ def test_assisted_builder_uses_bindings():
 
 
 def test_assisted_builder_uses_concrete_class_when_specified():
-    class X(object):
+    class X:
         pass
 
     def configure(binder):
@@ -786,7 +786,7 @@ def test_assisted_builder_uses_concrete_class_when_specified():
 
 
 def test_assisted_builder_injection_is_safe_to_use_with_multiple_injectors():
-    class X(object):
+    class X:
         @inject(builder=AssistedBuilder[NeedsAssistance])
         def __init__(self, builder):
             self.builder = builder
@@ -803,14 +803,14 @@ def test_assisted_builder_injection_uses_the_same_binding_key_every_time():
     assert gen_key() == gen_key()
 
 
-class TestThreadSafety(object):
+class TestThreadSafety:
     def setup(self):
         self.event = threading.Event()
 
         def configure(binder):
             binder.bind(str, to=lambda: self.event.wait() and 'this is str')
 
-        class XXX(object):
+        class XXX:
             @inject(s=str)
             def __init__(self, s):
                 pass
@@ -878,7 +878,7 @@ def test_injecting_into_method_of_object_that_is_falseish_works():
 
 def test_injection_fails_when_injector_cant_install_itself_into_an_object_with_slots():
     try:
-        class ClassName(object):
+        class ClassName:
             __slots__ = ()
 
         injector = Injector()
@@ -980,7 +980,7 @@ def test_providerof_is_safe_to_use_with_multiple_injectors():
 
 
 def test_special_interfaces_work_with_auto_bind_disabled():
-    class InjectMe(object):
+    class InjectMe:
         pass
 
     def configure(binder):
@@ -1018,16 +1018,16 @@ def test_binding_an_instance_regression():
 
 
 def test_class_assisted_builder_of_partially_injected_class_old():
-    class A(object):
+    class A:
         pass
 
-    class B(object):
+    class B:
         @inject(a=A, b=str)
         def __init__(self, a, b):
             self.a = a
             self.b = b
 
-    class C(object):
+    class C:
         @inject(a=A, builder=ClassAssistedBuilder[B])
         def __init__(self, a, builder):
             self.a = a
@@ -1040,15 +1040,15 @@ def test_class_assisted_builder_of_partially_injected_class_old():
 
 
 def test_implicit_injection_for_python3():
-    class A(object):
+    class A:
         pass
 
-    class B(object):
+    class B:
         @inject
         def __init__(self, a:A):
             self.a = a
 
-    class C(object):
+    class C:
         @inject
         def __init__(self, b:B):
             self.b = b
@@ -1123,7 +1123,7 @@ def test_assisted_building_is_supported():
 
 
 def test_implicit_injection_fails_when_annotations_are_missing():
-    class A(object):
+    class A:
         def __init__(self, n):
             self.n = n
 
@@ -1244,16 +1244,16 @@ def test_optionals_are_ignored_for_now():
 
 
 def test_class_assisted_builder_of_partially_injected_class():
-    class A(object):
+    class A:
         pass
 
-    class B(object):
+    class B:
         @inject
         def __init__(self, a: A, b: str):
             self.a = a
             self.b = b
 
-    class C(object):
+    class C:
         @inject
         def __init__(self, a: A, builder: ClassAssistedBuilder[B]):
             self.a = a

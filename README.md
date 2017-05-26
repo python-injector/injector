@@ -33,11 +33,11 @@ A Quick Example
 
 ```python
 >>> from injector import Injector, inject
->>> class Inner(object):
+>>> class Inner:
 ...     def __init__(self):
 ...         self.forty_two = 42
 ...
->>> class Outer(object):
+>>> class Outer:
 ...     @inject
 ...     def __init__(self, inner: Inner):
 ...         self.inner = inner
@@ -72,7 +72,7 @@ And make up an imaginary `RequestHandler` class that uses the SQLite connection:
 
 
 ```python
->>> class RequestHandler(object):
+>>> class RequestHandler:
 ...   @inject
 ...   def __init__(self, db: sqlite3.Connection):
 ...     self._db = db

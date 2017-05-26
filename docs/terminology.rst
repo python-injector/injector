@@ -89,7 +89,7 @@ Here is an example of injection on a module provider method, and on the construc
 
     from injector import inject
 
-    class User(object):
+    class User:
         @inject
         def __init__(self, name: Name, description: Description):
             self.name = name
@@ -144,15 +144,15 @@ Assisted injection
 
 Sometimes there are classes that have injectable and non-injectable parameters in their constructors. Let's have for example::
 
-    class Database(object): pass
+    class Database: pass
 
 
-    class User(object):
+    class User:
         def __init__(self, name):
             self.name = name
 
 
-    class UserUpdater(object):
+    class UserUpdater:
         def __init__(self, db: Database, user):
             pass
 
@@ -171,7 +171,7 @@ This way we don't get `UserUpdater` directly but rather a builder object. Such b
 `AssistedBuilder[T]` and `ClassAssistedBuilder[T]` are injectable just as anything
 else, if you need instance of it you just ask for it like that::
 
-    class NeedsUserUpdater(object):
+    class NeedsUserUpdater:
         @inject
         def __init__(self, builder: ClassAssistedBuilder[UserUpdater]):
             self.updater_builder = builder
@@ -184,7 +184,7 @@ else, if you need instance of it you just ask for it like that::
 If you want to follow bindings and construct class pointed to by a key you use `AssistedBuilder` and can do it like this::
 
     >>> DB = Key('DB')
-    >>> class DBImplementation(object):
+    >>> class DBImplementation:
     ...     def __init__(self, uri):
     ...         pass
     ...
