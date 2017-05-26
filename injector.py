@@ -412,10 +412,11 @@ class Binder:
         elif issubclass(type(to), type):
             return ClassProvider(to)
         elif isinstance(interface, BoundKey):
-            @inject(**interface.kwargs)
             def proxy(**kwargs):
                 return interface.interface(**kwargs)
-            return CallableProvider(proxy)
+
+            proxy.__annotations__ = interface.kwargs.copy()
+            return CallableProvider(inject(proxy))
         elif _is_specialization(interface, AssistedBuilder):
             (target,) = interface.__args__
             builder = interface(self.injector, target)
@@ -632,8 +633,8 @@ class Injector:
     determine class dependencies. The following code::
 
         class B:
-            @inject(a=A):
-            def __init__(self, a):
+            @inject
+            def __init__(self, a: A):
                 self.a = a
 
     can now be written as::
@@ -698,8 +699,8 @@ class Injector:
 
                 class Application:
 
-                    @inject(dep1=Dep1, dep2=dep2)
-                    def __init__(self, dep1, dep2):
+                    @inject
+                    def __init__(self, dep1: Dep1, dep2: Dep2):
                         self.dep1 = dep1
                         self.dep2 = dep2
 
@@ -799,8 +800,8 @@ class Injector:
                         injector = Injector(configure)
                         injector.install_into(self)
 
-                    @inject(s=str)
-                    def run(self, s):
+                    @inject
+                    def run(self, s: str):
                         print(s)
 
                 if __name__ == '__main__':
@@ -1026,16 +1027,9 @@ def inject(function=None, **bindings):
     >>> Sizes = Key('sizes')
     >>> Names = Key('names')
     >>>
-    >>> # Recommended, Python 3+ style
     >>> class A:
     ...     @inject
     ...     def __init__(self, number: int, name: str, sizes: Sizes):
-    ...         print([number, name, sizes])
-    ...
-    >>> # Or older, Python 2-compatible style
-    >>> class A:
-    ...     @inject(number=int, name=str, sizes=Sizes)
-    ...     def __init__(self, number, name, sizes):
     ...         print([number, name, sizes])
     ...
     >>> def configure(binder):
@@ -1049,22 +1043,14 @@ def inject(function=None, **bindings):
     >>> a = Injector(configure).get(A)
     [123, 'Bob', [1, 2, 3]]
     """
-    if function:
-        assert not bindings, 'You can only pass either function or bindings here'
-        try:
-            bindings = _infer_injected_bindings(function)
-        except _BindingNotYetAvailable:
-            bindings = 'deferred'
-        return method_wrapper(function, bindings)
+    if bindings or not function:
+        raise AssertionError('Wrong use of the inject decorator, please consult the documentation')
 
-    def multi_wrapper(something):
-        if isinstance(something, type):
-            raise TypeError('Decorating classes with @inject is no longer supported, ' +
-                            'provide constructor and decorate it')
-        else:
-            return method_wrapper(something, bindings)
-
-    return multi_wrapper
+    try:
+        bindings = _infer_injected_bindings(function)
+    except _BindingNotYetAvailable:
+        bindings = 'deferred'
+    return method_wrapper(function, bindings)
 
 
 def noninjectable(*args):

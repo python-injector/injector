@@ -33,8 +33,8 @@ def prepare_basic_injection():
         pass
 
     class A:
-        @inject(b=B)
-        def __init__(self, b):
+        @inject
+        def __init__(self, b: B):
             """Construct a new A."""
             self.b = b
 
@@ -75,8 +75,8 @@ def test_child_injector_rebinds_arguments_for_parent_scope():
     Cls = Key("test_class")
 
     class A:
-        @inject(val=I)
-        def __init__(self, val):
+        @inject
+        def __init__(self, val: I):
             self.val = val
 
     def configure_parent(binder):
@@ -136,7 +136,7 @@ def test_method_decorator_is_wrapped():
 
 
 def test_decorator_works_for_function_with_no_args():
-    @inject(s=str)
+    @inject
     def wrapped(*args, **kwargs):
         pass
 
@@ -146,8 +146,8 @@ def test_providers_arent_called_for_dependencies_that_are_already_provided():
         binder.bind(int, to=lambda: 1 / 0)
 
     class A:
-        @inject(i=int)
-        def __init__(self, i):
+        @inject
+        def __init__(self, i: int):
             pass
 
     injector = Injector(configure)
@@ -203,8 +203,8 @@ def test_inject_named_interface():
         pass
 
     class A:
-        @inject(b=B)
-        def __init__(self, b):
+        @inject
+        def __init__(self, b: B):
             self.b = b
 
     def configure(binder):
@@ -222,13 +222,13 @@ def prepare_transitive_injection():
         pass
 
     class B:
-        @inject(c=C)
-        def __init__(self, c):
+        @inject
+        def __init__(self, c: C):
             self.c = c
 
     class A:
-        @inject(b=B)
-        def __init__(self, b):
+        @inject
+        def __init__(self, b: B):
             self.b = b
 
     return A, B, C
@@ -268,8 +268,8 @@ def test_inject_singleton():
         pass
 
     class A:
-        @inject(b=B)
-        def __init__(self, b):
+        @inject
+        def __init__(self, b: B):
             self.b = b
 
     def configure(binder):
@@ -288,8 +288,8 @@ def test_inject_decorated_singleton_class():
         pass
 
     class A:
-        @inject(b=B)
-        def __init__(self, b):
+        @inject
+        def __init__(self, b: B):
             self.b = b
 
     def configure(binder):
@@ -338,8 +338,8 @@ def test_injecting_interface_implementation():
         pass
 
     class A:
-        @inject(i=Interface)
-        def __init__(self, i):
+        @inject
+        def __init__(self, i: Interface):
             self.i = i
 
     def configure(binder):
@@ -356,13 +356,13 @@ def test_cyclic_dependencies():
         pass
 
     class A:
-        @inject(i=Interface)
-        def __init__(self, i):
+        @inject
+        def __init__(self, i: Interface):
             self.i = i
 
     class B:
-        @inject(a=A)
-        def __init__(self, a):
+        @inject
+        def __init__(self, a: A):
             self.a = a
 
     def configure(binder):
@@ -379,13 +379,13 @@ def test_dependency_cycle_can_be_worked_broken_by_assisted_building():
         pass
 
     class A:
-        @inject(i=Interface)
-        def __init__(self, i):
+        @inject
+        def __init__(self, i: Interface):
             self.i = i
 
     class B:
-        @inject(a_builder=AssistedBuilder[A])
-        def __init__(self, a_builder):
+        @inject
+        def __init__(self, a_builder: AssistedBuilder[A]):
             self.a = a_builder.build(i=self)
 
     def configure(binder):
@@ -409,8 +409,8 @@ def test_that_injection_is_lazy():
             Interface.constructed = True
 
     class A:
-        @inject(i=Interface)
-        def __init__(self, i):
+        @inject
+        def __init__(self, i: Interface):
             self.i = i
 
     def configure(binder):
@@ -453,8 +453,8 @@ def test_with_injector_works():
 
     class Aaa:
         @with_injector(configure)
-        @inject(username=str)
-        def __init__(self, username):
+        @inject
+        def __init__(self, username: str):
             self.username = username
 
     aaa = Aaa()
@@ -488,8 +488,8 @@ def test_inject_using_key():
             return 'Bob'
 
         @provider
-        @inject(name=Name)
-        def provide_description(self, name) -> Description:
+        @inject
+        def provide_description(self, name: Name) -> Description:
             return '%s is cool!' % name
 
     assert (Injector(MyModule()).get(Description) == 'Bob is cool!')
@@ -507,8 +507,8 @@ def test_inject_and_provide_coexist_happily():
 
         # TODO(alec) Make provider/inject order independent.
         @provider
-        @inject(age=int, weight=float)
-        def provide_description(self, age, weight) -> str:
+        @inject
+        def provide_description(self, age: int, weight: float) -> str:
             return 'Bob is %d and weighs %0.1fkg' % (age, weight)
 
     assert (Injector(MyModule()).get(str) == 'Bob is 25 and weighs 50.0kg')
@@ -589,8 +589,8 @@ def test_custom_scope():
             binder.bind_scope(RequestScope)
 
         @provider
-        @inject(request=Request)
-        def handler(self, request) -> Handler:
+        @inject
+        def handler(self, request: Request) -> Handler:
             return Handler(request)
 
     injector = Injector([RequestModule()], auto_bind=False)
@@ -709,8 +709,8 @@ def test_injecting_undecorated_class_with_missing_dependencies_raises_the_right_
             pass
 
     class ClassB:
-        @inject(a=ClassA)
-        def __init__(self, a):
+        @inject
+        def __init__(self, a: ClassA):
             pass
 
     injector = Injector()
@@ -736,8 +736,8 @@ def test_call_error_str_representation_handles_single_arg():
 
 
 class NeedsAssistance:
-    @inject(a=str)
-    def __init__(self, a, b):
+    @inject
+    def __init__(self, a: str, b):
         self.a = a
         self.b = b
 
@@ -751,8 +751,8 @@ def test_assisted_builder_works_when_got_directly_from_injector():
 
 def test_assisted_builder_works_when_injected():
     class X:
-        @inject(builder=AssistedBuilder[NeedsAssistance])
-        def __init__(self, builder):
+        @inject
+        def __init__(self, builder: AssistedBuilder[NeedsAssistance]):
             self.obj = builder.build(b=234)
 
     injector = Injector()
@@ -787,8 +787,8 @@ def test_assisted_builder_uses_concrete_class_when_specified():
 
 def test_assisted_builder_injection_is_safe_to_use_with_multiple_injectors():
     class X:
-        @inject(builder=AssistedBuilder[NeedsAssistance])
-        def __init__(self, builder):
+        @inject
+        def __init__(self, builder: AssistedBuilder[NeedsAssistance]):
             self.builder = builder
 
     i1, i2 = Injector(), Injector()
@@ -811,8 +811,8 @@ class TestThreadSafety:
             binder.bind(str, to=lambda: self.event.wait() and 'this is str')
 
         class XXX:
-            @inject(s=str)
-            def __init__(self, s):
+            @inject
+            def __init__(self, s: str):
                 pass
 
         self.injector = Injector(configure)
@@ -868,8 +868,8 @@ def test_injecting_into_method_of_object_that_is_falseish_works():
     # regression test
 
     class X(dict):
-        @inject(s=str)
-        def __init__(self, s):
+        @inject
+        def __init__(self, s: str):
             pass
 
     injector = Injector()
@@ -891,17 +891,17 @@ def test_injection_fails_when_injector_cant_install_itself_into_an_object_with_s
 
 def test_deprecated_module_configure_injection():
     class Test(Module):
-        @inject(name=int)
-        def configure(self, binder, name):
+        @inject
+        def configure(self, binder, name: int):
             pass
 
     class Test2(Module):
-        @inject(name=int)
-        def __init__(self, name):
+        @inject
+        def __init__(self, name: int):
             pass
 
-    @inject(name=int)
-    def configure(binder, name):
+    @inject
+    def configure(binder, name: int):
         pass
 
     for module in [Test, Test2, configure, Test()]:
@@ -915,8 +915,8 @@ def test_callable_provider_injection():
     Name = Key("Name")
     Message = Key("Message")
 
-    @inject(name=Name)
-    def create_message(name):
+    @inject
+    def create_message(name: Name):
         return "Hello, " + name
 
     def configure(binder):
@@ -1022,14 +1022,14 @@ def test_class_assisted_builder_of_partially_injected_class_old():
         pass
 
     class B:
-        @inject(a=A, b=str)
-        def __init__(self, a, b):
+        @inject
+        def __init__(self, a: A, b: str):
             self.a = a
             self.b = b
 
     class C:
-        @inject(a=A, builder=ClassAssistedBuilder[B])
-        def __init__(self, a, builder):
+        @inject
+        def __init__(self, a: A, builder: ClassAssistedBuilder[B]):
             self.a = a
             self.b = builder.build(b='C')
 

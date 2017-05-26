@@ -15,8 +15,8 @@ When you use unit test framework such as `unittest2` or `nose` you can also prof
         def setUp(self):
             pass
 
-        @inject(username=str)
-        def test_username(self, username):
+        @inject
+        def test_username(self, username: str):
             self.assertEqual(username, 'Maria')
 
 **Each** method call re-initializes :class:`~injector.Injector` - if you want to you can also put :func:`~injector.with_injector` decorator on class constructor.
