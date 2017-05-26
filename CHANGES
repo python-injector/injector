@@ -11,6 +11,7 @@ Backwards incompatible:
   used parameter annotations will be used automatically.
 - Dropped Python 2 support (this includes PyPy)
 - Removed @provides decorator, use @provider instead
+- Removed support for passing keyword arguments to @inject
 
 0.12.0
 ------
