@@ -816,25 +816,6 @@ class Injector:
     def _uninstall_from(self, instance):
         del instance.__injector__
 
-    @private
-    def wrap_function(self, function):
-        """Create function wrapper that will take care of it's dependencies.
-
-        You only need to provide noninjectable arguments to the wrapped function.
-
-        :return: Wrapped function.
-        """
-
-        @functools.wraps(function)
-        def wrapper(*args, **kwargs):
-            return self.call_with_injection(
-                callable=function,
-                args=args,
-                kwargs=kwargs
-            )
-
-        return wrapper
-
     def call_with_injection(self, callable, self_=None, args=(), kwargs={}):
         """Call a callable and provide it's dependencies if needed.
 
