@@ -1110,11 +1110,6 @@ def Key(name):
     >>> Injector(configure).get(Age)
     90
     """
-    try:
-        if isinstance(name, unicode):
-            name = name.encode('utf-8')
-    except NameError:
-        pass
     return type(name, (BaseKey,), {})
 
 
@@ -1128,11 +1123,6 @@ class BaseMappingKey(dict):
 
 def MappingKey(name):
     """As for Key, but declares a multibind mapping."""
-    try:
-        if isinstance(name, unicode):
-            name = name.encode('utf-8')
-    except NameError:
-        pass
     return type(name, (BaseMappingKey,), {})
 
 
@@ -1146,11 +1136,6 @@ class BaseSequenceKey(list):
 
 def SequenceKey(name):
     """As for Key, but declares a multibind sequence."""
-    try:
-        if isinstance(name, unicode):
-            name = name.encode('utf-8')
-    except NameError:
-        pass
     return type(name, (BaseSequenceKey,), {})
 
 
