@@ -931,9 +931,7 @@ class _BindingNotYetAvailable(Exception):
 
 
 def _infer_injected_bindings(callable):
-    if not getfullargspec:
-        return None
-    spec = getfullargspec(callable)
+    spec = inspect.getfullargspec(callable)
     try:
         bindings = get_type_hints(callable)
     except NameError as e:
@@ -1006,17 +1004,10 @@ def provider(function):
     .. note:: This function works only on Python 3
     """
     scope_ = getattr(function, '__scope__', None)
-    annotations = getfullargspec(function).annotations
+    annotations = inspect.getfullargspec(function).annotations
     return_type = annotations['return']
     function.__binding__ = Binding(return_type, inject(function), scope_)
     return function
-
-
-if hasattr(inspect, 'getfullargspec'):
-    getfullargspec = getargspec = inspect.getfullargspec
-else:
-    getargspec = inspect.getargspec
-    getfullargspec = None
 
 
 def inject(function=None, **bindings):
@@ -1085,7 +1076,7 @@ def noninjectable(*args):
 
 
 def method_wrapper(f, bindings):
-    argspec = getargspec(f)
+    argspec = inspect.getfullargspec(f)
     if argspec.args and argspec.args[0] == 'self':
         @functools.wraps(f)
         def inject(self_, *args, **kwargs):
