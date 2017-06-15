@@ -1010,8 +1010,18 @@ def inject(function=None, **bindings):
     >>> a = Injector(configure).get(A)
     [123, 'Bob', [1, 2, 3]]
     """
-    if bindings or not function:
-        raise AssertionError('Wrong use of the inject decorator, please consult the documentation')
+    if bindings:
+        raise AssertionError(
+            'Passing keyword arguments to inject is no longer supported. '
+            'Use inject in combination with parameter annotations to declare dependencies. '
+            'See documentation for details',
+        )
+
+    if not function:
+        raise AssertionError(
+            'No function being decorated, make sure you decorate your function with '
+            '@inject, not @inject()',
+        )
 
     try:
         bindings = _infer_injected_bindings(function)
