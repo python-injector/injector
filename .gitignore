@@ -4,3 +4,5 @@ docs/_build/
 build/
 htmlcov/
 *,cover
+.python-version
+.idea

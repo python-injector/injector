@@ -1249,3 +1249,14 @@ def test_class_assisted_builder_of_partially_injected_class():
     assert isinstance(c, C)
     assert isinstance(c.b, B)
     assert isinstance(c.b.a, A)
+
+
+def test_default_scope_settings():
+    class A:
+        pass
+
+    i1 = Injector()
+    assert i1.get(A) is not i1.get(A)
+
+    i2 = Injector(scope=singleton)
+    assert i2.get(A) is i2.get(A)
