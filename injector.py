@@ -626,8 +626,10 @@ class Injector:
 
     :param auto_bind: Whether to automatically bind missing types.
     :param parent: Parent injector.
-    :param scope: Scope of created objects, if no scope provided. Default:
-                  :class:`NoScope`.
+    :param scope: Scope of created objects, if no scope provided.
+                  Default scope is :class:`NoScope`.
+                  For child injectors parent's scope is used if no scope
+                  provided.
 
     If you use Python 3 you can make Injector use constructor parameter annotations to
     determine class dependencies. The following code::
@@ -659,6 +661,10 @@ class Injector:
         self._stack = ()
 
         self.parent = parent
+
+        if not scope and parent:
+            scope = parent.scope
+        self.scope = scope
 
         # Binder
         self.binder = Binder(self, auto_bind=auto_bind,

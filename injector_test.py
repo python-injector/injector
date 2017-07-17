@@ -10,12 +10,11 @@
 
 """Functional tests for the "Injector" dependency injection framework."""
 
-from contextlib import contextmanager
-from typing import Any
 import abc
 import threading
-import traceback
 import warnings
+from contextlib import contextmanager
+from typing import Any
 
 import pytest
 
@@ -25,7 +24,7 @@ from injector import (
     CircularDependency, Module, Key, SingletonScope,
     ScopeDecorator, with_injector, AssistedBuilder, BindingKey,
     SequenceKey, MappingKey, provider, ProviderOf, ClassAssistedBuilder,
-    )
+    NoScope)
 
 
 def prepare_basic_injection():
@@ -1258,5 +1257,17 @@ def test_default_scope_settings():
     i1 = Injector()
     assert i1.get(A) is not i1.get(A)
 
-    i2 = Injector(scope=singleton)
+    i2 = Injector(scope=SingletonScope)
     assert i2.get(A) is i2.get(A)
+
+
+def test_default_scope_parents():
+    class A:
+        pass
+
+    parent = Injector(scope=SingletonScope)
+    child1 = Injector(parent=parent)
+    child2 = Injector(parent=parent, scope=NoScope)
+
+    assert child1.scope == SingletonScope
+    assert child2.scope == NoScope
