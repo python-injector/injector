@@ -30,7 +30,7 @@ TYPING353 = hasattr(Union[str, int], '__origin__')
 
 
 __author__ = 'Alec Thomas <alec@swapoff.org>'
-__version__ = '0.13.1'
+__version__ = '0.14.0'
 __version_tag__ = ''
 
 log = logging.getLogger('injector')
@@ -265,17 +265,20 @@ class Binder:
     """
 
     @private
-    def __init__(self, injector, auto_bind=True, parent=None):
+    def __init__(self, injector, auto_bind=True, parent=None, scope=None):
         """Create a new Binder.
 
         :param injector: Injector we are binding for.
         :param auto_bind: Whether to automatically bind missing types.
         :param parent: Parent binder.
+        :param scope: Default scope used, when no scope is provided
+            in :meth:`Binder.bind` method. :class:`NoScope` is used by default.
         """
         self.injector = injector
         self._auto_bind = auto_bind
         self._bindings = {}
         self.parent = parent
+        self.scope = scope or NoScope
 
     def bind(self, interface, to=None, scope=None):
         """Bind an interface to an implementation.
@@ -383,7 +386,7 @@ class Binder:
 
     def create_binding(self, interface, to=None, scope=None):
         provider = self.provider_for(interface, to)
-        scope = scope or getattr(to or interface, '__scope__', NoScope)
+        scope = scope or getattr(to or interface, '__scope__', self.scope)
         if isinstance(scope, ScopeDecorator):
             scope = scope.scope
         return Binding(interface, provider, scope)
@@ -623,6 +626,10 @@ class Injector:
 
     :param auto_bind: Whether to automatically bind missing types.
     :param parent: Parent injector.
+    :param scope: Scope of created objects, if no scope provided.
+                  Default scope is :class:`NoScope`.
+                  For child injectors parent's scope is used if no scope
+                  provided.
 
     If you use Python 3 you can make Injector use constructor parameter annotations to
     determine class dependencies. The following code::
@@ -643,17 +650,25 @@ class Injector:
 
     .. versionchanged:: 0.13.0
         ``use_annotations`` parameter is removed
+
+    .. versionchanged:: 0.14.0
+        ``scope`` parameter added
     """
 
-    def __init__(self, modules=None, auto_bind=True, parent=None):
+    def __init__(self, modules=None, auto_bind=True, parent=None, scope=None):
         # Stack of keys currently being injected. Used to detect circular
         # dependencies.
         self._stack = ()
 
         self.parent = parent
 
+        if not scope and parent:
+            scope = parent.scope
+        self.scope = scope
+
         # Binder
-        self.binder = Binder(self, auto_bind=auto_bind, parent=parent and parent.binder)
+        self.binder = Binder(self, auto_bind=auto_bind,
+                             parent=parent and parent.binder, scope=scope)
 
         if not modules:
             modules = []
