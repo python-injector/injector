@@ -10,11 +10,12 @@
 
 """Functional tests for the "Injector" dependency injection framework."""
 
-import abc
-import threading
-import warnings
 from contextlib import contextmanager
 from typing import Any
+import abc
+import threading
+import traceback
+import warnings
 
 import pytest
 
