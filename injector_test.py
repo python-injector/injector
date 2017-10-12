@@ -70,6 +70,7 @@ def test_child_injector_overrides_parent_bindings():
 
     assert ((parent.get(str), child.get(str)) == ('asd', 'qwe'))
 
+
 def test_child_injector_rebinds_arguments_for_parent_scope():
     I = Key("interface")
     Cls = Key("test_class")
@@ -90,6 +91,7 @@ def test_child_injector_rebinds_arguments_for_parent_scope():
     assert (parent.get(Cls).val == "Parent")
     child = parent.create_child_injector(configure_child)
     assert (child.get(Cls).val == "Child")
+
 
 def test_scopes_are_only_bound_to_root_injector():
     parent, child = prepare_nested_injectors()
@@ -556,21 +558,21 @@ def test_custom_scope():
             self.context = None
 
         @contextmanager
-        def __call__(self, request):
+        def __call__(self, injector, request):
             assert self.context is None
             self.context = {}
-            binder = self.injector.get(Binder)
+            binder = injector.get(Binder)
             binder.bind(Request, to=request, scope=RequestScope)
             yield
             self.context = None
 
-        def get(self, key, provider):
+        def get(self, injector, key, provider):
             if self.context is None:
                 raise UnsatisfiedRequirement(None, key)
             try:
                 return self.context[key]
             except KeyError:
-                provider = InstanceProvider(provider.get(self.injector))
+                provider = InstanceProvider(provider.get(injector))
                 self.context[key] = provider
                 return provider
 
@@ -601,7 +603,7 @@ def test_custom_scope():
     scope = injector.get(RequestScope)
     request = Request()
 
-    with scope(request):
+    with scope(injector, request):
         handler = injector.get(Handler)
         assert (handler.request is request)
 
@@ -1249,3 +1251,28 @@ def test_class_assisted_builder_of_partially_injected_class():
     assert isinstance(c, C)
     assert isinstance(c.b, B)
     assert isinstance(c.b.a, A)
+
+
+def test_child_scope():
+    TestKey = Key('TestKey')
+    TestKey2 = Key('TestKey2')
+
+    def parent_module(binder):
+        binder.bind(TestKey, to=object, scope=singleton)
+
+    def first_child_module(binder):
+        binder.bind(TestKey2, to=object, scope=singleton)
+
+    def second_child_module(binder):
+        binder.bind(TestKey2, to='marker', scope=singleton)
+
+    injector = Injector(modules=[parent_module])
+    first_child_injector = injector.create_child_injector(modules=[first_child_module])
+    second_child_injector = injector.create_child_injector(modules=[second_child_module])
+
+    # (parent, TK) is (parent, TK)
+    assert first_child_injector.get(TestKey) is first_child_injector.get(TestKey)
+    # (parent, TK) is (parent, TK)
+    assert first_child_injector.get(TestKey) is second_child_injector.get(TestKey)
+    # (first, TK2) is not (second, TK2)
+    assert first_child_injector.get(TestKey2) is not second_child_injector.get(TestKey2)
