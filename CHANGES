@@ -1,6 +1,16 @@
 Injector Change Log
 ===================
 
+0.14.0 (not released yet)
+------
+
+- Fixed a bug with values shared between Injectors in a hierarchy (bugs #52 and #72)
+
+Backwards incompatible:
+
+- If you use a custom scope with child Injectors you need to bind the scope not only with the
+  root Injector but also the children
+
 0.13.1
 ------
 
