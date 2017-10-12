@@ -23,8 +23,9 @@ import threading
 import types
 import warnings
 from abc import ABCMeta, abstractmethod
-from collections import namedtuple
-from typing import Any, Generic, get_type_hints, TypeVar, Union
+from collections import namedtuple, defaultdict
+from typing import Any, Generic, TypeVar, Union, get_type_hints
+
 
 TYPING353 = hasattr(Union[str, int], '__origin__')
 
@@ -506,9 +507,10 @@ class Scope:
         """Configure the scope."""
 
     @abstractmethod
-    def get(self, key, provider):
+    def get(self, injector, key, provider):
         """Get a :class:`Provider` for a key.
 
+        :param injector: The Injector requesting the scoped provider.
         :param key: The key to return a provider for.
         :param provider: The default Provider associated with the key.
         :returns: A Provider instance that can provide an instance of key.
@@ -536,10 +538,7 @@ class ScopeDecorator:
 
 class NoScope(Scope):
     """An unscoped provider."""
-    def __init__(self, injector=None):
-        super(NoScope, self).__init__(injector)
-
-    def get(self, unused_key, provider):
+    def get(self, injector, unused_key, provider):
         return provider
 
 
@@ -555,21 +554,24 @@ class SingletonScope(Scope):
     >>> injector = Injector()
     >>> provider = ClassProvider(A)
     >>> singleton = SingletonScope(injector)
-    >>> a = singleton.get(A, provider)
-    >>> b = singleton.get(A, provider)
+    >>> a = singleton.get(injector, BindingKey(A), provider)
+    >>> b = singleton.get(injector, BindingKey(A), provider)
     >>> a is b
     True
     """
     def configure(self):
-        self._context = {}
+        self._context = defaultdict(dict)
 
     @synchronized(lock)
-    def get(self, key, provider):
+    def get(self, injector, key, provider):
+        # Try to find the associated binding for a key, but if that doesn't work,
+        # use the binder the SingletonScope is bound to.
+        binder = injector._get_binder_for(key) or self.injector.binder
         try:
-            return self._context[key]
+            return self._context[key][binder]
         except KeyError:
             provider = InstanceProvider(provider.get(self.injector))
-            self._context[key] = provider
+            self._context[key][self.injector.binder] = provider
             return provider
 
 
@@ -581,11 +583,11 @@ class ThreadLocalScope(Scope):
     def configure(self):
         self._locals = threading.local()
 
-    def get(self, key, provider):
+    def get(self, injector, key, provider):
         try:
             return getattr(self._locals, repr(key))
         except AttributeError:
-            provider = InstanceProvider(provider.get(self.injector))
+            provider = InstanceProvider(provider.get(injector))
             setattr(self._locals, repr(key), provider)
             return provider
 
@@ -726,9 +728,18 @@ class Injector:
 
         log.debug('%sInjector.get(%r, scope=%r) using %r',
                   self._log_prefix, interface, scope, binding.provider)
-        result = scope_instance.get(key, binding.provider).get(self)
+        result = scope_instance.get(self, key, binding.provider).get(self)
         log.debug('%s -> %r', self._log_prefix, result)
         return result
+
+    def _get_binder_for(self, key):
+        """Find the binder associated with key."""
+        binder = self.binder
+        while binder is not None:
+            if key in binder._bindings:
+                return binder
+            binder = binder.parent
+        return None
 
     def create_child_injector(self, *args, **kwargs):
         return Injector(*args, parent=self, **kwargs)
