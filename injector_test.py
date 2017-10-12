@@ -1249,3 +1249,26 @@ def test_class_assisted_builder_of_partially_injected_class():
     assert isinstance(c, C)
     assert isinstance(c.b, B)
     assert isinstance(c.b.a, A)
+
+
+# The test taken from Alec Thomas' pull request: https://github.com/alecthomas/injector/pull/73
+def test_child_scope():
+    TestKey = Key('TestKey')
+    TestKey2 = Key('TestKey2')
+
+    def parent_module(binder):
+        binder.bind(TestKey, to=object, scope=singleton)
+
+    def first_child_module(binder):
+        binder.bind(TestKey2, to=object, scope=singleton)
+
+    def second_child_module(binder):
+        binder.bind(TestKey2, to='marker', scope=singleton)
+
+    injector = Injector(modules=[parent_module])
+    first_child_injector = injector.create_child_injector(modules=[first_child_module])
+    second_child_injector = injector.create_child_injector(modules=[second_child_module])
+
+    assert first_child_injector.get(TestKey) is first_child_injector.get(TestKey)
+    assert first_child_injector.get(TestKey) is second_child_injector.get(TestKey)
+    assert first_child_injector.get(TestKey2) is not second_child_injector.get(TestKey2)

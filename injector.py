@@ -435,13 +435,12 @@ class Binder:
 
     def _get_binding(self, key):
         binding = self._bindings.get(key)
-        if not binding and self.parent:
-            binding = self.parent._get_binding(key)
+        if binding:
+            return binding, self
+        if self.parent:
+            return self.parent._get_binding(key)
 
-        if not binding:
-            raise KeyError
-
-        return binding
+        raise KeyError
 
     def get_binding(self, cls, key):
         try:
@@ -452,7 +451,7 @@ class Binder:
             if self._auto_bind or self._is_special_interface(key.interface):
                 binding = self.create_binding(key.interface)
                 self._bindings[key] = binding
-                return binding
+                return binding, self
             raise UnsatisfiedRequirement(cls, key)
 
     def _is_special_interface(self, interface):
@@ -660,11 +659,10 @@ class Injector:
         elif not hasattr(modules, '__iter__'):
             modules = [modules]
 
-        if not parent:
-            # Bind scopes
-            self.binder.bind_scope(NoScope)
-            self.binder.bind_scope(SingletonScope)
-            self.binder.bind_scope(ThreadLocalScope)
+        # Bind scopes
+        self.binder.bind_scope(NoScope)
+        self.binder.bind_scope(SingletonScope)
+        self.binder.bind_scope(ThreadLocalScope)
 
         # Bind some useful types
         self.binder.bind(Injector, to=self)
@@ -711,14 +709,14 @@ class Injector:
         :returns: An implementation of interface.
         """
         key = BindingKey(interface)
-        binding = self.binder.get_binding(None, key)
+        binding, binder = self.binder.get_binding(None, key)
         scope = scope or binding.scope
         if isinstance(scope, ScopeDecorator):
             scope = scope.scope
         # Fetch the corresponding Scope instance from the Binder.
         scope_key = BindingKey(scope)
         try:
-            scope_binding = self.binder.get_binding(None, scope_key)
+            scope_binding, _ = binder.get_binding(None, scope_key)
             scope_instance = scope_binding.provider.get(self)
         except UnsatisfiedRequirement as e:
             raise Error('%s; scopes must be explicitly bound '
@@ -1188,7 +1186,7 @@ class AssistedBuilder(Generic[T]):
     def build(self, **kwargs):
         key = BindingKey(self._target)
         binder = self._injector.binder
-        binding = binder.get_binding(None, key)
+        binding, _ = binder.get_binding(None, key)
         provider = binding.provider
         if not isinstance(provider, ClassProvider):
             raise Error(
