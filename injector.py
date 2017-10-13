@@ -295,8 +295,16 @@ class Binder:
         """Bind a Scope.
 
         :param scope: Scope class.
+
+        .. versionchanged:: 0.14.0
+            This method is a no-op and is deprecated
         """
-        self.bind(scope, to=scope(self.injector))
+        warnings.warn(
+            'The bind_scope method is a no-op now and it\'s deprecated. '
+            'Stop using it, your code will keep working just fine.',
+            RuntimeWarning,
+            stacklevel=3,
+        )
 
     def multibind(self, interface, to, scope=None):
         """Creates or extends a multi-binding.
@@ -433,26 +441,32 @@ class Binder:
             raise UnknownProvider('couldn\'t determine provider for %r to %r' %
                                   (interface, to))
 
-    def _get_binding(self, key):
+    def _get_binding(self, key, *, only_this_binder: bool = False):
         binding = self._bindings.get(key)
         if binding:
             return binding, self
-        if self.parent:
+        if self.parent and not only_this_binder:
             return self.parent._get_binding(key)
 
         raise KeyError
 
     def get_binding(self, cls, key):
+        is_scope = isinstance(key.interface, type) and issubclass(key.interface, Scope)
         try:
-            return self._get_binding(key)
+            return self._get_binding(key, only_this_binder=is_scope)
         except (KeyError, UnsatisfiedRequirement):
+            if is_scope:
+                scope = key.interface
+                self.bind(scope, to=scope(self.injector))
+                return self._get_binding(key)
             # The special interface is added here so that requesting a special
             # interface with auto_bind disabled works
             if self._auto_bind or self._is_special_interface(key.interface):
                 binding = self.create_binding(key.interface)
                 self._bindings[key] = binding
                 return binding, self
-            raise UnsatisfiedRequirement(cls, key)
+
+        raise UnsatisfiedRequirement(cls, key)
 
     def _is_special_interface(self, interface):
         # "Special" interfaces are ones that you cannot bind yourself but
@@ -659,11 +673,6 @@ class Injector:
         elif not hasattr(modules, '__iter__'):
             modules = [modules]
 
-        # Bind scopes
-        self.binder.bind_scope(NoScope)
-        self.binder.bind_scope(SingletonScope)
-        self.binder.bind_scope(ThreadLocalScope)
-
         # Bind some useful types
         self.binder.bind(Injector, to=self)
         self.binder.bind(Binder, to=self.binder)
@@ -715,12 +724,8 @@ class Injector:
             scope = scope.scope
         # Fetch the corresponding Scope instance from the Binder.
         scope_key = BindingKey(scope)
-        try:
-            scope_binding, _ = binder.get_binding(None, scope_key)
-            scope_instance = scope_binding.provider.get(self)
-        except UnsatisfiedRequirement as e:
-            raise Error('%s; scopes must be explicitly bound '
-                        'with Binder.bind_scope(scope_cls)' % e)
+        scope_binding, _ = binder.get_binding(None, scope_key)
+        scope_instance = scope_binding.provider.get(self)
 
         log.debug('%sInjector.get(%r, scope=%r) using %r',
                   self._log_prefix, interface, scope, binding.provider)

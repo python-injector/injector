@@ -5,11 +5,7 @@ Injector Change Log
 ------
 
 - Fixed a bug with values shared between Injectors in a hierarchy (bugs #52 and #72)
-
-Backwards incompatible:
-
-- If you use a custom scope with child Injectors you need to bind the scope not only with the
-  root Injector but also the children
+- Binding scopes explicitly (``Binder.bind_scope``) is no longer necessary and ``bind_scope`` is a no-op now.
 
 0.13.1
 ------
