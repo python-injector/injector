@@ -1272,3 +1272,22 @@ def test_child_scope():
     assert first_child_injector.get(TestKey) is first_child_injector.get(TestKey)
     assert first_child_injector.get(TestKey) is second_child_injector.get(TestKey)
     assert first_child_injector.get(TestKey2) is not second_child_injector.get(TestKey2)
+
+
+def test_custom_scopes_work_as_expected_with_child_injectors():
+    class CustomSingletonScope(SingletonScope):
+        pass
+
+    custom_singleton = ScopeDecorator(CustomSingletonScope)
+
+    def parent_module(binder):
+        binder.bind(str, to='parent value', scope=custom_singleton)
+
+    def child_module(binder):
+        binder.bind(str, to='child value', scope=custom_singleton)
+
+    parent = Injector(modules=[parent_module])
+    child = parent.create_child_injector(modules=[child_module])
+    print('parent, child: %s, %s' % (parent, child))
+    assert parent.get(str) == 'parent value'
+    assert child.get(str) == 'child value'
