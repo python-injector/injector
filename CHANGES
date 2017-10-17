@@ -1,7 +1,7 @@
 Injector Change Log
 ===================
 
-0.14.0 (not released yet)
+0.13.2
 ------
 
 - Fixed a bug with values shared between Injectors in a hierarchy (bugs #52 and #72)
