@@ -1,6 +1,12 @@
 Injector Change Log
 ===================
 
+0.13.3
+------
+
+- Fixed a bug with classes deriving from PyQt classes not being able to be
+  instantiated manually (bug #75, patch #76 thanks to David Pärsson)
+
 0.13.2
 ------
 
