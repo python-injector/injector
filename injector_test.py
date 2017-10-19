@@ -1291,3 +1291,24 @@ def test_custom_scopes_work_as_expected_with_child_injectors():
     print('parent, child: %s, %s' % (parent, child))
     assert parent.get(str) == 'parent value'
     assert child.get(str) == 'child value'
+
+
+# Test for https://github.com/alecthomas/injector/issues/75
+def test_inject_decorator_does_not_break_manual_construction_of_pyqt_objects():
+    class PyQtFake:
+
+        @inject
+        def __init__(self):
+            pass
+
+        def __getattribute__(self, item):
+            if item == '__injector__':
+                raise RuntimeError(
+                    'A PyQt class would raise this exception if getting '
+                    'self.__injector__ before __init__ is called and '
+                    'self.__injector__ has not been set by Injector.')
+            return object.__getattribute__(self, item)
+
+    instance = PyQtFake()  # This used to raise the exception
+
+    assert isinstance(instance, PyQtFake)
