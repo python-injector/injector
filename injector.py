@@ -1069,7 +1069,10 @@ def method_wrapper(f, bindings):
     if argspec.args and argspec.args[0] == 'self':
         @functools.wraps(f)
         def inject(self_, *args, **kwargs):
-            injector = getattr(self_, '__injector__', None)
+            try:
+                injector = getattr(self_, '__injector__', None)
+            except RuntimeError:
+                injector = None
             if injector:
                 return injector.call_with_injection(
                     callable=f,
