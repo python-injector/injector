@@ -1199,7 +1199,7 @@ class AssistedBuilder(Generic[T]):
         if not isinstance(provider, ClassProvider):
             raise Error(
                 'Assisted interface building works only with ClassProviders, '
-                'got %r for %r' % (provider, self.interface))
+                'got %r for %r' % (provider, binding.interface))
 
         return self._build_class(provider._cls, **kwargs)
 
