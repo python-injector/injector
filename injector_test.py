@@ -25,6 +25,7 @@ from injector import (
     CircularDependency, Module, Key, SingletonScope,
     ScopeDecorator, with_injector, AssistedBuilder, BindingKey,
     SequenceKey, MappingKey, provider, ProviderOf, ClassAssistedBuilder,
+    Error,
     )
 
 
@@ -1312,3 +1313,18 @@ def test_inject_decorator_does_not_break_manual_construction_of_pyqt_objects():
     instance = PyQtFake()  # This used to raise the exception
 
     assert isinstance(instance, PyQtFake)
+
+
+def test_using_an_assisted_builder_with_a_provider_raises_an_injector_error():
+    class A:
+        pass
+
+    class MyModule(Module):
+        @provider
+        def provide_a(self, builder: AssistedBuilder[A]) -> A:
+            return builder.build()
+
+    injector = Injector(MyModule)
+
+    with pytest.raises(Error):
+        injector.get(A)
