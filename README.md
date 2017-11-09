@@ -1,7 +1,7 @@
 Injector - Python dependency injection framework, inspired by Guice
 ===================================================================
 
-[![image](https://secure.travis-ci.org/alecthomas/injector.png?branch=master)](https://travis-ci.org/alecthomas/injector)
+[![image](https://secure.travis-ci.org/alecthomas/injector.svg?branch=master)](https://travis-ci.org/alecthomas/injector)
 
 Introduction
 ------------
