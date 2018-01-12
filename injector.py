@@ -1012,6 +1012,15 @@ def inject(function=None, **bindings):
 
     >>> a = Injector(configure).get(A)
     [123, 'Bob', [1, 2, 3]]
+
+    .. note::
+
+        This decorator is to be used on class constructors. Using it on non-constructor
+        methods worked in the past but it was an implementation detail rather than
+        a design decision.
+
+        Third party libraries may, however, provide support for injecting dependencies
+        into non-constructor methods or free functions in one form or another.
     """
     if bindings:
         raise AssertionError(
