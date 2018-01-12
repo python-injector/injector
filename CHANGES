@@ -1,6 +1,12 @@
 Injector Change Log
 ===================
 
+0.13.4 (not released yet)
+-------------------------
+
+- Deprecated with_injector. There's no one migration path recommended, it depends on
+  a particular case.
+
 0.13.3
 ------
 

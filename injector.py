@@ -945,6 +945,13 @@ def with_injector(*injector_args, **injector_kwargs):
 
     Parameters are the same as for :class:`Injector` constructor.
     """
+    warnings.warn(
+        'with_injector is deprecated and will be removed in the next minor release. '
+        'The migration path depends on your use case but should be fairly simple. ',
+        RuntimeWarning,
+        stacklevel=3,
+    )
+
     def wrapper(f):
         @functools.wraps(f)
         def setup(self_, *args, **kwargs):
