@@ -750,7 +750,7 @@ class Injector:
                 (), {}, e, self._stack,),
                 maximum_frames=2)
         try:
-            self.install_into(instance)
+            self.install_into(instance, _internal = True)
             installed = True
         except AttributeError:
             installed = False
@@ -776,7 +776,7 @@ class Injector:
             if installed:
                 self._uninstall_from(instance)
 
-    def install_into(self, instance):
+    def install_into(self, instance, *, _internal = False):
         """Put injector reference in given object.
 
         This method has, in general, two applications:
@@ -814,6 +814,13 @@ class Injector:
             behaviour of that object immediately or in the future.
 
         """
+        if not _internal:
+            warnings.warn(
+                'install_into is deprecated and will be removed in the next minor release. '
+                'There should be no reason to use it anymore apart from some very custom cases.',
+                RuntimeWarning,
+                stacklevel=3,
+            )
         instance.__injector__ = self
 
     def _uninstall_from(self, instance):
@@ -956,7 +963,7 @@ def with_injector(*injector_args, **injector_kwargs):
         @functools.wraps(f)
         def setup(self_, *args, **kwargs):
             injector = Injector(*injector_args, **injector_kwargs)
-            injector.install_into(self_)
+            injector.install_into(self_, _internal = True)
             return f(self_, *args, **kwargs)
 
         return setup

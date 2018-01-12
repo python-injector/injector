@@ -6,6 +6,7 @@ Injector Change Log
 
 - Deprecated with_injector. There's no one migration path recommended, it depends on
   a particular case.
+- Deprecated install_into.
 
 0.13.3
 ------
