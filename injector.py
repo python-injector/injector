@@ -637,20 +637,6 @@ class Injector:
     :param auto_bind: Whether to automatically bind missing types.
     :param parent: Parent injector.
 
-    If you use Python 3 you can make Injector use constructor parameter annotations to
-    determine class dependencies. The following code::
-
-        class B:
-            @inject
-            def __init__(self, a: A):
-                self.a = a
-
-    can now be written as::
-
-        class B:
-            def __init__(self, a:A):
-                self.a = a
-
     .. versionadded:: 0.7.5
         ``use_annotations`` parameter
 
@@ -993,8 +979,6 @@ def provider(function):
     >>> injector = Injector(MyModule2)
     >>> injector.get(str)
     '654'
-
-    .. note:: This function works only on Python 3
     """
     scope_ = getattr(function, '__scope__', None)
     annotations = inspect.getfullargspec(function).annotations
