@@ -11,7 +11,7 @@
 """Functional tests for the "Injector" dependency injection framework."""
 
 from contextlib import contextmanager
-from typing import Any
+from typing import Any, NewType
 import abc
 import threading
 import traceback
@@ -1328,3 +1328,13 @@ def test_using_an_assisted_builder_with_a_provider_raises_an_injector_error():
 
     with pytest.raises(Error):
         injector.get(A)
+
+
+def test_newtype_integration_works():
+    UserID = NewType('UserID', int)
+
+    def configure(binder):
+        binder.bind(UserID, to=123)
+
+    injector = Injector([configure])
+    assert injector.get(UserID) == 123

@@ -397,6 +397,11 @@ class Binder:
         return Binding(interface, provider, scope)
 
     def provider_for(self, interface, to=None):
+        if getattr(interface, '__qualname__', '') == 'NewType.<locals>.new_type':
+            base_type = interface.__supertype__
+        else:
+            base_type = interface
+
         if interface is Any:
             raise TypeError('Injecting Any is not supported')
         elif _is_specialization(interface, ProviderOf):
@@ -425,9 +430,9 @@ class Binder:
             builder = interface(self.injector, target)
             return InstanceProvider(builder)
         elif (
-            isinstance(interface, (tuple, type)) and
+            isinstance(base_type, (tuple, type)) and
             interface is not Any and
-            isinstance(to, interface)
+            isinstance(to, base_type)
         ):
             return InstanceProvider(to)
         elif issubclass(type(interface), type) or isinstance(interface, (tuple, list)):
