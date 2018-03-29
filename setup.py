@@ -53,7 +53,6 @@ setup(
     author='Alec Thomas',
     author_email='alec@swapoff.org',
     install_requires=[
-        'setuptools >= 0.6b1',
         'typing',
     ],
     cmdclass={'test': PyTest},
