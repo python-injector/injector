@@ -753,6 +753,8 @@ class Injector:
         try:
             try:
                 init = cls.__init__
+                if init is not object.__init__:
+                    init = inject(init)
                 init(instance, **additional_kwargs)
             except TypeError as e:
                 # The reason why getattr() fallback is used here is that
