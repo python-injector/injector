@@ -39,7 +39,8 @@ try:
 except ImportError:
     warnings.warn('Could not locate pandoc, using Markdown long_description.',
                   ImportWarning)
-    long_description = open('README.md').read()
+    with open('README.md') as f:
+        long_description = f.read()
 
 description = long_description.splitlines()[0].strip()
 
@@ -58,7 +59,7 @@ setup(
     author='Alec Thomas',
     author_email='alec@swapoff.org',
     install_requires=[
-        'typing',
+        'typing; python_version < "3.5"',
     ],
     cmdclass={'test': PyTest},
     keywords=[
