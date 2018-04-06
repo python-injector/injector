@@ -34,7 +34,8 @@ try:
     long_description = pypandoc.convert('README.md', 'rst')
 except ImportError:
     print('WARNING: Could not locate pandoc, using Markdown long_description.')
-    long_description = open('README.md').read()
+    with open('README.md') as f:
+        long_description = f.read()
 
 description = long_description.splitlines()[0].strip()
 
