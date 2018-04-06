@@ -53,7 +53,7 @@ setup(
     author='Alec Thomas',
     author_email='alec@swapoff.org',
     install_requires=[
-        'typing',
+        'typing; python_version < "3.5"',
     ],
     cmdclass={'test': PyTest},
     keywords=[
