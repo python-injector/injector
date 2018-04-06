@@ -1,5 +1,9 @@
 from setuptools import setup, Command
 import sys
+import warnings
+
+
+warnings.filterwarnings("always", module=__name__)
 
 
 class PyTest(Command):
@@ -33,7 +37,8 @@ try:
     import pypandoc
     long_description = pypandoc.convert('README.md', 'rst')
 except ImportError:
-    print('WARNING: Could not locate pandoc, using Markdown long_description.')
+    warnings.warn('Could not locate pandoc, using Markdown long_description.',
+                  ImportWarning)
     with open('README.md') as f:
         long_description = f.read()
 
