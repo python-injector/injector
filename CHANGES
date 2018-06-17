@@ -5,6 +5,7 @@ Injector Change Log
 -------------------------
 
 - Added NewType support
+- Added type hints
 
 0.13.4
 ------
