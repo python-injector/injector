@@ -39,6 +39,8 @@ log.addHandler(logging.NullHandler())
 if log.level == logging.NOTSET:
     log.setLevel(logging.WARN)
 
+T = TypeVar('T')
+
 
 def private(something):
     something.__private__ = True
@@ -675,7 +677,7 @@ class Injector:
     def _log_prefix(self):
         return '>' * (len(self._stack) + 1) + ' '
 
-    def get(self, interface, scope=None):
+    def get(self, interface: T, scope=None) -> T:
         """Get an instance of the given interface.
 
         .. note::
@@ -1194,9 +1196,6 @@ class BoundKey(tuple):
         return dict(self[1])
 
 
-T = TypeVar('T')
-
-
 class AssistedBuilder(Generic[T]):
 
     def __init__(self, injector, target):
@@ -1258,7 +1257,7 @@ class ProviderOf(Generic[T]):
         return '%s(%r, %r)' % (
             type(self).__name__, self._injector, self._interface)
 
-    def get(self):
+    def get(self) -> T:
         """Get an implementation for the specified interface."""
         return self._injector.get(self._interface)
 
