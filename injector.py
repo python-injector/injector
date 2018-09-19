@@ -939,7 +939,10 @@ def _infer_injected_bindings(callable):
                 union_members = v.__union_params__
             new_members = tuple(set(union_members) - {type(None)})
             new_union = Union[new_members]
-            bindings[k] = new_union
+            # mypy complains about this construct:
+            #     error: The type alias is invalid in runtime context
+            # See: https://github.com/python/mypy/issues/5354
+            bindings[k] = new_union  # type: ignore
 
     return bindings
 
