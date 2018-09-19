@@ -237,17 +237,18 @@ class MapBindProvider(ListOfProviders):
 class BindingKey(tuple):
     """A key mapping to a Binding."""
 
-    def __new__(cls, what):
+    @classmethod
+    def create(cls, what: Any) -> 'BindingKey':
         if isinstance(what, list):
             if len(what) != 1:
                 raise Error('list bindings must have a single interface '
                             'element')
-            what = (list, BindingKey(what[0]))
+            what = (list, BindingKey.create(what[0]))
         elif isinstance(what, dict):
             if len(what) != 1:
                 raise Error('dictionary bindings must have a single interface '
                             'key and value')
-            what = (dict, BindingKey(list(what.items())[0]))
+            what = (dict, BindingKey.create(list(what.items())[0]))
         return tuple.__new__(cls, (what,))
 
     @property
@@ -293,7 +294,7 @@ class Binder:
         """
         if type(interface) is type and issubclass(interface, (BaseMappingKey, BaseSequenceKey)):
             return self.multibind(interface, to, scope=scope)
-        key = BindingKey(interface)
+        key = BindingKey.create(interface)
         self._bindings[key] = \
             self.create_binding(interface, to, scope)
 
@@ -323,7 +324,7 @@ class Binder:
                 subclass. Must provide a sequence.
         :param scope: Optional Scope in which to bind.
         """
-        key = BindingKey(interface)
+        key = BindingKey.create(interface)
         if key not in self._bindings:
             if (
                     isinstance(interface, dict) or
@@ -714,13 +715,13 @@ class Injector:
         :param scope: Class of the Scope in which to resolve.
         :returns: An implementation of interface.
         """
-        key = BindingKey(interface)
+        key = BindingKey.create(interface)
         binding, binder = self.binder.get_binding(None, key)
         scope = scope or binding.scope
         if isinstance(scope, ScopeDecorator):
             scope = scope.scope
         # Fetch the corresponding Scope instance from the Binder.
-        scope_key = BindingKey(scope)
+        scope_key = BindingKey.create(scope)
         scope_binding, _ = binder.get_binding(None, scope_key)
         scope_instance = scope_binding.provider.get(self)
 
@@ -1115,7 +1116,7 @@ def method_wrapper(f, bindings):
 
     def read_and_store_bindings(bindings):
         for key, value in bindings.items():
-            bindings[key] = BindingKey(value)
+            bindings[key] = BindingKey.create(value)
         function_bindings = getattr(f, '__bindings__', None) or {}
         if function_bindings == 'deferred':
             function_bindings = {}
@@ -1213,7 +1214,7 @@ class AssistedBuilder(Generic[T]):
         self._target = target
 
     def build(self, **kwargs):
-        key = BindingKey(self._target)
+        key = BindingKey.create(self._target)
         binder = self._injector.binder
         binding, _ = binder.get_binding(None, key)
         provider = binding.provider

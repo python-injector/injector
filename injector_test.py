@@ -800,7 +800,7 @@ def test_assisted_builder_injection_is_safe_to_use_with_multiple_injectors():
 
 def test_assisted_builder_injection_uses_the_same_binding_key_every_time():
     # if we have different BindingKey for every AssistedBuilder(...) we will get memory leak
-    gen_key = lambda: BindingKey(AssistedBuilder[NeedsAssistance])
+    gen_key = lambda: BindingKey.create(AssistedBuilder[NeedsAssistance])
     assert gen_key() == gen_key()
 
 
