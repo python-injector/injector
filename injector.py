@@ -1216,7 +1216,7 @@ class AssistedBuilder(Generic[T]):
         self._injector = injector
         self._target = target
 
-    def build(self, **kwargs):
+    def build(self, **kwargs: Any) -> T:
         key = BindingKey.create(self._target)
         binder = self._injector.binder
         binding, _ = binder.get_binding(None, key)
@@ -1233,7 +1233,7 @@ class AssistedBuilder(Generic[T]):
 
 
 class ClassAssistedBuilder(AssistedBuilder[T]):
-    def build(self, **kwargs):
+    def build(self, **kwargs: Any) -> T:
         return self._build_class(self._target, **kwargs)
 
 
