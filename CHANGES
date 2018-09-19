@@ -1,6 +1,11 @@
 Injector Change Log
 ===================
 
+0.14.1
+------
+
+- Fixed regression that required all noninjectable parameters to be typed
+
 0.14.0
 ------
 
