@@ -1079,9 +1079,9 @@ def noninjectable(*args):
     doesn't matter.
     """
     def decorator(function):
-        bindings = _infer_injected_bindings(function)
+        argspec = inspect.getfullargspec(inspect.unwrap(function))
         for arg in args:
-            if arg not in bindings:
+            if arg not in argspec.args and arg not in argspec.kwonlyargs:
                 raise UnknownArgument('Unable to mark unknown argument %s '
                                       'as non-injectable.' % arg)
 
