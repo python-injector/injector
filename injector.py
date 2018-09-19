@@ -24,7 +24,7 @@ import types
 import warnings
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
-from typing import Any, Generic, get_type_hints, TypeVar, Union
+from typing import Any, Generic, get_type_hints, Type, TypeVar, Union
 
 TYPING353 = hasattr(Union[str, int], '__origin__')
 
@@ -682,7 +682,7 @@ class Injector:
     def _log_prefix(self):
         return '>' * (len(self._stack) + 1) + ' '
 
-    def get(self, interface: T, scope=None) -> T:
+    def get(self, interface: Type[T], scope=None) -> T:
         """Get an instance of the given interface.
 
         .. note::
