@@ -4,3 +4,5 @@ docs/_build/
 build/
 htmlcov/
 *,cover
+.mypy_cache/
+.pytest_cache/
