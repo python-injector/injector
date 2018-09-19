@@ -1119,6 +1119,22 @@ def test_raises_when_noninjectable_arguments_defined_with_invalid_arguments():
                 self.b = b
 
 
+def test_can_create_instance_with_untyped_noninjectable_argument():
+    class Parent:
+        @inject
+        @noninjectable('child1', 'child2')
+        def __init__(self, child1, *, child2):
+            self.child1 = child1
+            self.child2 = child2
+
+    injector = Injector()
+    parent_builder = injector.get(AssistedBuilder[Parent])
+    parent = parent_builder.build(child1='injected1', child2='injected2')
+
+    assert parent.child1 == 'injected1'
+    assert parent.child2 == 'injected2'
+
+
 def test_implicit_injection_fails_when_annotations_are_missing():
     class A:
         def __init__(self, n):
