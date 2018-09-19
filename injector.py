@@ -114,6 +114,10 @@ class UnknownProvider(Error):
     """Tried to bind to a type whose provider couldn't be determined."""
 
 
+class UnknownArgument(Error):
+    """Tried to mark an unknown argument as noninjectable."""
+
+
 class Provider:
     """Provides class instances."""
 
@@ -1071,6 +1075,12 @@ def noninjectable(*args):
     doesn't matter.
     """
     def decorator(function):
+        bindings = _infer_injected_bindings(function)
+        for arg in args:
+            if arg not in bindings:
+                raise UnknownArgument('Unable to mark unknown argument %s '
+                                      'as non-injectable.' % arg)
+
         existing = getattr(function, '__noninjectables__', set())
         merged = existing | set(args)
         function.__noninjectables__ = merged

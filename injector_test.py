@@ -25,7 +25,7 @@ from injector import (
     CircularDependency, Module, Key, SingletonScope,
     ScopeDecorator, with_injector, AssistedBuilder, BindingKey,
     SequenceKey, MappingKey, provider, ProviderOf, ClassAssistedBuilder,
-    Error,
+    Error, UnknownArgument,
     )
 
 
@@ -1107,6 +1107,16 @@ def test_assisted_building_is_supported():
 
     processor = processor_builder.build(user_id=333, provider_id='not injected')
     assert processor.name == 'John'
+
+
+def test_raises_when_noninjectable_arguments_defined_with_invalid_arguments():
+    with pytest.raises(UnknownArgument):
+
+        class A:
+            @inject
+            @noninjectable('c')
+            def __init__(self, b: str):
+                self.b = b
 
 
 def test_implicit_injection_fails_when_annotations_are_missing():
