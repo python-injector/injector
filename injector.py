@@ -1082,7 +1082,7 @@ def noninjectable(*args):
         argspec = inspect.getfullargspec(inspect.unwrap(function))
         for arg in args:
             if arg not in argspec.args and arg not in argspec.kwonlyargs:
-                raise UnknownArgument('Unable to mark unknown argument %s '
+                raise UnknownArgument('Unable to mark unknown argument \'%s\' '
                                       'as non-injectable.' % arg)
 
         existing = getattr(function, '__noninjectables__', set())
