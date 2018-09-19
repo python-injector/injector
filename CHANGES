@@ -1,11 +1,16 @@
 Injector Change Log
 ===================
 
-0.13.5 (not released yet)
--------------------------
+0.14.0
+------
 
 - Added NewType support
 - Added type hints
+
+Backwards incompatible:
+
+- Passing invalid parameter names to @noninjectable() will now result in an error
+- Dropped Python 3.3 support
 
 0.13.4
 ------
