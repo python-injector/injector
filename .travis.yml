@@ -13,7 +13,8 @@ env:
 matrix:
   allow_failures:
     - python: "nightly"
-
+  include:
+    - { python: "3.7", dist: xenial, sudo: true }
 install:
   - pip install pytest "typing$TYPING_VERSION" "pytest-cov>=2.5.1"
 script: py.test -vv --cov=injector --cov-branch --cov-report html --cov-report term
