@@ -17,4 +17,8 @@ matrix:
     - { python: "3.7", dist: xenial, sudo: true }
 install:
   - pip install pytest "typing$TYPING_VERSION" "pytest-cov>=2.5.1"
-script: py.test -vv --cov=injector --cov-branch --cov-report html --cov-report term
+  # mypy can't be installed on pypy
+  - if [[ "${TRAVIS_PYTHON_VERSION}" != "pypy"* ]] ; then pip install mypy ; fi
+script:
+  - py.test -vv --cov=injector --cov-branch --cov-report html --cov-report term
+  - if [[ "${TRAVIS_PYTHON_VERSION}" != "pypy"* ]] ; then mypy injector.py ; fi
