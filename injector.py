@@ -734,7 +734,7 @@ class Injector:
     def create_child_injector(self, *args, **kwargs):
         return Injector(*args, parent=self, **kwargs)
 
-    def create_object(self, cls, additional_kwargs=None):
+    def create_object(self, cls: Type[T], additional_kwargs=None) -> T:
         """Create a new instance, satisfying any dependencies on cls."""
         additional_kwargs = additional_kwargs or {}
         log.debug('%sCreating %r object with %r', self._log_prefix, cls, additional_kwargs)
@@ -760,7 +760,7 @@ class Injector:
         try:
             try:
                 init = cls.__init__
-                init(instance, **additional_kwargs)
+                init(instance, **additional_kwargs)  # type: ignore # python/mypy/issues/4001
             except TypeError as e:
                 # The reason why getattr() fallback is used here is that
                 # __init__.__func__ apparently doesn't exist for Key-type objects
