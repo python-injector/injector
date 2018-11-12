@@ -2441,6 +2441,7 @@ class DictImporter:
         if is_pkg:
             module.__path__ = [fullname]
 
+        global do_exec  # do_exec() is defined in the exec() call below
         do_exec(co, module.__dict__)
         return sys.modules[fullname]
 
@@ -2465,4 +2466,5 @@ if __name__ == "__main__":
     sys.meta_path.append(importer)
 
     entry = "import py; raise SystemExit(py.test.cmdline.main())"
+    global do_exec  # do_exec() is defined in the exec() call above
     do_exec(entry, locals())
