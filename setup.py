@@ -23,7 +23,7 @@ class PyTest(Command):
 
 def read_injector_variable(name):
     prefix = '%s = ' % (name,)
-    with open('injector.py') as f:
+    with open('injector/__init__.py') as f:
         for line in f:
             if line.startswith(prefix):
                 return line.replace(prefix, '').strip().strip("'")
@@ -55,7 +55,7 @@ setup(
     long_description=long_description,
     license='BSD',
     platforms=['any'],
-    py_modules=['injector'],
+    packages=['injector'],
     author='Alec Thomas',
     author_email='alec@swapoff.org',
     install_requires=[

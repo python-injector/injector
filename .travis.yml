@@ -21,4 +21,4 @@ install:
   - if [[ "${TRAVIS_PYTHON_VERSION}" != "pypy"* ]] ; then pip install mypy ; fi
 script:
   - py.test -vv --cov=injector --cov-branch --cov-report html --cov-report term
-  - if [[ "${TRAVIS_PYTHON_VERSION}" != "pypy"* ]] ; then mypy injector.py ; fi
+  - if [[ "${TRAVIS_PYTHON_VERSION}" != "pypy"* ]] ; then mypy injector ; fi
