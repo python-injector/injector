@@ -56,6 +56,7 @@ setup(
     license='BSD',
     platforms=['any'],
     packages=['injector'],
+    package_data = {'injector': ['py.typed']},
     author='Alec Thomas',
     author_email='alec@swapoff.org',
     install_requires=[
