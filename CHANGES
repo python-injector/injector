@@ -1,6 +1,13 @@
 Injector Change Log
 ===================
 
+0.15.0
+------
+
+- Added type information for Injector.create_object() (patch #101 thanks to David Pärsson)
+- Made the code easier to understand (patch #105 thanks to Christian Clauss)
+- Opted the package into distributing type information and checking it (PEP 561)
+
 0.14.1
 ------
 
