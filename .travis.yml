@@ -18,6 +18,9 @@ install:
   - pip install --upgrade pytest "typing$TYPING_VERSION" "pytest-cov>=2.5.1"
   # mypy can't be installed on pypy
   - if [[ "${TRAVIS_PYTHON_VERSION}" != "pypy"* ]] ; then pip install mypy ; fi
+  # Black is Python 3.6+-only
+  - if [[ "${TRAVIS_PYTHON_VERSION}" != "pypy"* &&  "${TRAVIS_PYTHON_VERSION}" != "3.5"* ]] ; then pip install black ; fi
 script:
   - py.test -vv --cov=injector --cov-branch --cov-report html --cov-report term
   - if [[ "${TRAVIS_PYTHON_VERSION}" != "pypy"* ]] ; then mypy injector ; fi
+  - if [[ "${TRAVIS_PYTHON_VERSION}" != "pypy"* && "${TRAVIS_PYTHON_VERSION}" != "3.5"* ]] ; then black --check . ; fi
