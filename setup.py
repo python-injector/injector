@@ -59,9 +59,6 @@ setup(
     package_data = {'injector': ['py.typed']},
     author='Alec Thomas',
     author_email='alec@swapoff.org',
-    install_requires=[
-        'typing; python_version < "3.5"',
-    ],
     cmdclass={'test': PyTest},
     keywords=[
         'Dependency Injection', 'DI', 'Dependency Injection framework',
