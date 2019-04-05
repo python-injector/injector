@@ -53,8 +53,11 @@ def synchronized(lock):
         def wrapper(*args, **kwargs):
             with lock:
                 return function(*args, **kwargs)
+
         return wrapper
+
     return outside_wrapper
+
 
 lock = threading.RLock()
 
@@ -76,8 +79,7 @@ class UnsatisfiedRequirement(Error):
 
     def __str__(self):
         on = '%s has an ' % _describe(self.args[0]) if self.args[0] else ''
-        return '%sunsatisfied requirement on %s' % (
-            on, _describe(self.args[1].interface),)
+        return '%sunsatisfied requirement on %s' % (on, _describe(self.args[1].interface))
 
 
 class CallError(Error):
@@ -98,12 +100,17 @@ class CallError(Error):
 
         full_method = '.'.join((cls, method_name)).strip('.')
 
-        parameters = ', '.join(itertools.chain(
-            (repr(arg) for arg in args),
-            ('%s=%r' % (key, value) for (key, value) in kwargs.items())
-        ))
+        parameters = ', '.join(
+            itertools.chain(
+                (repr(arg) for arg in args), ('%s=%r' % (key, value) for (key, value) in kwargs.items())
+            )
+        )
         return 'Call to %s(%s) failed: %s (injection stack: %r)' % (
-            full_method, parameters, original_error, [level[0] for level in stack])
+            full_method,
+            parameters,
+            original_error,
+            [level[0] for level in stack],
+        )
 
 
 class CircularDependency(Error):
@@ -197,7 +204,6 @@ class InstanceProvider(Provider):
         return '%s(%r)' % (type(self).__name__, self._instance)
 
 
-
 @private
 class ListOfProviders(Provider):
     """Provide a list of instances via other Providers."""
@@ -241,13 +247,11 @@ class BindingKey(tuple):
     def create(cls, what: Any) -> 'BindingKey':
         if isinstance(what, list):
             if len(what) != 1:
-                raise Error('list bindings must have a single interface '
-                            'element')
+                raise Error('list bindings must have a single interface ' 'element')
             what = (list, BindingKey.create(what[0]))
         elif isinstance(what, dict):
             if len(what) != 1:
-                raise Error('dictionary bindings must have a single interface '
-                            'key and value')
+                raise Error('dictionary bindings must have a single interface ' 'key and value')
             what = (dict, BindingKey.create(list(what.items())[0]))
         return tuple.__new__(cls, (what,))
 
@@ -295,8 +299,7 @@ class Binder:
         if type(interface) is type and issubclass(interface, (BaseMappingKey, BaseSequenceKey)):
             return self.multibind(interface, to, scope=scope)
         key = BindingKey.create(interface)
-        self._bindings[key] = \
-            self.create_binding(interface, to, scope)
+        self._bindings[key] = self.create_binding(interface, to, scope)
 
     def bind_scope(self, scope):
         """Bind a Scope.
@@ -326,9 +329,7 @@ class Binder:
         """
         key = BindingKey.create(interface)
         if key not in self._bindings:
-            if (
-                    isinstance(interface, dict) or
-                    isinstance(interface, type) and issubclass(interface, dict)):
+            if isinstance(interface, dict) or isinstance(interface, type) and issubclass(interface, dict):
                 provider = MapBindProvider()
             else:
                 provider = MultiBindProvider()
@@ -372,17 +373,18 @@ class Binder:
             binder.install(MyModule)
         """
         if (
-            hasattr(module, '__bindings__') or
-            hasattr(getattr(module, 'configure', None), '__bindings__') or
-            hasattr(getattr(module, '__init__', None), '__bindings__')
+            hasattr(module, '__bindings__')
+            or hasattr(getattr(module, 'configure', None), '__bindings__')
+            or hasattr(getattr(module, '__init__', None), '__bindings__')
         ):
             warnings.warn(
                 'Injector Modules (ie. %s) constructors and their configure methods should '
                 'not have injectable parameters. This can result in non-deterministic '
                 'initialization. If you need injectable objects in order to provide something '
                 ' you can use @provider-decorated methods. \n'
-                ' This feature will be removed in next Injector release.' %
-                module.__name__ if hasattr(module, '__name__') else module.__class__.__name__,
+                ' This feature will be removed in next Injector release.' % module.__name__
+                if hasattr(module, '__name__')
+                else module.__class__.__name__,
                 RuntimeWarning,
                 stacklevel=3,
             )
@@ -390,11 +392,7 @@ class Binder:
             instance = self.injector.create_object(module)
             instance(self)
         else:
-            self.injector.call_with_injection(
-                callable=module,
-                self_=None,
-                args=(self,),
-            )
+            self.injector.call_with_injection(callable=module, self_=None, args=(self,))
 
     def create_binding(self, interface, to=None, scope=None):
         provider = self.provider_for(interface, to)
@@ -420,13 +418,21 @@ class Binder:
             return to
         elif isinstance(interface, Provider):
             return interface
-        elif isinstance(to, (types.FunctionType, types.LambdaType,
-                             types.MethodType, types.BuiltinFunctionType,
-                             types.BuiltinMethodType)):
+        elif isinstance(
+            to,
+            (
+                types.FunctionType,
+                types.LambdaType,
+                types.MethodType,
+                types.BuiltinFunctionType,
+                types.BuiltinMethodType,
+            ),
+        ):
             return CallableProvider(to)
         elif issubclass(type(to), type):
             return ClassProvider(to)
         elif isinstance(interface, BoundKey):
+
             def proxy(**kwargs):
                 return interface.interface(**kwargs)
 
@@ -436,11 +442,7 @@ class Binder:
             (target,) = interface.__args__
             builder = interface(self.injector, target)
             return InstanceProvider(builder)
-        elif (
-            isinstance(base_type, (tuple, type)) and
-            interface is not Any and
-            isinstance(to, base_type)
-        ):
+        elif isinstance(base_type, (tuple, type)) and interface is not Any and isinstance(to, base_type):
             return InstanceProvider(to)
         elif issubclass(type(interface), type) or isinstance(interface, (tuple, list)):
             if to is not None:
@@ -450,8 +452,7 @@ class Binder:
         elif hasattr(interface, '__call__'):
             raise TypeError('Injecting partially applied functions is no longer supported.')
         else:
-            raise UnknownProvider('couldn\'t determine provider for %r to %r' %
-                                  (interface, to))
+            raise UnknownProvider('couldn\'t determine provider for %r to %r' % (interface, to))
 
     def _get_binding(self, key, *, only_this_binder: bool = False):
         binding = self._bindings.get(key)
@@ -484,13 +485,11 @@ class Binder:
         # "Special" interfaces are ones that you cannot bind yourself but
         # you can request them (for example you cannot bind ProviderOf(SomeClass)
         # to anything but you can inject ProviderOf(SomeClass) just fine
-        return any(
-            _is_specialization(interface, cls)
-            for cls in [AssistedBuilder, ProviderOf]
-        )
+        return any(_is_specialization(interface, cls) for cls in [AssistedBuilder, ProviderOf])
 
 
 if TYPING353:
+
     def _is_specialization(cls, generic_class):
         # Starting with typing 3.5.3/Python 3.6 it is no longer necessarily true that
         # issubclass(SomeGeneric[X], SomeGeneric) so we need some other way to
@@ -507,6 +506,7 @@ if TYPING353:
         # Union cannot be used in issubclass() check (it raises an exception
         # by design).
         return origin is generic_class or issubclass(origin, generic_class)
+
 
 else:
     # To maintain compatibility we fall back to an issubclass check.
@@ -549,9 +549,7 @@ class ScopeDecorator:
         cls.__scope__ = self.scope
         binding = getattr(cls, '__binding__', None)
         if binding:
-            new_binding = Binding(interface=binding.interface,
-                                  provider=binding.provider,
-                                  scope=self.scope)
+            new_binding = Binding(interface=binding.interface, provider=binding.provider, scope=self.scope)
             setattr(cls, '__binding__', new_binding)
         return cls
 
@@ -561,6 +559,7 @@ class ScopeDecorator:
 
 class NoScope(Scope):
     """An unscoped provider."""
+
     def __init__(self, injector=None):
         super(NoScope, self).__init__(injector)
 
@@ -585,6 +584,7 @@ class SingletonScope(Scope):
     >>> a is b
     True
     """
+
     def configure(self):
         self._context = {}
 
@@ -603,6 +603,7 @@ singleton = ScopeDecorator(SingletonScope)
 
 class ThreadLocalScope(Scope):
     """A :class:`Scope` that returns a per-thread instance for a key."""
+
     def configure(self):
         self._locals = threading.local()
 
@@ -629,9 +630,7 @@ class Module:
             if hasattr(function, '__binding__'):
                 binding = function.__binding__
                 binder.bind(
-                    binding.interface,
-                    to=types.MethodType(binding.provider, self),
-                    scope=binding.scope,
+                    binding.interface, to=types.MethodType(binding.provider, self), scope=binding.scope
                 )
         self.configure(binder)
 
@@ -725,8 +724,9 @@ class Injector:
         scope_binding, _ = binder.get_binding(None, scope_key)
         scope_instance = scope_binding.provider.get(self)
 
-        log.debug('%sInjector.get(%r, scope=%r) using %r',
-                  self._log_prefix, interface, scope, binding.provider)
+        log.debug(
+            '%sInjector.get(%r, scope=%r) using %r', self._log_prefix, interface, scope, binding.provider
+        )
         result = scope_instance.get(key, binding.provider).get(self)
         log.debug('%s -> %r', self._log_prefix, result)
         return result
@@ -742,19 +742,21 @@ class Injector:
         try:
             instance = cls.__new__(cls)
         except TypeError as e:
-            reraise(e, CallError(
-                cls,
-                getattr(cls.__new__, '__func__', cls.__new__),
-                (), {}, e, self._stack,),
-                maximum_frames=2)
+            reraise(
+                e,
+                CallError(cls, getattr(cls.__new__, '__func__', cls.__new__), (), {}, e, self._stack),
+                maximum_frames=2,
+            )
         try:
-            self.install_into(instance, _internal = True)
+            self.install_into(instance, _internal=True)
             installed = True
         except AttributeError:
             installed = False
             if hasattr(instance, '__slots__'):
-                raise Error('Can\'t create an instance of type %r due to presence of __slots__, '
-                            'remove __slots__ to fix that' % (cls,))
+                raise Error(
+                    'Can\'t create an instance of type %r due to presence of __slots__, '
+                    'remove __slots__ to fix that' % (cls,)
+                )
 
             # Else do nothing - some builtin types can not be modified.
         try:
@@ -764,17 +766,23 @@ class Injector:
             except TypeError as e:
                 # The reason why getattr() fallback is used here is that
                 # __init__.__func__ apparently doesn't exist for Key-type objects
-                reraise(e, CallError(
-                    instance,
-                    getattr(instance.__init__, '__func__', instance.__init__),
-                    (), additional_kwargs, e, self._stack,)
+                reraise(
+                    e,
+                    CallError(
+                        instance,
+                        getattr(instance.__init__, '__func__', instance.__init__),
+                        (),
+                        additional_kwargs,
+                        e,
+                        self._stack,
+                    ),
                 )
             return instance
         finally:
             if installed:
                 self._uninstall_from(instance)
 
-    def install_into(self, instance, *, _internal = False):
+    def install_into(self, instance, *, _internal=False):
         """Put injector reference in given object.
 
         This method has, in general, two applications:
@@ -836,6 +844,7 @@ class Injector:
         :type kwargs: dict of string -> object
         :return: Value returned by callable.
         """
+
         def _get_callable_bindings(callable):
             if not hasattr(callable, '__bindings__'):
                 return {}
@@ -847,23 +856,18 @@ class Injector:
 
         bindings = _get_callable_bindings(callable)
         noninjectables = getattr(callable, '__noninjectables__', set())
-        needed = dict(
-            (k, v) for (k, v) in bindings.items()
-            if k not in kwargs and k not in noninjectables
-        )
+        needed = dict((k, v) for (k, v) in bindings.items() if k not in kwargs and k not in noninjectables)
 
         dependencies = self.args_to_inject(
             function=callable,
             bindings=needed,
             owner_key=self_.__class__ if self_ is not None else callable.__module__,
-            )
+        )
 
         dependencies.update(kwargs)
 
         try:
-            return callable(
-                *((self_,) if self_ is not None else ()) + tuple(args),
-                **dependencies)
+            return callable(*((self_,) if self_ is not None else ()) + tuple(args), **dependencies)
         except TypeError as e:
             reraise(e, CallError(self_, callable, args, dependencies, e, self._stack))
 
@@ -890,8 +894,8 @@ class Injector:
 
         if key in self._stack:
             raise CircularDependency(
-                'circular dependency detected: %s -> %s' %
-                (' -> '.join(map(repr_key, self._stack)), repr_key(key))
+                'circular dependency detected: %s -> %s'
+                % (' -> '.join(map(repr_key, self._stack)), repr_key(key))
             )
 
         self._stack += (key,)
@@ -964,7 +968,7 @@ def with_injector(*injector_args, **injector_kwargs):
         @functools.wraps(f)
         def setup(self_, *args, **kwargs):
             injector = Injector(*injector_args, **injector_kwargs)
-            injector.install_into(self_, _internal = True)
+            injector.install_into(self_, _internal=True)
             return f(self_, *args, **kwargs)
 
         return setup
@@ -1039,13 +1043,12 @@ def inject(function=None, **bindings):
         raise AssertionError(
             'Passing keyword arguments to inject is no longer supported. '
             'Use inject in combination with parameter annotations to declare dependencies. '
-            'See documentation for details',
+            'See documentation for details'
         )
 
     if not function:
         raise AssertionError(
-            'No function being decorated, make sure you decorate your function with '
-            '@inject, not @inject()',
+            'No function being decorated, make sure you decorate your function with ' '@inject, not @inject()'
         )
 
     try:
@@ -1078,23 +1081,25 @@ def noninjectable(*args):
     :func:`inject` and :func:`noninjectable`
     doesn't matter.
     """
+
     def decorator(function):
         argspec = inspect.getfullargspec(inspect.unwrap(function))
         for arg in args:
             if arg not in argspec.args and arg not in argspec.kwonlyargs:
-                raise UnknownArgument('Unable to mark unknown argument %s '
-                                      'as non-injectable.' % arg)
+                raise UnknownArgument('Unable to mark unknown argument %s ' 'as non-injectable.' % arg)
 
         existing = getattr(function, '__noninjectables__', set())
         merged = existing | set(args)
         function.__noninjectables__ = merged
         return function
+
     return decorator
 
 
 def method_wrapper(f, bindings):
     argspec = inspect.getfullargspec(f)
     if argspec.args and argspec.args[0] == 'self':
+
         @functools.wraps(f)
         def inject(self_, *args, **kwargs):
             try:
@@ -1102,12 +1107,7 @@ def method_wrapper(f, bindings):
             except RuntimeError:
                 injector = None
             if injector:
-                return injector.call_with_injection(
-                    callable=f,
-                    self_=self_,
-                    args=args,
-                    kwargs=kwargs
-                )
+                return injector.call_with_injection(callable=f, self_=self_, args=args, kwargs=kwargs)
             else:
                 return f(self_, *args, **kwargs)
 
@@ -1141,8 +1141,10 @@ class BaseKey:
     """Base type for binding keys."""
 
     def __init__(self):
-        raise Exception('Instantiation of %s prohibited - it is derived from BaseKey '
-                        'so most likely you should bind it to something.' % (self.__class__,))
+        raise Exception(
+            'Instantiation of %s prohibited - it is derived from BaseKey '
+            'so most likely you should bind it to something.' % (self.__class__,)
+        )
 
 
 def Key(name):
@@ -1160,9 +1162,12 @@ def Key(name):
 @private
 class BaseMappingKey(dict):
     """Base type for mapping binding keys."""
+
     def __init__(self):
-        raise Exception('Instantiation of %s prohibited - it is derived from BaseMappingKey '
-                        'so most likely you should bind it to something.' % (self.__class__,))
+        raise Exception(
+            'Instantiation of %s prohibited - it is derived from BaseMappingKey '
+            'so most likely you should bind it to something.' % (self.__class__,)
+        )
 
 
 def MappingKey(name):
@@ -1173,9 +1178,12 @@ def MappingKey(name):
 @private
 class BaseSequenceKey(list):
     """Base type for mapping sequence keys."""
+
     def __init__(self):
-        raise Exception('Instantiation of %s prohibited - it is derived from BaseSequenceKey '
-                        'so most likely you should bind it to something.' % (self.__class__,))
+        raise Exception(
+            'Instantiation of %s prohibited - it is derived from BaseSequenceKey '
+            'so most likely you should bind it to something.' % (self.__class__,)
+        )
 
 
 def SequenceKey(name):
@@ -1211,7 +1219,6 @@ class BoundKey(tuple):
 
 
 class AssistedBuilder(Generic[T]):
-
     def __init__(self, injector, target):
         self._injector = injector
         self._target = target
@@ -1224,7 +1231,8 @@ class AssistedBuilder(Generic[T]):
         if not isinstance(provider, ClassProvider):
             raise Error(
                 'Assisted interface building works only with ClassProviders, '
-                'got %r for %r' % (provider, binding.interface))
+                'got %r for %r' % (provider, binding.interface)
+            )
 
         return self._build_class(provider._cls, **kwargs)
 
@@ -1268,8 +1276,7 @@ class ProviderOf(Generic[T]):
         self._interface = interface
 
     def __repr__(self):
-        return '%s(%r, %r)' % (
-            type(self).__name__, self._injector, self._interface)
+        return '%s(%r, %r)' % (type(self).__name__, self._injector, self._interface)
 
     def get(self) -> T:
         """Get an implementation for the specified interface."""

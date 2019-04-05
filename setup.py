@@ -17,6 +17,7 @@ class PyTest(Command):
 
     def run(self):
         import subprocess
+
         errno = subprocess.call([sys.executable, 'runtest.py'])
         raise SystemExit(errno)
 
@@ -35,10 +36,10 @@ version_tag = read_injector_variable('__version_tag__')
 
 try:
     import pypandoc
+
     long_description = pypandoc.convert('README.md', 'rst')
 except ImportError:
-    warnings.warn('Could not locate pandoc, using Markdown long_description.',
-                  ImportWarning)
+    warnings.warn('Could not locate pandoc, using Markdown long_description.', ImportWarning)
     with open('README.md') as f:
         long_description = f.read()
 
@@ -56,12 +57,16 @@ setup(
     license='BSD',
     platforms=['any'],
     packages=['injector'],
-    package_data = {'injector': ['py.typed']},
+    package_data={'injector': ['py.typed']},
     author='Alec Thomas',
     author_email='alec@swapoff.org',
     cmdclass={'test': PyTest},
     keywords=[
-        'Dependency Injection', 'DI', 'Dependency Injection framework',
-        'Inversion of Control', 'IoC', 'Inversion of Control container',
+        'Dependency Injection',
+        'DI',
+        'Dependency Injection framework',
+        'Inversion of Control',
+        'IoC',
+        'Inversion of Control container',
     ],
 )

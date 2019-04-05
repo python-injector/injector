@@ -1,0 +1,4 @@
+[tool.black]
+line-length = 110
+target_version = ['py36', 'py37']
+skip_string_normalization = true

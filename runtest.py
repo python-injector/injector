@@ -2413,6 +2413,7 @@ import base64
 import zlib
 import imp
 
+
 class DictImporter:
     def __init__(self, sources):
         self.sources = sources
@@ -2427,6 +2428,7 @@ class DictImporter:
     def load_module(self, fullname):
         # print "load_module:",  fullname
         from types import ModuleType
+
         try:
             s = self.sources[fullname]
             is_pkg = False
@@ -2451,14 +2453,17 @@ class DictImporter:
             res = self.sources.get(name + '.__init__')
         return res
 
+
 if __name__ == "__main__":
     if sys.version_info >= (3, 0):
         exec("def do_exec(co, loc): exec(co, loc)\n")
         import pickle
-        sources = sources.encode("ascii") # ensure bytes
+
+        sources = sources.encode("ascii")  # ensure bytes
         sources = pickle.loads(zlib.decompress(base64.decodebytes(sources)))
     else:
         import pickle as pickle
+
         exec("def do_exec(co, loc): exec co in loc\n")
         sources = pickle.loads(zlib.decompress(base64.decodestring(sources)))
 
