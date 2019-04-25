@@ -1279,6 +1279,49 @@ def test_optionals_are_ignored_for_now():
     assert Injector().call_with_injection(fun) == ''
 
 
+def test_explicitly_passed_parameters_override_injectable_values():
+    # We test a method on top of regular function to exercise the code path that's
+    # responsible for handling methods.
+    class X:
+        @inject
+        def method(self, s: str = None) -> str:
+            return s
+
+    @inject
+    def function(s: str) -> str:
+        return s
+
+    injection_counter = 0
+
+    def provide_str() -> str:
+        nonlocal injection_counter
+        injection_counter += 1
+        return 'injected string'
+
+    def configure(binder: Binder) -> None:
+        binder.bind(str, to=provide_str)
+
+    injector = Injector([configure])
+    x = X()
+
+    assert injection_counter == 0
+
+    assert injector.call_with_injection(x.method) == 'injected string'
+    assert injection_counter == 1
+    assert injector.call_with_injection(function) == 'injected string'
+    assert injection_counter == 2
+
+    assert injector.call_with_injection(x.method, args=('passed string',)) == 'passed string'
+    assert injection_counter == 2
+    assert injector.call_with_injection(function, args=('passed string',)) == 'passed string'
+    assert injection_counter == 2
+
+    assert injector.call_with_injection(x.method, kwargs={'s': 'passed string'}) == 'passed string'
+    assert injection_counter == 2
+    assert injector.call_with_injection(function, kwargs={'s': 'passed string'}) == 'passed string'
+    assert injection_counter == 2
+
+
 def test_class_assisted_builder_of_partially_injected_class():
     class A:
         pass

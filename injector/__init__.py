@@ -856,7 +856,14 @@ class Injector:
 
         bindings = _get_callable_bindings(callable)
         noninjectables = getattr(callable, '__noninjectables__', set())
-        needed = dict((k, v) for (k, v) in bindings.items() if k not in kwargs and k not in noninjectables)
+        signature = inspect.signature(callable)
+        bound_arguments = signature.bind_partial(*args)
+
+        needed = dict(
+            (k, v)
+            for (k, v) in bindings.items()
+            if k not in kwargs and k not in noninjectables and k not in bound_arguments.arguments
+        )
 
         dependencies = self.args_to_inject(
             function=callable,
