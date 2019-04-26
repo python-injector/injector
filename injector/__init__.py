@@ -301,21 +301,6 @@ class Binder:
         key = BindingKey.create(interface)
         self._bindings[key] = self.create_binding(interface, to, scope)
 
-    def bind_scope(self, scope):
-        """Bind a Scope.
-
-        :param scope: Scope class.
-
-        .. versionchanged:: 0.14.0
-            This method is a no-op and is deprecated
-        """
-        warnings.warn(
-            'The bind_scope method is a no-op now and it\'s deprecated. '
-            'Stop using it, your code will keep working just fine.',
-            RuntimeWarning,
-            stacklevel=3,
-        )
-
     def multibind(self, interface, to, scope=None):
         """Creates or extends a multi-binding.
 

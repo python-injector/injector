@@ -591,9 +591,6 @@ def test_custom_scope():
             self.request = request
 
     class RequestModule(Module):
-        def configure(self, binder):
-            binder.bind_scope(RequestScope)
-
         @provider
         @inject
         def handler(self, request: Request) -> Handler:
