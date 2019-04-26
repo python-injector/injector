@@ -958,31 +958,6 @@ def _infer_injected_bindings(callable):
     return bindings
 
 
-def with_injector(*injector_args, **injector_kwargs):
-    """Decorator for a method. Installs Injector object which the method
-    belongs to before the decorated method is executed.
-
-    Parameters are the same as for :class:`Injector` constructor.
-    """
-    warnings.warn(
-        'with_injector is deprecated and will be removed in the next minor release. '
-        'The migration path depends on your use case but should be fairly simple. ',
-        RuntimeWarning,
-        stacklevel=3,
-    )
-
-    def wrapper(f):
-        @functools.wraps(f)
-        def setup(self_, *args, **kwargs):
-            injector = Injector(*injector_args, **injector_kwargs)
-            injector.install_into(self_, _internal=True)
-            return f(self_, *args, **kwargs)
-
-        return setup
-
-    return wrapper
-
-
 def provider(function):
     """Decorator for :class:`Module` methods, registering a provider of a type.
 

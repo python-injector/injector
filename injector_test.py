@@ -36,7 +36,6 @@ from injector import (
     Key,
     SingletonScope,
     ScopeDecorator,
-    with_injector,
     AssistedBuilder,
     BindingKey,
     SequenceKey,
@@ -467,22 +466,6 @@ def test_module_class_gets_instantiated():
 
     injector = Injector(MyModule)
     assert injector.get(str) == name
-
-
-def test_with_injector_works():
-    name = 'Victoria'
-
-    def configure(binder):
-        binder.bind(str, to=name)
-
-    class Aaa:
-        @with_injector(configure)
-        @inject
-        def __init__(self, username: str):
-            self.username = username
-
-    aaa = Aaa()
-    assert aaa.username == name
 
 
 def test_bind_using_key():
