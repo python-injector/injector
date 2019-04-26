@@ -758,7 +758,10 @@ class Injector:
         bindings = _get_callable_bindings(callable)
         noninjectables = getattr(callable, '__noninjectables__', set())
         signature = inspect.signature(callable)
-        bound_arguments = signature.bind_partial(*args)
+        full_args = args
+        if self_ is not None:
+            full_args = (self_,) + full_args
+        bound_arguments = signature.bind_partial(*full_args)
 
         needed = dict(
             (k, v)
@@ -775,7 +778,7 @@ class Injector:
         dependencies.update(kwargs)
 
         try:
-            return callable(*((self_,) if self_ is not None else ()) + tuple(args), **dependencies)
+            return callable(*full_args, **dependencies)
         except TypeError as e:
             reraise(e, CallError(self_, callable, args, dependencies, e, self._stack))
 
@@ -836,6 +839,12 @@ def _infer_injected_bindings(callable):
     # We don't care about the return value annotation as it doesn't matter
     # injection-wise.
     bindings.pop('return', None)
+
+    # If we're dealing with a bound method get_type_hints will still return `self` annotation even though
+    # it's already provided and we're not really interested in its type. So – drop it.
+    if isinstance(callable, types.MethodType):
+        self_name = spec.args[0]
+        bindings.pop(self_name, None)
 
     # variadic arguments aren't supported at the moment (this may change
     # in the future if someone has a good idea how to utilize them)

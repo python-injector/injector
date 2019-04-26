@@ -1224,11 +1224,18 @@ def test_optionals_are_ignored_for_now():
 
 
 def test_explicitly_passed_parameters_override_injectable_values():
+    # The class needs to be defined globally for the 'X' forward reference to be able to be resolved.
+    global X
+
     # We test a method on top of regular function to exercise the code path that's
     # responsible for handling methods.
     class X:
         @inject
-        def method(self, s: str = None) -> str:
+        def method(self, s: str) -> str:
+            return s
+
+        @inject
+        def method_typed_self(self: 'X', s: str) -> str:
             return s
 
     @inject
@@ -1248,22 +1255,34 @@ def test_explicitly_passed_parameters_override_injectable_values():
     injector = Injector([configure])
     x = X()
 
-    assert injection_counter == 0
+    try:
+        assert injection_counter == 0
 
-    assert injector.call_with_injection(x.method) == 'injected string'
-    assert injection_counter == 1
-    assert injector.call_with_injection(function) == 'injected string'
-    assert injection_counter == 2
+        assert injector.call_with_injection(x.method) == 'injected string'
+        assert injection_counter == 1
+        assert injector.call_with_injection(x.method_typed_self) == 'injected string'
+        assert injection_counter == 2
+        assert injector.call_with_injection(function) == 'injected string'
+        assert injection_counter == 3
 
-    assert injector.call_with_injection(x.method, args=('passed string',)) == 'passed string'
-    assert injection_counter == 2
-    assert injector.call_with_injection(function, args=('passed string',)) == 'passed string'
-    assert injection_counter == 2
+        assert injector.call_with_injection(x.method, args=('passed string',)) == 'passed string'
+        assert injection_counter == 3
+        assert injector.call_with_injection(x.method_typed_self, args=('passed string',)) == 'passed string'
+        assert injection_counter == 3
+        assert injector.call_with_injection(function, args=('passed string',)) == 'passed string'
+        assert injection_counter == 3
 
-    assert injector.call_with_injection(x.method, kwargs={'s': 'passed string'}) == 'passed string'
-    assert injection_counter == 2
-    assert injector.call_with_injection(function, kwargs={'s': 'passed string'}) == 'passed string'
-    assert injection_counter == 2
+        assert injector.call_with_injection(x.method, kwargs={'s': 'passed string'}) == 'passed string'
+        assert injection_counter == 3
+        assert (
+            injector.call_with_injection(x.method_typed_self, kwargs={'s': 'passed string'})
+            == 'passed string'
+        )
+        assert injection_counter == 3
+        assert injector.call_with_injection(function, kwargs={'s': 'passed string'}) == 'passed string'
+        assert injection_counter == 3
+    finally:
+        del X
 
 
 def test_class_assisted_builder_of_partially_injected_class():
