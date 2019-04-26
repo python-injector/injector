@@ -21,7 +21,6 @@ import logging
 import sys
 import threading
 import types
-import warnings
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
 from typing import Any, Generic, get_type_hints, Type, TypeVar, Union
@@ -357,27 +356,11 @@ class Binder:
 
             binder.install(MyModule)
         """
-        if (
-            hasattr(module, '__bindings__')
-            or hasattr(getattr(module, 'configure', None), '__bindings__')
-            or hasattr(getattr(module, '__init__', None), '__bindings__')
-        ):
-            warnings.warn(
-                'Injector Modules (ie. %s) constructors and their configure methods should '
-                'not have injectable parameters. This can result in non-deterministic '
-                'initialization. If you need injectable objects in order to provide something '
-                ' you can use @provider-decorated methods. \n'
-                ' This feature will be removed in next Injector release.' % module.__name__
-                if hasattr(module, '__name__')
-                else module.__class__.__name__,
-                RuntimeWarning,
-                stacklevel=3,
-            )
         if type(module) is type and issubclass(module, Module):
-            instance = self.injector.create_object(module)
-            instance(self)
+            instance = module()
         else:
-            self.injector.call_with_injection(callable=module, self_=None, args=(self,))
+            instance = module
+        instance(self)
 
     def create_binding(self, interface, to=None, scope=None):
         provider = self.provider_for(interface, to)
@@ -617,7 +600,7 @@ class Module:
                 binder.bind(
                     binding.interface, to=types.MethodType(binding.provider, self), scope=binding.scope
                 )
-        binder.injector.call_with_injection(self.configure, kwargs={'binder': binder})
+        self.configure(binder)
 
     def configure(self, binder):
         """Override to configure bindings."""

@@ -878,28 +878,6 @@ def test_injecting_into_method_of_object_that_is_falseish_works():
     injector.get(X)
 
 
-def test_deprecated_module_configure_injection():
-    class Test(Module):
-        @inject
-        def configure(self, binder, name: int):
-            pass
-
-    class Test2(Module):
-        @inject
-        def __init__(self, name: int):
-            pass
-
-    @inject
-    def configure(binder, name: int):
-        pass
-
-    for module in [Test, Test2, configure, Test()]:
-        with warnings.catch_warnings(record=True) as w:
-            print(module)
-            Injector(module)
-        assert len(w) == 1, w
-
-
 def test_callable_provider_injection():
     Name = Key("Name")
     Message = Key("Message")
