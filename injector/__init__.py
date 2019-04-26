@@ -632,7 +632,7 @@ class Module:
                 binder.bind(
                     binding.interface, to=types.MethodType(binding.provider, self), scope=binding.scope
                 )
-        self.configure(binder)
+        binder.injector.call_with_injection(self.configure, kwargs={'binder': binder})
 
     def configure(self, binder):
         """Override to configure bindings."""
@@ -748,39 +748,23 @@ class Injector:
                 maximum_frames=2,
             )
         try:
-            self.install_into(instance, _internal=True)
-            installed = True
-        except AttributeError:
-            installed = False
-            if hasattr(instance, '__slots__'):
-                raise Error(
-                    'Can\'t create an instance of type %r due to presence of __slots__, '
-                    'remove __slots__ to fix that' % (cls,)
-                )
-
-            # Else do nothing - some builtin types can not be modified.
-        try:
-            try:
-                init = cls.__init__
-                init(instance, **additional_kwargs)  # type: ignore # python/mypy/issues/4001
-            except TypeError as e:
-                # The reason why getattr() fallback is used here is that
-                # __init__.__func__ apparently doesn't exist for Key-type objects
-                reraise(
+            init = cls.__init__
+            self.call_with_injection(init, self_=instance, kwargs=additional_kwargs)
+        except TypeError as e:
+            # The reason why getattr() fallback is used here is that
+            # __init__.__func__ apparently doesn't exist for Key-type objects
+            reraise(
+                e,
+                CallError(
+                    instance,
+                    getattr(instance.__init__, '__func__', instance.__init__),
+                    (),
+                    additional_kwargs,
                     e,
-                    CallError(
-                        instance,
-                        getattr(instance.__init__, '__func__', instance.__init__),
-                        (),
-                        additional_kwargs,
-                        e,
-                        self._stack,
-                    ),
-                )
-            return instance
-        finally:
-            if installed:
-                self._uninstall_from(instance)
+                    self._stack,
+                ),
+            )
+        return instance
 
     def install_into(self, instance, *, _internal=False):
         """Put injector reference in given object.
@@ -828,9 +812,6 @@ class Injector:
                 stacklevel=3,
             )
         instance.__injector__ = self
-
-    def _uninstall_from(self, instance):
-        del instance.__injector__
 
     def call_with_injection(self, callable, self_=None, args=(), kwargs={}):
         """Call a callable and provide it's dependencies if needed.
@@ -1079,26 +1060,6 @@ def noninjectable(*args):
 
 
 def method_wrapper(f, bindings):
-    argspec = inspect.getfullargspec(f)
-    if argspec.args and argspec.args[0] == 'self':
-
-        @functools.wraps(f)
-        def inject(self_, *args, **kwargs):
-            try:
-                injector = getattr(self_, '__injector__', None)
-            except RuntimeError:
-                injector = None
-            if injector:
-                return injector.call_with_injection(callable=f, self_=self_, args=args, kwargs=kwargs)
-            else:
-                return f(self_, *args, **kwargs)
-
-        # Propagate @provider bindings to wrapper function
-        if hasattr(f, '__binding__'):
-            inject.__binding__ = f.__binding__
-    else:
-        inject = f
-
     def read_and_store_bindings(bindings):
         for key, value in bindings.items():
             bindings[key] = BindingKey.create(value)
@@ -1108,14 +1069,13 @@ def method_wrapper(f, bindings):
         merged_bindings = dict(function_bindings, **bindings)
 
         f.__bindings__ = merged_bindings
-        inject.__bindings__ = merged_bindings
 
     if isinstance(bindings, dict):
         read_and_store_bindings(bindings)
     else:
         f.__bindings__ = 'deferred'
         f.__read_and_store_bindings__ = read_and_store_bindings
-    return inject
+    return f
 
 
 @private

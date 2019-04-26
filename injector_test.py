@@ -881,20 +881,6 @@ def test_injecting_into_method_of_object_that_is_falseish_works():
     injector.get(X)
 
 
-def test_injection_fails_when_injector_cant_install_itself_into_an_object_with_slots():
-    try:
-
-        class ClassName:
-            __slots__ = ()
-
-        injector = Injector()
-        injector.get(ClassName)
-    except Exception as e:
-        check_exception_contains_stuff(e, ('ClassName', '__slots__'))
-    else:
-        assert False, 'Should have raised an exception and it didn\'t'
-
-
 def test_deprecated_module_configure_injection():
     class Test(Module):
         @inject
