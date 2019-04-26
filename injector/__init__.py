@@ -766,53 +766,6 @@ class Injector:
             )
         return instance
 
-    def install_into(self, instance, *, _internal=False):
-        """Put injector reference in given object.
-
-        This method has, in general, two applications:
-
-        * Injector internal use (not documented here)
-        * Making it possible to inject into methods of an object that wasn't created
-            using Injector. Usually it's because you either don't control the instantiation
-            process, it'd generate unnecessary boilerplate or it's just easier this way.
-
-            For example, in application main script::
-
-                from injector import Injector
-
-                class Main:
-                    def __init__(self):
-                        def configure(binder):
-                            binder.bind(str, to='Hello!')
-
-                        injector = Injector(configure)
-                        injector.install_into(self)
-
-                    @inject
-                    def run(self, s: str):
-                        print(s)
-
-                if __name__ == '__main__':
-                    main = Main()
-                    main.run()
-
-
-        .. note:: You don't need to use this method if the object is created using `Injector`.
-
-        .. warning:: Using `install_into` to install :class:`Injector` reference into an object
-            created by different :class:`Injector` instance may very likely result in unexpected
-            behaviour of that object immediately or in the future.
-
-        """
-        if not _internal:
-            warnings.warn(
-                'install_into is deprecated and will be removed in the next minor release. '
-                'There should be no reason to use it anymore apart from some very custom cases.',
-                RuntimeWarning,
-                stacklevel=3,
-            )
-        instance.__injector__ = self
-
     def call_with_injection(self, callable, self_=None, args=(), kwargs={}):
         """Call a callable and provide it's dependencies if needed.
 
