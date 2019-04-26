@@ -752,8 +752,7 @@ class Injector:
                 return {}
 
             if callable.__bindings__ == 'deferred':
-                callable.__read_and_store_bindings__(_infer_injected_bindings(callable))
-                del callable.__read_and_store_bindings__
+                read_and_store_bindings(callable, _infer_injected_bindings(callable))
             return callable.__bindings__
 
         bindings = _get_callable_bindings(callable)
@@ -981,22 +980,25 @@ def noninjectable(*args):
 
 
 def method_wrapper(f, bindings):
-    def read_and_store_bindings(bindings):
-        for key, value in bindings.items():
-            bindings[key] = BindingKey.create(value)
-        function_bindings = getattr(f, '__bindings__', None) or {}
-        if function_bindings == 'deferred':
-            function_bindings = {}
-        merged_bindings = dict(function_bindings, **bindings)
-
-        f.__bindings__ = merged_bindings
-
     if isinstance(bindings, dict):
-        read_and_store_bindings(bindings)
+        read_and_store_bindings(f, bindings)
     else:
         f.__bindings__ = 'deferred'
-        f.__read_and_store_bindings__ = read_and_store_bindings
     return f
+
+
+@private
+def read_and_store_bindings(f, bindings):
+    for key, value in bindings.items():
+        bindings[key] = BindingKey.create(value)
+    function_bindings = getattr(f, '__bindings__', None) or {}
+    if function_bindings == 'deferred':
+        function_bindings = {}
+    merged_bindings = dict(function_bindings, **bindings)
+
+    if hasattr(f, '__func__'):
+        f = f.__func__
+    f.__bindings__ = merged_bindings
 
 
 @private
