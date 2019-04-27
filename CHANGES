@@ -1,6 +1,20 @@
 Injector Change Log
 ===================
 
+0.16.0
+------
+
+- Added support for overriding injectable parameters with positional arguments (previously only
+  possible with keyword arguments)
+- Fixed crashes caused by typed self in method signatures
+- Improved typing coverage
+
+Backwards incompatible:
+- Dropped Python 3.4 support
+- Removed previously deprecated constructs: with_injector, Injector.install_into, Binder.bind_scope
+- Dependencies are no longer injected into Module.configure and raw module functions (previously
+  deprecated)
+
 0.15.0
 ------
 
