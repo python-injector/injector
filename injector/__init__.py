@@ -23,7 +23,7 @@ import threading
 import types
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
-from typing import Any, Generic, get_type_hints, Type, TypeVar, Union
+from typing import Any, Callable, cast, Dict, Generic, get_type_hints, List, Tuple, Type, TypeVar, Union
 
 TYPING353 = hasattr(Union[str, int], '__origin__')
 
@@ -41,19 +41,22 @@ if log.level == logging.NOTSET:
 T = TypeVar('T')
 
 
-def private(something):
-    something.__private__ = True
+def private(something: T) -> T:
+    something.__private__ = True  # type: ignore
     return something
 
 
-def synchronized(lock):
-    def outside_wrapper(function):
+CallableT = TypeVar('CallableT', bound=Callable)
+
+
+def synchronized(lock: threading.RLock) -> Callable[[CallableT], CallableT]:
+    def outside_wrapper(function: CallableT) -> CallableT:
         @functools.wraps(function)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             with lock:
                 return function(*args, **kwargs)
 
-        return wrapper
+        return cast(CallableT, wrapper)
 
     return outside_wrapper
 
@@ -61,9 +64,9 @@ def synchronized(lock):
 lock = threading.RLock()
 
 
-def reraise(original, exception, maximum_frames=1):
+def reraise(original: Exception, exception: Exception, maximum_frames: int = 1) -> None:
     prev_cls, prev, tb = sys.exc_info()
-    frames = inspect.getinnerframes(tb)
+    frames = inspect.getinnerframes(cast(types.TracebackType, tb))
     if len(frames) > maximum_frames:
         exception = original
     raise exception.with_traceback(tb)
@@ -124,23 +127,23 @@ class UnknownArgument(Error):
     """Tried to mark an unknown argument as noninjectable."""
 
 
-class Provider:
+class Provider(Generic[T]):
     """Provides class instances."""
 
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get(self, injector):
+    def get(self, injector: 'Injector') -> T:
         raise NotImplementedError
 
 
 class ClassProvider(Provider):
     """Provides instances from a given class, created using an Injector."""
 
-    def __init__(self, cls):
+    def __init__(self, cls: Type[T]) -> None:
         self._cls = cls
 
-    def get(self, injector):
+    def get(self, injector: 'Injector') -> T:
         return injector.create_object(self._cls)
 
 
@@ -166,13 +169,13 @@ class CallableProvider(Provider):
         False
         """
 
-    def __init__(self, callable):
+    def __init__(self, callable: Callable[..., T]):
         self._callable = callable
 
-    def get(self, injector):
+    def get(self, injector: 'Injector') -> T:
         return injector.call_with_injection(self._callable)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '%s(%r)' % (type(self).__name__, self._callable)
 
 
@@ -193,30 +196,30 @@ class InstanceProvider(Provider):
         ['x']
     """
 
-    def __init__(self, instance):
+    def __init__(self, instance: T) -> None:
         self._instance = instance
 
-    def get(self, injector):
+    def get(self, injector: 'Injector') -> T:
         return self._instance
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '%s(%r)' % (type(self).__name__, self._instance)
 
 
 @private
-class ListOfProviders(Provider):
+class ListOfProviders(Provider[List[T]]):
     """Provide a list of instances via other Providers."""
 
-    def __init__(self):
-        self._providers = []
+    def __init__(self) -> None:
+        self._providers = []  # type: List[Provider[T]]
 
-    def append(self, provider):
+    def append(self, provider: Provider[T]) -> None:
         self._providers.append(provider)
 
-    def get(self, injector):
+    def get(self, injector: 'Injector') -> List[T]:
         return [provider.get(injector) for provider in self._providers]
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '%s(%r)' % (type(self).__name__, self._providers)
 
 
@@ -224,7 +227,7 @@ class MultiBindProvider(ListOfProviders):
     """Used by :meth:`Binder.multibind` to flatten results of providers that
     return sequences."""
 
-    def get(self, injector):
+    def get(self, injector: 'Injector') -> List[T]:
         return [i for provider in self._providers for i in provider.get(injector)]
 
 
@@ -1014,14 +1017,14 @@ def read_and_store_bindings(f, bindings):
 class BaseKey:
     """Base type for binding keys."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         raise Exception(
             'Instantiation of %s prohibited - it is derived from BaseKey '
             'so most likely you should bind it to something.' % (self.__class__,)
         )
 
 
-def Key(name):
+def Key(name: str) -> BaseKey:
     """Create a new type key.
 
     >>> Age = Key('Age')
@@ -1030,39 +1033,39 @@ def Key(name):
     >>> Injector(configure).get(Age)
     90
     """
-    return type(name, (BaseKey,), {})
+    return cast(BaseKey, type(name, (BaseKey,), {}))
 
 
 @private
 class BaseMappingKey(dict):
     """Base type for mapping binding keys."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         raise Exception(
             'Instantiation of %s prohibited - it is derived from BaseMappingKey '
             'so most likely you should bind it to something.' % (self.__class__,)
         )
 
 
-def MappingKey(name):
+def MappingKey(name: str) -> BaseMappingKey:
     """As for Key, but declares a multibind mapping."""
-    return type(name, (BaseMappingKey,), {})
+    return cast(BaseMappingKey, type(name, (BaseMappingKey,), {}))
 
 
 @private
 class BaseSequenceKey(list):
     """Base type for mapping sequence keys."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         raise Exception(
             'Instantiation of %s prohibited - it is derived from BaseSequenceKey '
             'so most likely you should bind it to something.' % (self.__class__,)
         )
 
 
-def SequenceKey(name):
+def SequenceKey(name: str) -> BaseSequenceKey:
     """As for Key, but declares a multibind sequence."""
-    return type(name, (BaseSequenceKey,), {})
+    return cast(BaseSequenceKey, type(name, (BaseSequenceKey,), {}))
 
 
 class BoundKey(tuple):
@@ -1079,21 +1082,21 @@ class BoundKey(tuple):
     (1, 2)
     """
 
-    def __new__(cls, interface, **kwargs):
-        kwargs = tuple(sorted(kwargs.items()))
-        return super(BoundKey, cls).__new__(cls, (interface, kwargs))
+    def __new__(cls, interface: Type[T], **kwargs: Any) -> 'BoundKey':
+        kwargs_tuple = tuple(sorted(kwargs.items()))
+        return super(BoundKey, cls).__new__(cls, (interface, kwargs_tuple))  # type: ignore
 
     @property
-    def interface(self):
+    def interface(self) -> Type[T]:
         return self[0]
 
     @property
-    def kwargs(self):
+    def kwargs(self) -> Dict[str, Any]:
         return dict(self[1])
 
 
 class AssistedBuilder(Generic[T]):
-    def __init__(self, injector, target):
+    def __init__(self, injector: Injector, target: Type[T]) -> None:
         self._injector = injector
         self._target = target
 
@@ -1108,9 +1111,9 @@ class AssistedBuilder(Generic[T]):
                 'got %r for %r' % (provider, binding.interface)
             )
 
-        return self._build_class(provider._cls, **kwargs)
+        return self._build_class(cast(Type[T], provider._cls), **kwargs)
 
-    def _build_class(self, cls, **kwargs):
+    def _build_class(self, cls: Type[T], **kwargs: Any) -> T:
         return self._injector.create_object(cls, additional_kwargs=kwargs)
 
 
@@ -1119,9 +1122,9 @@ class ClassAssistedBuilder(AssistedBuilder[T]):
         return self._build_class(self._target, **kwargs)
 
 
-def _describe(c):
+def _describe(c: Any) -> str:
     if hasattr(c, '__name__'):
-        return c.__name__
+        return cast(str, c.__name__)
     if type(c) in (tuple, list):
         return '[%s]' % c[0].__name__
     return str(c)
@@ -1145,11 +1148,11 @@ class ProviderOf(Generic[T]):
         123
     """
 
-    def __init__(self, injector, interface):
+    def __init__(self, injector: Injector, interface: Type[T]):
         self._injector = injector
         self._interface = interface
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '%s(%r, %r)' % (type(self).__name__, self._injector, self._interface)
 
     def get(self) -> T:
@@ -1157,7 +1160,7 @@ class ProviderOf(Generic[T]):
         return self._injector.get(self._interface)
 
 
-def is_decorated_with_inject(function):
+def is_decorated_with_inject(function: Callable[..., Any]) -> bool:
     """See if given callable is declared to want some dependencies injected.
 
     Example use:
