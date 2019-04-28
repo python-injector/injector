@@ -134,7 +134,7 @@ class Provider(Generic[T]):
 
     @abstractmethod
     def get(self, injector: 'Injector') -> T:
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
 
 class ClassProvider(Provider):
@@ -509,7 +509,7 @@ class Scope:
         :param provider: The default Provider associated with the key.
         :returns: A Provider instance that can provide an instance of key.
         """
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
 
 class ScopeDecorator:
