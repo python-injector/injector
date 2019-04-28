@@ -9,6 +9,16 @@ Welcome to Injector's documentation!
 .. image:: https://travis-ci.org/alecthomas/injector.png?branch=master
    :alt: Build status
    :target: https://travis-ci.org/alecthomas/injector
+   
+.. image:: https://coveralls.io/repos/github/alecthomas/injector/badge.svg?branch=master
+   :alt: Covergage status
+   :target: https://coveralls.io/github/alecthomas/injector?branch=master
+
+GitHub (code repository, issues): https://github.com/alecthomas/injector
+
+PyPI (installable, stable distributions): https://pypi.org/project/injector. You can install Injector using pip::
+
+    pip install injector
 
 Introduction
 ------------
