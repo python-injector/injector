@@ -15,6 +15,7 @@ Injector Change Log
 - Improved typing coverage
 
 Backwards incompatible:
+
 - Dropped Python 3.4 support
 - Removed previously deprecated constructs: with_injector, Injector.install_into, Binder.bind_scope
 - Dependencies are no longer injected into Module.configure and raw module functions (previously
