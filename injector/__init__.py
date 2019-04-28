@@ -901,7 +901,7 @@ def provider(function):
     return function
 
 
-def inject(function=None, **bindings):
+def inject(function):
     """Decorator declaring parameters to be injected.
 
     eg.
@@ -934,18 +934,6 @@ def inject(function=None, **bindings):
         Third party libraries may, however, provide support for injecting dependencies
         into non-constructor methods or free functions in one form or another.
     """
-    if bindings:
-        raise AssertionError(
-            'Passing keyword arguments to inject is no longer supported. '
-            'Use inject in combination with parameter annotations to declare dependencies. '
-            'See documentation for details'
-        )
-
-    if not function:
-        raise AssertionError(
-            'No function being decorated, make sure you decorate your function with ' '@inject, not @inject()'
-        )
-
     try:
         bindings = _infer_injected_bindings(function)
     except _BindingNotYetAvailable:
