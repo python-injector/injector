@@ -387,8 +387,6 @@ class Binder:
             return InstanceProvider(ProviderOf(self.injector, target))
         elif isinstance(to, Provider):
             return to
-        elif isinstance(interface, Provider):
-            return interface
         elif isinstance(
             to,
             (
