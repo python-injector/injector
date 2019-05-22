@@ -1,6 +1,13 @@
 Injector Change Log
 ===================
 
+0.16.2
+------
+
+- (Re)added support for decorating classes themselves with :func:`@inject <injector.inject>`. This is the same
+  as decorating their constructors. Among other things this gives us
+  `dataclasses <https://docs.python.org/3/library/dataclasses.html>`_ integration.
+
 0.16.1
 ------
 

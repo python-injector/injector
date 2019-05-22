@@ -899,7 +899,7 @@ def provider(function):
     return function
 
 
-def inject(function):
+def inject(constructor_or_class):
     """Decorator declaring parameters to be injected.
 
     eg.
@@ -923,15 +923,40 @@ def inject(function):
     >>> a = Injector(configure).get(A)
     [123, 'Bob', [1, 2, 3]]
 
+    As a convenience one can decorate a class itself:
+
+    >>> @inject
+    ... class B:
+    ...     def __init__(self, dependency: Dependency):
+    ...         self.dependency = dependency
+
+    This is equivalent to decorating its constructor. In particular this provides integration with
+    `dataclasses <https://docs.python.org/3/library/dataclasses.html>`_ (the order of decorator
+    application is important here):
+
+    >>> @inject
+    ... @dataclass
+    ... class C:
+    ...     dependency: Dependency
+
     .. note::
 
-        This decorator is to be used on class constructors. Using it on non-constructor
-        methods worked in the past but it was an implementation detail rather than
-        a design decision.
+        This decorator is to be used on class constructors (or, as a convenience, on classes).
+        Using it on non-constructor methods worked in the past but it was an implementation
+        detail rather than a design decision.
 
         Third party libraries may, however, provide support for injecting dependencies
         into non-constructor methods or free functions in one form or another.
+
+    .. versionchanged:: 0.16.2
+
+        (Re)added support for decorating classes with @inject.
     """
+    if isinstance(constructor_or_class, type) and hasattr(constructor_or_class, '__init__'):
+        inject(constructor_or_class.__init__)
+        return constructor_or_class
+
+    function = constructor_or_class
     try:
         bindings = _infer_injected_bindings(function)
     except _BindingNotYetAvailable:

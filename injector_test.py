@@ -13,6 +13,7 @@
 from contextlib import contextmanager
 from typing import Any, NewType
 import abc
+import sys
 import threading
 import traceback
 import warnings
@@ -1393,3 +1394,26 @@ def test_newtype_integration_works():
 
     injector = Injector([configure])
     assert injector.get(UserID) == 123
+
+
+@pytest.mark.skipif(sys.version_info < (3, 6), reason="Requires Python 3.6+")
+def test_dataclass_integration_works():
+    import dataclasses
+
+    # Python 3.6+-only syntax below
+    exec(
+        """
+@inject
+@dataclasses.dataclass
+class Data:
+    name: str
+    """,
+        locals(),
+        globals(),
+    )
+
+    def configure(binder):
+        binder.bind(str, to='data')
+
+    injector = Injector([configure])
+    assert injector.get(Data).name == 'data'
