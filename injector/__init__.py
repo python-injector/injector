@@ -954,14 +954,14 @@ def inject(constructor_or_class):
     """
     if isinstance(constructor_or_class, type) and hasattr(constructor_or_class, '__init__'):
         inject(constructor_or_class.__init__)
-        return constructor_or_class
-
-    function = constructor_or_class
-    try:
-        bindings = _infer_injected_bindings(function)
-    except _BindingNotYetAvailable:
-        bindings = 'deferred'
-    return method_wrapper(function, bindings)
+    else:
+        function = constructor_or_class
+        try:
+            bindings = _infer_injected_bindings(function)
+            read_and_store_bindings(function, bindings)
+        except _BindingNotYetAvailable:
+            function.__bindings__ = 'deferred'
+    return constructor_or_class
 
 
 def noninjectable(*args):
@@ -1000,14 +1000,6 @@ def noninjectable(*args):
         return function
 
     return decorator
-
-
-def method_wrapper(f, bindings):
-    if isinstance(bindings, dict):
-        read_and_store_bindings(f, bindings)
-    else:
-        f.__bindings__ = 'deferred'
-    return f
 
 
 @private
