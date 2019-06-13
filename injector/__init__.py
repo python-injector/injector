@@ -432,7 +432,7 @@ class Binder:
 
         raise KeyError
 
-    def get_binding(self, cls, key):
+    def get_binding(self, key):
         is_scope = isinstance(key.interface, type) and issubclass(key.interface, Scope)
         try:
             return self._get_binding(key, only_this_binder=is_scope)
@@ -448,7 +448,7 @@ class Binder:
                 self._bindings[key] = binding
                 return binding, self
 
-        raise UnsatisfiedRequirement(cls, key)
+        raise UnsatisfiedRequirement(key)
 
     def _is_special_interface(self, interface):
         # "Special" interfaces are ones that you cannot bind yourself but
@@ -684,13 +684,13 @@ class Injector:
         :returns: An implementation of interface.
         """
         key = BindingKey.create(interface)
-        binding, binder = self.binder.get_binding(None, key)
+        binding, binder = self.binder.get_binding(key)
         scope = scope or binding.scope
         if isinstance(scope, ScopeDecorator):
             scope = scope.scope
         # Fetch the corresponding Scope instance from the Binder.
         scope_key = BindingKey.create(scope)
-        scope_binding, _ = binder.get_binding(None, scope_key)
+        scope_binding, _ = binder.get_binding(scope_key)
         scope_instance = scope_binding.provider.get(self)
 
         log.debug(
@@ -1106,7 +1106,7 @@ class AssistedBuilder(Generic[T]):
     def build(self, **kwargs: Any) -> T:
         key = BindingKey.create(self._target)
         binder = self._injector.binder
-        binding, _ = binder.get_binding(None, key)
+        binding, _ = binder.get_binding(key)
         provider = binding.provider
         if not isinstance(provider, ClassProvider):
             raise Error(
