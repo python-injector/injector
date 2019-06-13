@@ -14,7 +14,7 @@ matrix:
     - python: "nightly"
     - python: "3.8-dev"
 install:
-  - pip install --upgrade coveralls pytest "pytest-cov>=2.5.1" dataclasses
+  - pip install --upgrade coveralls pytest "pytest-cov>=2.5.1" dataclasses typing_extensions
   # mypy can't be installed on pypy
   - if [[ "${TRAVIS_PYTHON_VERSION}" != "pypy"* ]] ; then pip install mypy ; fi
   # Black is Python 3.6+-only

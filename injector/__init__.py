@@ -23,20 +23,20 @@ import threading
 import types
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
-from typing import (
-    Any,
-    Callable,
-    cast,
-    Dict,
-    Generic,
-    get_type_hints,
-    List,
-    overload,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-)
+from typing import Any, Callable, cast, Dict, Generic, List, overload, Tuple, Type, TypeVar, Union
+
+HAVE_ANNOTATED = sys.version_info >= (3, 7, 0)
+
+if HAVE_ANNOTATED:
+    # Ignoring errors here as typing_extensions stub doesn't know about those things yet
+    from typing_extensions import _AnnotatedAlias, Annotated, get_type_hints  # type: ignore
+else:
+    Annotated = None
+    from typing import get_type_hints as _get_type_hints
+
+    def get_type_hints(what, include_extras):
+        return _get_type_hints(what)
+
 
 TYPING353 = hasattr(Union[str, int], '__origin__')
 
@@ -77,6 +77,83 @@ def synchronized(lock: threading.RLock) -> Callable[[CallableT], CallableT]:
 
 
 lock = threading.RLock()
+
+
+_inject_marker = object()
+_noinject_marker = object()
+
+if HAVE_ANNOTATED:
+    InjectT = TypeVar('InjectT')
+    Inject = Annotated[InjectT, _inject_marker]
+    """An experimental way to declare injectable dependencies utilizing a `PEP 593`_ implementation
+    in `typing_extensions`. This API is likely to change when `PEP 593`_ stabilizes.
+
+    Those two declarations are equivalent::
+
+        @inject
+        def fun(t: SomeType) -> None:
+            pass
+
+        def fun(t: Inject[SomeType]) -> None:
+            pass
+
+    The advantage over using :func:`inject` is that if you have some noninjectable parameters
+    it may be easier to spot what are they. Those two are equivalent::
+
+        @inject
+        @noninjectable('s')
+        def fun(t: SomeType, s: SomeOtherType) -> None:
+            pass
+
+        def fun(t: Inject[SomeType], s: SomeOtherType) -> None:
+            pass
+
+    .. seealso::
+
+        Function :func:`get_bindings`
+            A way to inspect how various injection declarations interact with each other.
+
+    .. versionadded:: 0.18.0
+    .. note:: Requires Python 3.7+.
+
+    .. _PEP 593: https://www.python.org/dev/peps/pep-0593/
+    .. _typing_extensions: https://pypi.org/project/typing-extensions/
+    """
+
+    NoInject = Annotated[InjectT, _noinject_marker]
+    """An experimental way to declare noninjectable dependencies utilizing a `PEP 593`_ implementation
+    in `typing_extensions`. This API is likely to change when `PEP 593`_ stabilizes.
+
+    Since :func:`inject` declares all function's parameters to be injectable there needs to be a way
+    to opt out of it. This has been provided by :func:`noninjectable` but `noninjectable` suffers from
+    two issues:
+
+    * You need to repeat the parameter name
+    * The declaration may be relatively distance in space from the actual parameter declaration, thus
+      hindering readability
+
+    `NoInject` solves both of those concerns, for example (those two declarations are equivalent)::
+
+        @inject
+        @noninjectable('b')
+        def fun(a: TypeA, b: TypeB) -> None:
+            pass
+
+        @inject
+        def fun(a: TypeA, b: NoInject[TypeB]) -> None:
+            pass
+
+    .. seealso::
+
+        Function :func:`get_bindings`
+            A way to inspect how various injection declarations interact with each other.
+
+    .. versionadded:: 0.18.0
+    .. note:: Requires Python 3.7+.
+
+    .. _PEP 593: https://www.python.org/dev/peps/pep-0593/
+    .. _typing_extensions: https://pypi.org/project/typing-extensions/
+    """
 
 
 def reraise(original: Exception, exception: Exception, maximum_frames: int = 1) -> None:
@@ -511,6 +588,13 @@ if TYPING353:
         # issubclass(SomeGeneric[X], SomeGeneric) so we need some other way to
         # determine whether a particular object is a generic class with type parameters
         # provided. Fortunately there seems to be __origin__ attribute that's useful here.
+
+        # We need to special-case Annotated as its __origin__ behaves differently than
+        # other typing generic classes. See https://github.com/python/typing/pull/635
+        # for some details.
+        if HAVE_ANNOTATED and generic_class is Annotated and isinstance(cls, _AnnotatedAlias):
+            return True
+
         if not hasattr(cls, '__origin__'):
             return False
         origin = cls.__origin__
@@ -866,22 +950,26 @@ class Injector:
 def get_bindings(callable: Callable) -> Dict[str, type]:
     """Get bindings of injectable parameters from a callable.
 
-    If the callable is not decorated with :func:`inject` an empty dictionary will
+    If the callable is not decorated with :func:`inject` and does not have any of its
+    parameters declared as injectable using :data:`Inject` an empty dictionary will
     be returned.  Otherwise the returned dictionary will contain a mapping
     between parameter names and their types with the exception of parameters
-    excluded from dependency injection with :func:`noninjectable`. For example::
+    excluded from dependency injection (either with :func:`noninjectable`, :data:`NoInject`
+    or only explicit injection with :data:`Inject` being used). For example::
 
         >>> def function1(a: int) -> None:
         ...     pass
         ...
         >>> get_bindings(function1)
         {}
+
         >>> @inject
         ... def function2(a: int) -> None:
         ...     pass
         ...
         >>> get_bindings(function2)
         {'a': int}
+
         >>> @inject
         ... @noninjectable('b')
         ... def function3(a: int, b: str) -> None:
@@ -890,14 +978,55 @@ def get_bindings(callable: Callable) -> Dict[str, type]:
         >>> get_bindings(function3)
         {'a': int}
 
+        >>> # The simple case of no @inject but injection requested with Inject[...]
+        >>> def function4(a: Inject[int], b: str) -> None:
+        ... pass
+        ...
+        >>> get_bindings(function4)
+        {'a': int}
+
+        >>> # Using @inject with Inject is redundant but it should not break anything
+        >>> @inject
+        ... def function5(a: Inject[int], b: str) -> None:
+        ...     pass
+        ...
+        >>> get_bindings(function5)
+        {'a': int, 'b': str}
+
+        >>> # We need to be able to exclude a parameter from injection with NoInject
+        >>> @inject
+        ... def function6(a: int, b: NoInject[str]) -> None:
+        ...     pass
+        ...
+        >>> get_bindings(function6)
+        {'a': int}
+
+        >>> # The presence of NoInject should not trigger anything on its own
+        >>> def function7(a: int, b: NoInject[str]) -> None:
+        ...     pass
+        ...
+        >>> get_bindings(function7)
+        {}
+
     This function is used internally so by calling it you can learn what exactly
     Injector is going to try to provide to a callable.
     """
+    look_for_explicit_bindings = False
     if not hasattr(callable, '__bindings__'):
-        return {}
+        type_hints = get_type_hints(callable, include_extras=True)
+        has_injectable_parameters = any(
+            _is_specialization(v, Annotated) and _inject_marker in v.__metadata__ for v in type_hints.values()
+        )
 
-    if cast(Any, callable).__bindings__ == 'deferred':
-        read_and_store_bindings(callable, _infer_injected_bindings(callable))
+        if not has_injectable_parameters:
+            return {}
+        else:
+            look_for_explicit_bindings = True
+
+    if look_for_explicit_bindings or cast(Any, callable).__bindings__ == 'deferred':
+        read_and_store_bindings(
+            callable, _infer_injected_bindings(callable, only_explicit_bindings=look_for_explicit_bindings)
+        )
     noninjectables = getattr(callable, '__noninjectables__', set())
     return {k: v for k, v in cast(Any, callable).__bindings__.items() if k not in noninjectables}
 
@@ -906,10 +1035,10 @@ class _BindingNotYetAvailable(Exception):
     pass
 
 
-def _infer_injected_bindings(callable):
+def _infer_injected_bindings(callable, only_explicit_bindings: bool):
     spec = inspect.getfullargspec(callable)
     try:
-        bindings = get_type_hints(callable)
+        bindings = get_type_hints(callable, include_extras=True)
     except NameError as e:
         raise _BindingNotYetAvailable(e)
 
@@ -929,6 +1058,16 @@ def _infer_injected_bindings(callable):
     bindings.pop(spec.varkw, None)
 
     for k, v in list(bindings.items()):
+        if _is_specialization(v, Annotated):
+            v, metadata = v.__origin__, v.__metadata__
+            bindings[k] = v
+        else:
+            metadata = tuple()
+
+        if only_explicit_bindings and _inject_marker not in metadata or _noinject_marker in metadata:
+            del bindings[k]
+            break
+
         if _is_specialization(v, Union):
             # We don't treat Optional parameters in any special way at the moment.
             if TYPING353:
@@ -936,7 +1075,9 @@ def _infer_injected_bindings(callable):
             else:
                 union_members = v.__union_params__
             new_members = tuple(set(union_members) - {type(None)})
-            new_union = Union[new_members]
+            # mypy stared complaining about this line for some reason:
+            #     error: Variable "new_members" is not valid as a type
+            new_union = Union[new_members]  # type: ignore
             # mypy complains about this construct:
             #     error: The type alias is invalid in runtime context
             # See: https://github.com/python/mypy/issues/5354
@@ -1051,6 +1192,14 @@ def inject(constructor_or_class):
         Third party libraries may, however, provide support for injecting dependencies
         into non-constructor methods or free functions in one form or another.
 
+    .. seealso::
+
+        Generic type :data:`Inject`
+            A more explicit way to declare parameters as injectable.
+
+        Function :func:`get_bindings`
+            A way to inspect how various injection declarations interact with each other.
+
     .. versionchanged:: 0.16.2
 
         (Re)added support for decorating classes with @inject.
@@ -1060,7 +1209,7 @@ def inject(constructor_or_class):
     else:
         function = constructor_or_class
         try:
-            bindings = _infer_injected_bindings(function)
+            bindings = _infer_injected_bindings(function, only_explicit_bindings=False)
             read_and_store_bindings(function, bindings)
         except _BindingNotYetAvailable:
             function.__bindings__ = 'deferred'
@@ -1089,6 +1238,15 @@ def noninjectable(*args):
     each other and the order in which a function is decorated with
     :func:`inject` and :func:`noninjectable`
     doesn't matter.
+
+    .. seealso::
+
+        Generic type :data:`NoInject`
+            A nicer way to declare parameters as noninjectable.
+
+        Function :func:`get_bindings`
+            A way to inspect how various injection declarations interact with each other.
+
     """
 
     def decorator(function):

@@ -46,7 +46,11 @@ from injector import (
     ClassAssistedBuilder,
     Error,
     UnknownArgument,
+    HAVE_ANNOTATED,
 )
+
+if HAVE_ANNOTATED:
+    from injector import Inject, NoInject
 
 
 def prepare_basic_injection():
@@ -1438,3 +1442,30 @@ def test_get_bindings():
         pass
 
     assert get_bindings(function3) == {'a': int}
+
+    if HAVE_ANNOTATED:
+        # The simple case of no @inject but injection requested with Inject[...]
+        def function4(a: Inject[int], b: str) -> None:
+            pass
+
+        assert get_bindings(function4) == {'a': int}
+
+        # Using @inject with Inject is redundant but it should not break anything
+        @inject
+        def function5(a: Inject[int], b: str) -> None:
+            pass
+
+        assert get_bindings(function5) == {'a': int, 'b': str}
+
+        # We need to be able to exclude a parameter from injection with NoInject
+        @inject
+        def function6(a: int, b: NoInject[str]) -> None:
+            pass
+
+        assert get_bindings(function6) == {'a': int}
+
+        # The presence of NoInject should not trigger anything on its own
+        def function7(a: int, b: NoInject[str]) -> None:
+            pass
+
+        assert get_bindings(function7) == {}

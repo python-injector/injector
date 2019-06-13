@@ -69,4 +69,5 @@ setup(
         'IoC',
         'Inversion of Control container',
     ],
+    install_requires=['typing_extensions>=3.7.4'],
 )
