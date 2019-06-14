@@ -105,20 +105,21 @@ And make up an imaginary `RequestHandler` class that uses the SQLite connection:
 
 ```
 
-Next, for the sake of the example, we'll create a "configuration" annotated type:
+Next, for the sake of the example, we'll create a configuration type:
 
 
 ```python
->>> Configuration = Key('configuration')
-
+>>> class Configuration:
+...     def __init__(self, connection_string):
+...         self.connection_string = connection_string
 ```
 
-Key is used to uniquely identify the configuration dictionary. Next, we bind the configuration to the injector, using a module:
+Next, we bind the configuration to the injector, using a module:
 
 
 ```python
 >>> def configure_for_testing(binder):
-...     configuration = {'db_connection_string': ':memory:'}
+...     configuration = Configuration(':memory:')
 ...     binder.bind(Configuration, to=configuration, scope=singleton)
 
 ```
@@ -131,7 +132,7 @@ Next we create a module that initialises the DB. It depends on the configuration
 ...   @singleton
 ...   @provider
 ...   def provide_sqlite_connection(self, configuration: Configuration) -> sqlite3.Connection:
-...     conn = sqlite3.connect(configuration['db_connection_string'])
+...     conn = sqlite3.connect(configuration.connection_string)
 ...     cursor = conn.cursor()
 ...     cursor.execute('CREATE TABLE IF NOT EXISTS data (key PRIMARY KEY, value)')
 ...     cursor.execute('INSERT OR REPLACE INTO data VALUES ("hello", "world")')
