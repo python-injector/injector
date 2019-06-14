@@ -21,6 +21,7 @@ import logging
 import sys
 import threading
 import types
+import warnings
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
 from typing import (
@@ -265,10 +266,20 @@ class BindingKey(tuple):
         if isinstance(what, list):
             if len(what) != 1:
                 raise Error('list bindings must have a single interface ' 'element')
+            warnings.warn(
+                'Multibinding using the %s form is deprecated, use typing.List instead.' % (what,),
+                RuntimeWarning,
+                stacklevel=3,
+            )
             what = (list, BindingKey.create(what[0]))
         elif isinstance(what, dict):
             if len(what) != 1:
                 raise Error('dictionary bindings must have a single interface ' 'key and value')
+            warnings.warn(
+                'Multibinding using the %s form is deprecated, use typing.Dict instead.' % (what,),
+                RuntimeWarning,
+                stacklevel=3,
+            )
             what = (dict, BindingKey.create(list(what.items())[0]))
         return tuple.__new__(cls, (what,))
 
@@ -372,6 +383,8 @@ class Binder:
 
         .. versionchanged:: 0.17.0
             Added support for using `typing.Dict` and `typing.List` instances as interfaces.
+            Deprecated support for `MappingKey`, `SequenceKey` and single-item lists and
+            dictionaries as interfaces.
 
         :param interface: :func:`MappingKey`, :func:`SequenceKey` or typing.Dict or typing.List instance to bind to.
         :param to: Instance, class to bind to, or an explicit :class:`Provider`
@@ -1151,12 +1164,16 @@ class BaseKey:
 def Key(name: str) -> BaseKey:
     """Create a new type key.
 
+    .. versionchanged:: 0.17.0
+        Deprecated, use `typing.NewType` with a real type or subclass a real type instead.
+
     >>> Age = Key('Age')
     >>> def configure(binder):
     ...   binder.bind(Age, to=90)
     >>> Injector(configure).get(Age)
     90
     """
+    warnings.warn('Key is deprecated, use a real type instead', RuntimeWarning, stacklevel=3)
     return cast(BaseKey, type(name, (BaseKey,), {}))
 
 
@@ -1172,7 +1189,12 @@ class BaseMappingKey(dict):
 
 
 def MappingKey(name: str) -> BaseMappingKey:
-    """As for Key, but declares a multibind mapping."""
+    """As for Key, but declares a multibind mapping.
+
+    .. versionchanged:: 0.17.0
+        Deprecated, use `typing.Dict` instance instead.
+    """
+    warnings.warn('SequenceKey is deprecated, use typing.Dict instead', RuntimeWarning, stacklevel=3)
     return cast(BaseMappingKey, type(name, (BaseMappingKey,), {}))
 
 
@@ -1188,7 +1210,12 @@ class BaseSequenceKey(list):
 
 
 def SequenceKey(name: str) -> BaseSequenceKey:
-    """As for Key, but declares a multibind sequence."""
+    """As for Key, but declares a multibind sequence.
+
+    .. versionchanged:: 0.17.0
+        Deprecated, use `typing.List` instance instead.
+    """
+    warnings.warn('SequenceKey is deprecated, use typing.List instead', RuntimeWarning, stacklevel=3)
     return cast(BaseSequenceKey, type(name, (BaseSequenceKey,), {}))
 
 
