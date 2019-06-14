@@ -418,8 +418,6 @@ class Binder:
                 return InstanceProvider(to)
             return ClassProvider(interface)
 
-        elif hasattr(interface, '__call__'):
-            raise TypeError('Injecting partially applied functions is no longer supported.')
         else:
             raise UnknownProvider('couldn\'t determine provider for %r to %r' % (interface, to))
 
