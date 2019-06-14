@@ -6,3 +6,4 @@ htmlcov/
 *,cover
 .mypy_cache/
 .pytest_cache/
+coverage.xml
