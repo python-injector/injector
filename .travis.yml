@@ -6,16 +6,13 @@ python:
   - "3.6"
   - "nightly"
   - "pypy3.5-5.8.0"
-env:
-  - TYPING_VERSION="<3.5.3"
-  - TYPING_VERSION=">=3.5.3"
 matrix:
   allow_failures:
     - python: "nightly"
   include:
     - { python: "3.7", dist: xenial, sudo: true }
 install:
-  - pip install --upgrade coveralls pytest "typing$TYPING_VERSION" "pytest-cov>=2.5.1" dataclasses
+  - pip install --upgrade coveralls pytest "pytest-cov>=2.5.1" dataclasses
   # mypy can't be installed on pypy
   - if [[ "${TRAVIS_PYTHON_VERSION}" != "pypy"* ]] ; then pip install mypy ; fi
   # Black is Python 3.6+-only
