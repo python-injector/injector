@@ -112,6 +112,7 @@ Next, for the sake of the example, we'll create a configuration type:
 >>> class Configuration:
 ...     def __init__(self, connection_string):
 ...         self.connection_string = connection_string
+
 ```
 
 Next, we bind the configuration to the injector, using a module:
