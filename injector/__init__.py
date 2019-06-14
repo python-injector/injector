@@ -23,7 +23,20 @@ import threading
 import types
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
-from typing import Any, Callable, cast, Dict, Generic, get_type_hints, List, Tuple, Type, TypeVar, Union
+from typing import (
+    Any,
+    Callable,
+    cast,
+    Dict,
+    Generic,
+    get_type_hints,
+    List,
+    overload,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
 TYPING353 = hasattr(Union[str, int], '__origin__')
 
@@ -39,6 +52,8 @@ if log.level == logging.NOTSET:
     log.setLevel(logging.WARN)
 
 T = TypeVar('T')
+K = TypeVar('K')
+V = TypeVar('V')
 
 
 def private(something: T) -> T:
@@ -269,6 +284,9 @@ _BindingBase = namedtuple('_BindingBase', 'interface provider scope')
 class Binding(_BindingBase):
     """A binding from an (interface,) to a provider in a scope."""
 
+    def is_multibinding(self) -> bool:
+        return _get_origin(_punch_through_alias(self.interface)) in {dict, list}
+
 
 class Binder:
     """Bind interfaces to implementations.
@@ -293,6 +311,11 @@ class Binder:
     def bind(self, interface, to=None, scope=None):
         """Bind an interface to an implementation.
 
+        `typing.List` and `typing.Dict` instances are reserved for multibindings and trying to bind them
+        here will result in an error (use :meth:`multibind` instead)::
+
+            binder.bind(List[str], to=['hello', 'there'])  # Error
+
         :param interface: Interface or :func:`Key` to bind.
         :param to: Instance or class to bind to, or an explicit
              :class:`Provider` subclass.
@@ -300,23 +323,69 @@ class Binder:
         """
         if type(interface) is type and issubclass(interface, (BaseMappingKey, BaseSequenceKey)):
             return self.multibind(interface, to, scope=scope)
+        if _get_origin(_punch_through_alias(interface)) in {dict, list}:
+            raise Error(
+                'Type %s is reserved for multibindings. Use multibind instead of bind.' % (interface,)
+            )
         key = BindingKey.create(interface)
         self._bindings[key] = self.create_binding(interface, to, scope)
+
+    @overload
+    def multibind(
+        self,
+        interface: Union['BaseSequenceKey', 'BaseMappingKey'],
+        to: Any,
+        scope: Union[Type['Scope'], 'ScopeDecorator'] = None,
+    ) -> None:
+        pass
+
+    @overload
+    def multibind(
+        self,
+        interface: Type[List[T]],
+        to: Union[List[T], Callable[..., List[T]], Provider[List[T]]],
+        scope: Union[Type['Scope'], 'ScopeDecorator'] = None,
+    ) -> None:
+        pass
+
+    @overload
+    def multibind(
+        self,
+        interface: Type[Dict[K, V]],
+        to: Union[Dict[K, V], Callable[..., Dict[K, V]], Provider[Dict[K, V]]],
+        scope: Union[Type['Scope'], 'ScopeDecorator'] = None,
+    ) -> None:
+        pass
 
     def multibind(self, interface, to, scope=None):
         """Creates or extends a multi-binding.
 
-        A multi-binding maps from a key to a sequence, where each element in
-        the sequence is provided separately.
+        A multi-binding contributes values to a list or to a dictionary. For example::
 
-        :param interface: :func:`MappingKey` or :func:`SequenceKey` to bind to.
+            binder.multibind(List[str], to=['some', 'strings'])
+            binder.multibind(List[str], to=['other', 'strings'])
+            injector.get(List[str])  # ['some', 'strings', 'other', 'strings']
+
+            binder.multibind(Dict[str, int], to={'key': 11})
+            binder.multibind(Dict[str, int], to={'other_key': 33})
+            injector.get(Dict[str, int])  # {'key': 11, 'other_key': 33}
+
+        .. versionchanged:: 0.17.0
+            Added support for using `typing.Dict` and `typing.List` instances as interfaces.
+
+        :param interface: :func:`MappingKey`, :func:`SequenceKey` or typing.Dict or typing.List instance to bind to.
         :param to: Instance, class to bind to, or an explicit :class:`Provider`
-                subclass. Must provide a sequence.
+                subclass. Must provide a list or a dictionary, depending on the interface.
         :param scope: Optional Scope in which to bind.
         """
         key = BindingKey.create(interface)
         if key not in self._bindings:
-            if isinstance(interface, dict) or isinstance(interface, type) and issubclass(interface, dict):
+            if (
+                isinstance(interface, dict)
+                or isinstance(interface, type)
+                and issubclass(interface, dict)
+                or _get_origin(_punch_through_alias(interface)) is dict
+            ):
                 provider = MapBindProvider()
             else:
                 provider = MultiBindProvider()
@@ -373,10 +442,8 @@ class Binder:
         return Binding(interface, provider, scope)
 
     def provider_for(self, interface, to=None):
-        if getattr(interface, '__qualname__', '') == 'NewType.<locals>.new_type':
-            base_type = interface.__supertype__
-        else:
-            base_type = interface
+        base_type = _punch_through_alias(interface)
+        origin = _get_origin(base_type)
 
         if interface is Any:
             raise TypeError('Injecting Any is not supported')
@@ -411,7 +478,14 @@ class Binder:
             (target,) = interface.__args__
             builder = interface(self.injector, target)
             return InstanceProvider(builder)
-        elif isinstance(base_type, (tuple, type)) and interface is not Any and isinstance(to, base_type):
+        elif (
+            origin is None
+            and isinstance(base_type, (tuple, type))
+            and interface is not Any
+            and isinstance(to, base_type)
+            or origin in {dict, list}
+            and isinstance(to, origin)
+        ):
             return InstanceProvider(to)
         elif issubclass(type(interface), type) or isinstance(interface, (tuple, list)):
             if to is not None:
@@ -479,6 +553,23 @@ else:
     # To maintain compatibility we fall back to an issubclass check.
     def _is_specialization(cls, generic_class):
         return isinstance(cls, type) and cls is not Any and issubclass(cls, generic_class)
+
+
+def _punch_through_alias(type_: Any) -> type:
+    if getattr(type_, '__qualname__', '') == 'NewType.<locals>.new_type':
+        return type_.__supertype__
+    else:
+        return type_
+
+
+def _get_origin(type_: type) -> type:
+    origin = getattr(type_, '__origin__', None)
+    # Older typing behaves differently there and stores Dict and List as origin, we need to be flexible.
+    if origin is List:
+        return list
+    elif origin is Dict:
+        return dict
+    return origin
 
 
 class Scope:
@@ -596,7 +687,8 @@ class Module:
             binding = None
             if hasattr(function, '__binding__'):
                 binding = function.__binding__
-                binder.bind(
+                bind_method = binder.multibind if binding.is_multibinding() else binder.bind
+                bind_method(
                     binding.interface, to=types.MethodType(binding.provider, self), scope=binding.scope
                 )
         self.configure(binder)
@@ -890,11 +982,42 @@ def provider(function):
     >>> injector.get(str)
     '654'
     """
+    _mark_provider_function(function, allow_multi=False)
+    return function
+
+
+def multiprovider(function: CallableT) -> CallableT:
+    """Like :func:`provider`, but for multibindings. Example usage::
+
+        class MyModule(Module):
+            @multiprovider
+            def provide_strs(self) -> List[str]:
+                return ['str1']
+
+        class OtherModule(Module):
+            @multiprovider
+            def provide_strs_also(self) -> List[str]:
+                return ['str2']
+
+        Injector([MyModule, OtherModule]).get(List[str])  # ['str1', 'str2']
+
+    See also: :meth:`Binder.multibind`."""
+    _mark_provider_function(function, allow_multi=True)
+    return function
+
+
+def _mark_provider_function(function: Callable, *, allow_multi: bool) -> None:
     scope_ = getattr(function, '__scope__', None)
     annotations = inspect.getfullargspec(function).annotations
     return_type = annotations['return']
-    function.__binding__ = Binding(return_type, inject(function), scope_)
-    return function
+    origin = _get_origin(_punch_through_alias(return_type))
+    if origin in {dict, list} and not allow_multi:
+        raise Error(
+            'Function %s needs to be decorated with multiprovider instead of provider if it is to '
+            'provide values to a multibinding of type %s' % (function.__name__, return_type)
+        )
+    binding = Binding(return_type, inject(function), scope_)
+    function.__binding__ = binding  # type: ignore
 
 
 def inject(constructor_or_class):

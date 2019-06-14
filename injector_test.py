@@ -18,6 +18,8 @@ import threading
 import traceback
 import warnings
 
+from typing import Dict, List, NewType
+
 import pytest
 
 from injector import (
@@ -28,6 +30,7 @@ from injector import (
     InstanceProvider,
     ClassProvider,
     inject,
+    multiprovider,
     noninjectable,
     singleton,
     threadlocal,
@@ -522,7 +525,7 @@ def test_inject_and_provide_coexist_happily():
     assert Injector(MyModule()).get(str) == 'Bob is 25 and weighs 50.0kg'
 
 
-def test_multibind():
+def test_multibind_old():
     Names = Key('names')
 
     def configure_one(binder):
@@ -532,6 +535,103 @@ def test_multibind():
         binder.multibind(Names, to=['Tom'])
 
     assert Injector([configure_one, configure_two]).get(Names) == ['Bob', 'Tom']
+
+
+def test_multibind():
+    Names = NewType('Names', List[str])
+    Passwords = NewType('Ages', Dict[str, str])
+
+    # First let's have some explicit multibindings
+    def configure(binder):
+        binder.multibind(List[str], to=['not a name'])
+        binder.multibind(Dict[str, str], to={'asd': 'qwe'})
+        # To make sure Lists and Dicts of different subtypes are treated distinctly
+        binder.multibind(List[int], to=[1, 2, 3])
+        binder.multibind(Dict[str, int], to={'weight': 12})
+        # To see that NewTypes are treated distinctly
+        binder.multibind(Names, to=['Bob'])
+        binder.multibind(Passwords, to={'Bob': 'password1'})
+
+    # Then @multiprovider-decorated Module methods
+    class CustomModule(Module):
+        @multiprovider
+        def provide_some_ints(self) -> List[int]:
+            return [4, 5, 6]
+
+        @multiprovider
+        def provide_some_strs(self) -> List[str]:
+            return ['not a name either']
+
+        @multiprovider
+        def provide_str_to_str_mapping(self) -> Dict[str, str]:
+            return {'xxx': 'yyy'}
+
+        @multiprovider
+        def provide_str_to_int_mapping(self) -> Dict[str, int]:
+            return {'height': 33}
+
+        @multiprovider
+        def provide_names(self) -> Names:
+            return ['Alice', 'Clarice']
+
+        @multiprovider
+        def provide_passwords(self) -> Passwords:
+            return {'Alice': 'aojrioeg3', 'Clarice': 'clarice30'}
+
+    injector = Injector([configure, CustomModule])
+    assert injector.get(List[str]) == ['not a name', 'not a name either']
+    assert injector.get(List[int]) == [1, 2, 3, 4, 5, 6]
+    assert injector.get(Dict[str, str]) == {'asd': 'qwe', 'xxx': 'yyy'}
+    assert injector.get(Dict[str, int]) == {'weight': 12, 'height': 33}
+    assert injector.get(Names) == ['Bob', 'Alice', 'Clarice']
+    assert injector.get(Passwords) == {'Bob': 'password1', 'Alice': 'aojrioeg3', 'Clarice': 'clarice30'}
+
+
+def test_regular_bind_and_provider_dont_work_with_multibind():
+    # We only want multibind and multiprovider to work to avoid confusion
+
+    Names = NewType('Names', List[str])
+    Passwords = NewType('Passwords', Dict[str, str])
+
+    class MyModule(Module):
+        with pytest.raises(Error):
+
+            @provider
+            def provide_strs(self) -> List[str]:
+                return []
+
+        with pytest.raises(Error):
+
+            @provider
+            def provide_names(self) -> Names:
+                return []
+
+        with pytest.raises(Error):
+
+            @provider
+            def provide_strs_in_dict(self) -> Dict[str, str]:
+                return {}
+
+        with pytest.raises(Error):
+
+            @provider
+            def provide_passwords(self) -> Passwords:
+                return {}
+
+    injector = Injector()
+    binder = injector.binder
+
+    with pytest.raises(Error):
+        binder.bind(List[str], to=[])
+
+    with pytest.raises(Error):
+        binder.bind(Names, to=[])
+
+    with pytest.raises(Error):
+        binder.bind(Dict[str, str], to={})
+
+    with pytest.raises(Error):
+        binder.bind(Passwords, to={})
 
 
 def test_provider_sequence_decorator():
