@@ -500,10 +500,10 @@ class Binder:
             and isinstance(to, origin)
         ):
             return InstanceProvider(to)
-        elif issubclass(type(interface), type) or isinstance(interface, (tuple, list)):
+        elif issubclass(type(base_type), type) or isinstance(base_type, (tuple, list)):
             if to is not None:
                 return InstanceProvider(to)
-            return ClassProvider(interface)
+            return ClassProvider(base_type)
 
         else:
             raise UnknownProvider('couldn\'t determine provider for %r to %r' % (interface, to))

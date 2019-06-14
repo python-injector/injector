@@ -657,6 +657,16 @@ def test_auto_bind():
     assert isinstance(injector.get(A), A)
 
 
+def test_auto_bind_with_newtype():
+    # Reported in https://github.com/alecthomas/injector/issues/117
+    class A:
+        pass
+
+    AliasOfA = NewType('AliasOfA', A)
+    injector = Injector()
+    assert isinstance(injector.get(AliasOfA), A)
+
+
 def test_custom_scope():
     class RequestScope(Scope):
         def configure(self):
