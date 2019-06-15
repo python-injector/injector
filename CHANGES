@@ -1,6 +1,22 @@
 Injector Change Log
 ===================
 
+0.17.0
+------
+
+- Added support for using `typing.Dict` and `typing.List` in multibindings. See :meth:`multibind <injector.Binder.multibind>`.
+- Added multibinding-specific :func:`provider <injector.provider>` variant: :func:`multiprovider <injector.multiprovider>`
+- Deprecated using :func:`provider <injector.provider>` for multibindings
+- Fixed failure to provide a default value to a `NewType`-aliased type with auto_bind enabled
+- Deprecated :func:`Key <injector.Key>`, :func:`SequenceKey <injector.SequenceKey>` and
+  :func:`MappingKey <injector.MappingKey>` – use real types or type aliases instead
+- Deprecated using single-item lists and dictionaries for multibindings - use real types or type aliases instead
+
+Technically backwards incompatible:
+
+- typing.List and typing.Dict specializations are now explicitly disallowed as :meth:`bind <injector.Binder.bind>`
+  interfaces and types returned by :func:`provider <injector.provider>`-decorated methods
+
 0.16.2
 ------
 
