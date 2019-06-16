@@ -21,7 +21,6 @@ import logging
 import sys
 import threading
 import types
-import warnings
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
 from typing import (
@@ -170,13 +169,13 @@ class CallableProvider(Provider):
 
     ::
 
-        >>> key = Key('key')
+        >>> Key = NewType('Key', int)
         >>> def factory():
         ...     print('providing')
-        ...     return []
+        ...     return 333
         ...
         >>> def configure(binder):
-        ...     binder.bind(key, to=CallableProvider(factory))
+        ...     binder.bind(Key, to=CallableProvider(factory))
         ...
         >>> injector = Injector(configure)
         >>> injector.get(key) is injector.get(key)
@@ -200,15 +199,17 @@ class InstanceProvider(Provider):
 
     ::
 
-        >>> my_list = Key('my_list')
+        >>> class MyType:
+        ...     def __init__(self):
+        ...         self.contents = []
         >>> def configure(binder):
-        ...     binder.bind(my_list, to=InstanceProvider([]))
+        ...     binder.multibind(MyType, to=InstanceProvider(MyType()))
         ...
         >>> injector = Injector(configure)
-        >>> injector.get(my_list) is injector.get(my_list)
+        >>> injector.get(MyType) is injector.get(MyType)
         True
-        >>> injector.get(my_list).append('x')
-        >>> injector.get(my_list)
+        >>> injector.get(MyType).contents.append('x')
+        >>> injector.get(MyType).contents
         ['x']
     """
 
@@ -257,37 +258,6 @@ class MapBindProvider(ListOfProviders):
         return map
 
 
-@private
-class BindingKey(tuple):
-    """A key mapping to a Binding."""
-
-    @classmethod
-    def create(cls, what: Any) -> 'BindingKey':
-        if isinstance(what, list):
-            if len(what) != 1:
-                raise Error('list bindings must have a single interface ' 'element')
-            warnings.warn(
-                'Multibinding using the %s form is deprecated, use typing.List instead.' % (what,),
-                RuntimeWarning,
-                stacklevel=3,
-            )
-            what = (list, BindingKey.create(what[0]))
-        elif isinstance(what, dict):
-            if len(what) != 1:
-                raise Error('dictionary bindings must have a single interface ' 'key and value')
-            warnings.warn(
-                'Multibinding using the %s form is deprecated, use typing.Dict instead.' % (what,),
-                RuntimeWarning,
-                stacklevel=3,
-            )
-            what = (dict, BindingKey.create(list(what.items())[0]))
-        return tuple.__new__(cls, (what,))
-
-    @property
-    def interface(self):
-        return self[0]
-
-
 _BindingBase = namedtuple('_BindingBase', 'interface provider scope')
 
 
@@ -327,28 +297,16 @@ class Binder:
 
             binder.bind(List[str], to=['hello', 'there'])  # Error
 
-        :param interface: Interface or :func:`Key` to bind.
+        :param interface: Type to bind.
         :param to: Instance or class to bind to, or an explicit
              :class:`Provider` subclass.
         :param scope: Optional :class:`Scope` in which to bind.
         """
-        if type(interface) is type and issubclass(interface, (BaseMappingKey, BaseSequenceKey)):
-            return self.multibind(interface, to, scope=scope)
         if _get_origin(_punch_through_alias(interface)) in {dict, list}:
             raise Error(
                 'Type %s is reserved for multibindings. Use multibind instead of bind.' % (interface,)
             )
-        key = BindingKey.create(interface)
-        self._bindings[key] = self.create_binding(interface, to, scope)
-
-    @overload
-    def multibind(
-        self,
-        interface: Union['BaseSequenceKey', 'BaseMappingKey'],
-        to: Any,
-        scope: Union[Type['Scope'], 'ScopeDecorator'] = None,
-    ) -> None:
-        pass
+        self._bindings[interface] = self.create_binding(interface, to, scope)
 
     @overload
     def multibind(
@@ -386,13 +344,12 @@ class Binder:
             Deprecated support for `MappingKey`, `SequenceKey` and single-item lists and
             dictionaries as interfaces.
 
-        :param interface: :func:`MappingKey`, :func:`SequenceKey` or typing.Dict or typing.List instance to bind to.
+        :param interface: typing.Dict or typing.List instance to bind to.
         :param to: Instance, class to bind to, or an explicit :class:`Provider`
                 subclass. Must provide a list or a dictionary, depending on the interface.
         :param scope: Optional Scope in which to bind.
         """
-        key = BindingKey.create(interface)
-        if key not in self._bindings:
+        if interface not in self._bindings:
             if (
                 isinstance(interface, dict)
                 or isinstance(interface, type)
@@ -403,12 +360,12 @@ class Binder:
             else:
                 provider = MultiBindProvider()
             binding = self.create_binding(interface, provider, scope)
-            self._bindings[key] = binding
+            self._bindings[interface] = binding
         else:
-            binding = self._bindings[key]
+            binding = self._bindings[interface]
             provider = binding.provider
             assert isinstance(provider, ListOfProviders)
-        provider.append(self.provider_for(key.interface, to))
+        provider.append(self.provider_for(interface, to))
 
     def install(self, module):
         """Install a module into this binder.
@@ -517,23 +474,23 @@ class Binder:
 
         raise KeyError
 
-    def get_binding(self, key):
-        is_scope = isinstance(key.interface, type) and issubclass(key.interface, Scope)
+    def get_binding(self, interface):
+        is_scope = isinstance(interface, type) and issubclass(interface, Scope)
         try:
-            return self._get_binding(key, only_this_binder=is_scope)
+            return self._get_binding(interface, only_this_binder=is_scope)
         except (KeyError, UnsatisfiedRequirement):
             if is_scope:
-                scope = key.interface
+                scope = interface
                 self.bind(scope, to=scope(self.injector))
-                return self._get_binding(key)
+                return self._get_binding(interface)
             # The special interface is added here so that requesting a special
             # interface with auto_bind disabled works
-            if self._auto_bind or self._is_special_interface(key.interface):
-                binding = self.create_binding(key.interface)
-                self._bindings[key] = binding
+            if self._auto_bind or self._is_special_interface(interface):
+                binding = self.create_binding(interface)
+                self._bindings[interface] = binding
                 return binding, self
 
-        raise UnsatisfiedRequirement(key)
+        raise UnsatisfiedRequirement(interface)
 
     def _is_special_interface(self, interface):
         # "Special" interfaces are ones that you cannot bind yourself but
@@ -786,20 +743,18 @@ class Injector:
         :param scope: Class of the Scope in which to resolve.
         :returns: An implementation of interface.
         """
-        key = BindingKey.create(interface)
-        binding, binder = self.binder.get_binding(key)
+        binding, binder = self.binder.get_binding(interface)
         scope = scope or binding.scope
         if isinstance(scope, ScopeDecorator):
             scope = scope.scope
         # Fetch the corresponding Scope instance from the Binder.
-        scope_key = BindingKey.create(scope)
-        scope_binding, _ = binder.get_binding(scope_key)
+        scope_binding, _ = binder.get_binding(scope)
         scope_instance = scope_binding.provider.get(self)
 
         log.debug(
             '%sInjector.get(%r, scope=%r) using %r', self._log_prefix, interface, scope, binding.provider
         )
-        result = scope_instance.get(key, binding.provider).get(self)
+        result = scope_instance.get(interface, binding.provider).get(self)
         log.debug('%s -> %r', self._log_prefix, result)
         return result
 
@@ -823,19 +778,7 @@ class Injector:
             init = cls.__init__
             self.call_with_injection(init, self_=instance, kwargs=additional_kwargs)
         except TypeError as e:
-            # The reason why getattr() fallback is used here is that
-            # __init__.__func__ apparently doesn't exist for Key-type objects
-            reraise(
-                e,
-                CallError(
-                    instance,
-                    getattr(instance.__init__, '__func__', instance.__init__),
-                    (),
-                    additional_kwargs,
-                    e,
-                    self._stack,
-                ),
-            )
+            reraise(e, CallError(instance, instance.__init__.__func__, (), additional_kwargs, e, self._stack))
         return instance
 
     def call_with_injection(self, callable, self_=None, args=(), kwargs={}):
@@ -915,9 +858,9 @@ class Injector:
 
         self._stack += (key,)
         try:
-            for arg, key in bindings.items():
+            for arg, interface in bindings.items():
                 try:
-                    instance = self.get(key.interface)
+                    instance = self.get(interface)
                 except UnsatisfiedRequirement as e:
                     if not e.args[0]:
                         e = UnsatisfiedRequirement(owner_key, e.args[1])
@@ -1038,24 +981,20 @@ def inject(constructor_or_class):
 
     eg.
 
-    >>> Sizes = Key('sizes')
-    >>> Names = Key('names')
-    >>>
     >>> class A:
     ...     @inject
-    ...     def __init__(self, number: int, name: str, sizes: Sizes):
-    ...         print([number, name, sizes])
+    ...     def __init__(self, number: int, name: str):
+    ...         print([number, name])
     ...
     >>> def configure(binder):
     ...     binder.bind(A)
     ...     binder.bind(int, to=123)
     ...     binder.bind(str, to='Bob')
-    ...     binder.bind(Sizes, to=[1, 2, 3])
 
     Use the Injector to get a new instance of A:
 
     >>> a = Injector(configure).get(A)
-    [123, 'Bob', [1, 2, 3]]
+    [123, 'Bob']
 
     As a convenience one can decorate a class itself:
 
@@ -1138,8 +1077,6 @@ def noninjectable(*args):
 
 @private
 def read_and_store_bindings(f, bindings):
-    for key, value in bindings.items():
-        bindings[key] = BindingKey.create(value)
     function_bindings = getattr(f, '__bindings__', None) or {}
     if function_bindings == 'deferred':
         function_bindings = {}
@@ -1148,75 +1085,6 @@ def read_and_store_bindings(f, bindings):
     if hasattr(f, '__func__'):
         f = f.__func__
     f.__bindings__ = merged_bindings
-
-
-@private
-class BaseKey:
-    """Base type for binding keys."""
-
-    def __init__(self) -> None:
-        raise Exception(
-            'Instantiation of %s prohibited - it is derived from BaseKey '
-            'so most likely you should bind it to something.' % (self.__class__,)
-        )
-
-
-def Key(name: str) -> BaseKey:
-    """Create a new type key.
-
-    .. versionchanged:: 0.17.0
-        Deprecated, use `typing.NewType` with a real type or subclass a real type instead.
-
-    >>> Age = Key('Age')
-    >>> def configure(binder):
-    ...   binder.bind(Age, to=90)
-    >>> Injector(configure).get(Age)
-    90
-    """
-    warnings.warn('Key is deprecated, use a real type instead', RuntimeWarning, stacklevel=3)
-    return cast(BaseKey, type(name, (BaseKey,), {}))
-
-
-@private
-class BaseMappingKey(dict):
-    """Base type for mapping binding keys."""
-
-    def __init__(self) -> None:
-        raise Exception(
-            'Instantiation of %s prohibited - it is derived from BaseMappingKey '
-            'so most likely you should bind it to something.' % (self.__class__,)
-        )
-
-
-def MappingKey(name: str) -> BaseMappingKey:
-    """As for Key, but declares a multibind mapping.
-
-    .. versionchanged:: 0.17.0
-        Deprecated, use `typing.Dict` instance instead.
-    """
-    warnings.warn('SequenceKey is deprecated, use typing.Dict instead', RuntimeWarning, stacklevel=3)
-    return cast(BaseMappingKey, type(name, (BaseMappingKey,), {}))
-
-
-@private
-class BaseSequenceKey(list):
-    """Base type for mapping sequence keys."""
-
-    def __init__(self) -> None:
-        raise Exception(
-            'Instantiation of %s prohibited - it is derived from BaseSequenceKey '
-            'so most likely you should bind it to something.' % (self.__class__,)
-        )
-
-
-def SequenceKey(name: str) -> BaseSequenceKey:
-    """As for Key, but declares a multibind sequence.
-
-    .. versionchanged:: 0.17.0
-        Deprecated, use `typing.List` instance instead.
-    """
-    warnings.warn('SequenceKey is deprecated, use typing.List instead', RuntimeWarning, stacklevel=3)
-    return cast(BaseSequenceKey, type(name, (BaseSequenceKey,), {}))
 
 
 class BoundKey(tuple):
@@ -1252,9 +1120,8 @@ class AssistedBuilder(Generic[T]):
         self._target = target
 
     def build(self, **kwargs: Any) -> T:
-        key = BindingKey.create(self._target)
         binder = self._injector.binder
-        binding, _ = binder.get_binding(key)
+        binding, _ = binder.get_binding(self._target)
         provider = binding.provider
         if not isinstance(provider, ClassProvider):
             raise Error(

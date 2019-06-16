@@ -37,13 +37,9 @@ from injector import (
     UnsatisfiedRequirement,
     CircularDependency,
     Module,
-    Key,
     SingletonScope,
     ScopeDecorator,
     AssistedBuilder,
-    BindingKey,
-    SequenceKey,
-    MappingKey,
     provider,
     ProviderOf,
     ClassAssistedBuilder,
@@ -97,20 +93,20 @@ def test_child_injector_overrides_parent_bindings():
 
 
 def test_child_injector_rebinds_arguments_for_parent_scope():
-    I = Key("interface")
-    Cls = Key("test_class")
+    class Cls:
+        val = ""
 
-    class A:
+    class A(Cls):
         @inject
-        def __init__(self, val: I):
+        def __init__(self, val: str):
             self.val = val
 
     def configure_parent(binder):
         binder.bind(Cls, to=A)
-        binder.bind(I, to="Parent")
+        binder.bind(str, to="Parent")
 
     def configure_child(binder):
-        binder.bind(I, to="Child")
+        binder.bind(str, to="Child")
 
     parent = Injector(configure_parent)
     assert parent.get(Cls).val == "Parent"
@@ -126,16 +122,6 @@ def test_scopes_are_only_bound_to_root_injector():
 
     parent.binder.bind(A, to=A, scope=singleton)
     assert parent.get(A) is child.get(A)
-
-
-def test_key_cannot_be_instantiated():
-    Interface = Key('Interface')
-
-    with pytest.raises(Exception):
-        Interface()
-
-    with pytest.raises(Exception):
-        Injector().get(Interface)
 
 
 def test_get_default_injected_instances():
@@ -472,40 +458,6 @@ def test_module_class_gets_instantiated():
     assert injector.get(str) == name
 
 
-def test_bind_using_key():
-    Name = Key('name')
-    Age = Key('age')
-
-    class MyModule(Module):
-        @provider
-        def provider_name(self) -> Name:
-            return 'Bob'
-
-        def configure(self, binder):
-            binder.bind(Age, to=25)
-
-    injector = Injector(MyModule())
-    assert injector.get(Age) == 25
-    assert injector.get(Name) == 'Bob'
-
-
-def test_inject_using_key():
-    Name = Key('name')
-    Description = Key('description')
-
-    class MyModule(Module):
-        @provider
-        def provide_name(self) -> Name:
-            return 'Bob'
-
-        @provider
-        @inject
-        def provide_description(self, name: Name) -> Description:
-            return '%s is cool!' % name
-
-    assert Injector(MyModule()).get(Description) == 'Bob is cool!'
-
-
 def test_inject_and_provide_coexist_happily():
     class MyModule(Module):
         @provider
@@ -523,18 +475,6 @@ def test_inject_and_provide_coexist_happily():
             return 'Bob is %d and weighs %0.1fkg' % (age, weight)
 
     assert Injector(MyModule()).get(str) == 'Bob is 25 and weighs 50.0kg'
-
-
-def test_multibind_old():
-    Names = Key('names')
-
-    def configure_one(binder):
-        binder.multibind(Names, to=['Bob'])
-
-    def configure_two(binder):
-        binder.multibind(Names, to=['Tom'])
-
-    assert Injector([configure_one, configure_two]).get(Names) == ['Bob', 'Tom']
 
 
 def test_multibind():
@@ -634,21 +574,6 @@ def test_regular_bind_and_provider_dont_work_with_multibind():
         binder.bind(Passwords, to={})
 
 
-def test_provider_sequence_decorator():
-    Names = SequenceKey('names')
-
-    class MyModule(Module):
-        @provider
-        def bob(self) -> Names:
-            return ['Bob']
-
-        @provider
-        def tom(self) -> Names:
-            return ['Tom']
-
-    assert Injector(MyModule()).get(Names) == ['Bob', 'Tom']
-
-
 def test_auto_bind():
     class A:
         pass
@@ -721,36 +646,6 @@ def test_custom_scope():
 
     with pytest.raises(UnsatisfiedRequirement):
         injector.get(Handler)
-
-
-def test_bind_interface_of_list_of_types():
-    def configure(binder):
-        binder.multibind([int], to=[1, 2, 3])
-        binder.multibind([int], to=[4, 5, 6])
-
-    injector = Injector(configure)
-    assert injector.get([int]) == [1, 2, 3, 4, 5, 6]
-
-
-def test_provider_mapping():
-
-    StrInt = MappingKey('StrInt')
-
-    def configure(binder):
-        binder.multibind(StrInt, to={'one': 1})
-        binder.multibind(StrInt, to={'two': 2})
-
-    class MyModule(Module):
-        @provider
-        def provide_numbers(self) -> StrInt:
-            return {'three': 3}
-
-        @provider
-        def provide_more_numbers(self) -> StrInt:
-            return {'four': 4}
-
-    injector = Injector([configure, MyModule()])
-    assert injector.get(StrInt) == {'one': 1, 'two': 2, 'three': 3, 'four': 4}
 
 
 def test_binder_install():
@@ -874,7 +769,8 @@ def test_assisted_builder_works_when_injected():
 
 
 def test_assisted_builder_uses_bindings():
-    Interface = Key('Interface')
+    class Interface:
+        b = 0
 
     def configure(binder):
         binder.bind(Interface, to=NeedsAssistance)
@@ -908,12 +804,6 @@ def test_assisted_builder_injection_is_safe_to_use_with_multiple_injectors():
     b1 = i1.get(X).builder
     b2 = i2.get(X).builder
     assert (b1._injector, b2._injector) == (i1, i2)
-
-
-def test_assisted_builder_injection_uses_the_same_binding_key_every_time():
-    # if we have different BindingKey for every AssistedBuilder(...) we will get memory leak
-    gen_key = lambda: BindingKey.create(AssistedBuilder[NeedsAssistance])
-    assert gen_key() == gen_key()
 
 
 class TestThreadSafety:
@@ -990,8 +880,8 @@ def test_injecting_into_method_of_object_that_is_falseish_works():
 
 
 def test_callable_provider_injection():
-    Name = Key("Name")
-    Message = Key("Message")
+    Name = NewType("Name", str)
+    Message = NewType("Message", str)
 
     @inject
     def create_message(name: Name):
@@ -1420,17 +1310,17 @@ def test_class_assisted_builder_of_partially_injected_class():
 
 # The test taken from Alec Thomas' pull request: https://github.com/alecthomas/injector/pull/73
 def test_child_scope():
-    TestKey = Key('TestKey')
-    TestKey2 = Key('TestKey2')
+    TestKey = NewType('TestKey', str)
+    TestKey2 = NewType('TestKey2', str)
 
     def parent_module(binder):
-        binder.bind(TestKey, to=object, scope=singleton)
+        binder.bind(TestKey, to='in parent', scope=singleton)
 
     def first_child_module(binder):
-        binder.bind(TestKey2, to=object, scope=singleton)
+        binder.bind(TestKey2, to='in first child', scope=singleton)
 
     def second_child_module(binder):
-        binder.bind(TestKey2, to='marker', scope=singleton)
+        binder.bind(TestKey2, to='in second child', scope=singleton)
 
     injector = Injector(modules=[parent_module])
     first_child_injector = injector.create_child_injector(modules=[first_child_module])

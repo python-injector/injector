@@ -77,7 +77,7 @@ Here's a full example to give you a taste of how Injector works:
 
 
 ```python
->>> from injector import Module, Key, provider, Injector, inject, singleton
+>>> from injector import Module, provider, Injector, inject, singleton
 
 ```
 
