@@ -277,7 +277,7 @@ class Binder:
     """
 
     @private
-    def __init__(self, injector, auto_bind=True, parent=None):
+    def __init__(self, injector: 'Injector', auto_bind: bool = True, parent: 'Binder' = None) -> None:
         """Create a new Binder.
 
         :param injector: Injector we are binding for.
@@ -286,10 +286,15 @@ class Binder:
         """
         self.injector = injector
         self._auto_bind = auto_bind
-        self._bindings = {}
+        self._bindings = {}  # type: Dict[type, Binding]
         self.parent = parent
 
-    def bind(self, interface, to=None, scope=None):
+    def bind(
+        self,
+        interface: Type[T],
+        to: Union[None, T, Callable[..., T], Provider[T]] = None,
+        scope: Union[None, Type['Scope'], 'ScopeDecorator'] = None,
+    ) -> None:
         """Bind an interface to an implementation.
 
         `typing.List` and `typing.Dict` instances are reserved for multibindings and trying to bind them
@@ -367,7 +372,7 @@ class Binder:
             assert isinstance(provider, ListOfProviders)
         provider.append(self.provider_for(interface, to))
 
-    def install(self, module):
+    def install(self, module: Union[Callable[['Binder'], None], 'Module', Type['Module']]) -> None:
         """Install a module into this binder.
 
         In this context the module is one of the following:
@@ -398,8 +403,8 @@ class Binder:
 
             binder.install(MyModule)
         """
-        if type(module) is type and issubclass(module, Module):
-            instance = module()
+        if type(module) is type and issubclass(cast(type, module), Module):
+            instance = cast(type, module)()
         else:
             instance = module
         instance(self)
