@@ -588,9 +588,6 @@ class ScopeDecorator:
 class NoScope(Scope):
     """An unscoped provider."""
 
-    def __init__(self, injector=None):
-        super(NoScope, self).__init__(injector)
-
     def get(self, unused_key, provider):
         return provider
 
