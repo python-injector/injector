@@ -802,10 +802,10 @@ class Injector:
 
             if callable.__bindings__ == 'deferred':
                 read_and_store_bindings(callable, _infer_injected_bindings(callable))
-            return callable.__bindings__
+            noninjectables = getattr(callable, '__noninjectables__', set())
+            return {k: v for k, v in callable.__bindings__.items() if k not in noninjectables}
 
         bindings = _get_callable_bindings(callable)
-        noninjectables = getattr(callable, '__noninjectables__', set())
         signature = inspect.signature(callable)
         full_args = args
         if self_ is not None:
@@ -815,7 +815,7 @@ class Injector:
         needed = dict(
             (k, v)
             for (k, v) in bindings.items()
-            if k not in kwargs and k not in noninjectables and k not in bound_arguments.arguments
+            if k not in kwargs and k not in bound_arguments.arguments
         )
 
         dependencies = self.args_to_inject(
