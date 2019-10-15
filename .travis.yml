@@ -5,12 +5,14 @@ python:
   - "3.5"
   - "3.6"
   - "3.7"
+  - "3.8-dev"
   - "nightly"
   - "pypy3.5"
   - "pypy3"
 matrix:
   allow_failures:
     - python: "nightly"
+    - python: "3.8-dev"
 install:
   - pip install --upgrade coveralls pytest "pytest-cov>=2.5.1" dataclasses
   # mypy can't be installed on pypy
