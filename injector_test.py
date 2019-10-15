@@ -29,6 +29,7 @@ from injector import (
     Scope,
     InstanceProvider,
     ClassProvider,
+    get_bindings,
     inject,
     multiprovider,
     noninjectable,
@@ -1417,3 +1418,23 @@ class Data:
 
     injector = Injector([configure])
     assert injector.get(Data).name == 'data'
+
+
+def test_get_bindings():
+    def function1(a: int) -> None:
+        pass
+
+    assert get_bindings(function1) == {}
+
+    @inject
+    def function2(a: int) -> None:
+        pass
+
+    assert get_bindings(function2) == {'a': int}
+
+    @inject
+    @noninjectable('b')
+    def function3(a: int, b: str) -> None:
+        pass
+
+    assert get_bindings(function3) == {'a': int}
