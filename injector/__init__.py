@@ -796,16 +796,7 @@ class Injector:
         :return: Value returned by callable.
         """
 
-        def _get_callable_bindings(callable):
-            if not hasattr(callable, '__bindings__'):
-                return {}
-
-            if callable.__bindings__ == 'deferred':
-                read_and_store_bindings(callable, _infer_injected_bindings(callable))
-            noninjectables = getattr(callable, '__noninjectables__', set())
-            return {k: v for k, v in callable.__bindings__.items() if k not in noninjectables}
-
-        bindings = _get_callable_bindings(callable)
+        bindings = get_bindings(callable)
         signature = inspect.signature(callable)
         full_args = args
         if self_ is not None:
@@ -813,9 +804,7 @@ class Injector:
         bound_arguments = signature.bind_partial(*full_args)
 
         needed = dict(
-            (k, v)
-            for (k, v) in bindings.items()
-            if k not in kwargs and k not in bound_arguments.arguments
+            (k, v) for (k, v) in bindings.items() if k not in kwargs and k not in bound_arguments.arguments
         )
 
         dependencies = self.args_to_inject(
@@ -872,6 +861,16 @@ class Injector:
             self._stack = tuple(self._stack[:-1])
 
         return dependencies
+
+
+def get_bindings(callable):
+    if not hasattr(callable, '__bindings__'):
+        return {}
+
+    if callable.__bindings__ == 'deferred':
+        read_and_store_bindings(callable, _infer_injected_bindings(callable))
+    noninjectables = getattr(callable, '__noninjectables__', set())
+    return {k: v for k, v in callable.__bindings__.items() if k not in noninjectables}
 
 
 class _BindingNotYetAvailable(Exception):
