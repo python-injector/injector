@@ -5,7 +5,7 @@ python:
   - "3.5"
   - "3.6"
   - "nightly"
-  - "pypy3.5-5.8.0"
+  - "pypy3.5"
 matrix:
   allow_failures:
     - python: "nightly"
