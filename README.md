@@ -7,11 +7,50 @@ Injector - Python dependency injection framework, inspired by Guice
 Introduction
 ------------
 
-Dependency injection as a formal pattern is less useful in Python than in other languages, primarily due to its support for keyword arguments, the ease with which objects can be mocked, and its dynamic nature.
+While dependency injection is easy to do in Python due to its support for keyword arguments, the ease with which objects can be mocked and its dynamic natura, a framework for assisting in this process can remove a lot of boiler-plate from larger applications. That's where Injector can help. It automatically and transitively provides dependencies for you. As an added benefit, Injector encourages nicely compartmentalised code through the use of :ref:`modules <module>`.
 
-That said, a framework for assisting in this process can remove a lot of boiler-plate from larger applications. That's where Injector can help. It automatically and transitively provides keyword arguments with their values. As an added benefit, Injector encourages nicely compartmentalised code through the use of `Module` s.
+If you're not sure what dependency injection is or you'd like to learn more about it see:
 
-While being inspired by Guice, it does not slavishly replicate its API. Providing a Pythonic API trumps faithfulness.
+* [The Clean Code Talks - Don't Look For Things! (a talk by Miško Hevery)](
+  https://www.youtube.com/watch?v=RlfLCWKxHJ0)
+* [Inversion of Control Containers and the Dependency Injection pattern (an article by Martin Fowler)](
+  https://martinfowler.com/articles/injection.html)
+
+The core values of Injector are:
+
+* Simplicity - while being inspired by Guice, Injector does not slavishly replicate its API.
+  Providing a Pythonic API trumps faithfulness. Additionally some features are ommitted
+  because supporting them would be cumbersome and introduce a little bit too much "magic"
+  (member injection, method injection).
+
+  Connected to this, Injector tries to be as nonintrusive as possible. For example while you may
+  declare a class' constructor to expect some injectable parameters, the class' constructor
+  remains a standard constructor – you may instaniate the class just the same manually, if you want.
+
+* No global state – you can have as many [Injector](https://injector.readthedocs.io/en/latest/api.html#injector.Injector)
+  instances as you like, each with a different configuration and each with different objects in different
+  scopes. Code like this won't work for this very reason:
+
+  ```python
+    class MyClass:
+        @inject
+        def __init__(t: SomeType):
+            # ...
+
+    MyClass()
+  ```
+
+  This is simply because there's no global `Injector` to use. You need to be explicit and use
+  [Injector.get](https://injector.readthedocs.io/en/latest/api.html#injector.Injector.get),
+  [Injector.create_object](https://injector.readthedocs.io/en/latest/api.html#injector.Injector.create_object)
+  or inject `MyClass` into the place that needs it.
+
+* Cooperation with static type checking infrastructure – the API provides as much static type safety
+  as possible and only breaks it where there's no other option. For example the
+  [Injector.get](https://injector.readthedocs.io/en/latest/api.html#injector.Injector.get) method
+  is typed such that `injector.get(SomeType)` is statically declared to return an instance of
+  `SomeType`, therefore making it possible for tools such as [mypy](https://github.com/python/mypy) to
+  type-check correctly the code using it.
 
 ### How to get Injector?
 
