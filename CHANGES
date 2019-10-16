@@ -57,7 +57,7 @@ Backwards incompatible:
 - Removed previously deprecated constructs: with_injector, Injector.install_into, Binder.bind_scope
 - Dependencies are no longer injected into Module.configure and raw module functions (previously
   deprecated)
-– Removed unofficial support for injecting into parent class constructors
+- Removed unofficial support for injecting into parent class constructors
 
 0.15.0
 ------
