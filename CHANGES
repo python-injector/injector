@@ -1,6 +1,20 @@
 Injector Change Log
 ===================
 
+0.18.0
+------
+
+- Added new public :func:`get_bindings <injector.get_bindings>` function to see what parameters will be injected
+  into a function
+- Added new generic types using a draft implementation of `PEP 593 <https://www.python.org/dev/peps/pep-0593/>`_:
+  :data:`Inject <injector.Inject>` and :data:`NoInject <injector.NoInject>`. Those serve as additional ways to
+  declare (non)injectable parameters while :func:`inject <injector.inject>` won't go away any time soon
+  :func:`noninjectable <injector.noninjectable>` may be removed once `NoInject` is cofirmed to work.
+
+Backwards incompatible:
+
+- Removed previously deprecated `Key`, `BindingKey`, `SequenceKey` and `MappingKey` pseudo-types
+
 0.17.0
 ------
 
