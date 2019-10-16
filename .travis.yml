@@ -12,7 +12,6 @@ python:
 matrix:
   allow_failures:
     - python: "nightly"
-    - python: "3.8-dev"
 install:
   - pip install --upgrade coveralls pytest "pytest-cov>=2.5.1" dataclasses typing_extensions
   # mypy can't be installed on pypy
