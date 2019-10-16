@@ -980,7 +980,7 @@ def get_bindings(callable: Callable) -> Dict[str, type]:
 
         >>> # The simple case of no @inject but injection requested with Inject[...]
         >>> def function4(a: Inject[int], b: str) -> None:
-        ... pass
+        ...     pass
         ...
         >>> get_bindings(function4)
         {'a': int}
