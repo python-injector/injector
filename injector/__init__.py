@@ -86,7 +86,7 @@ if HAVE_ANNOTATED:
     InjectT = TypeVar('InjectT')
     Inject = Annotated[InjectT, _inject_marker]
     """An experimental way to declare injectable dependencies utilizing a `PEP 593`_ implementation
-    in `typing_extensions`. This API is likely to change when `PEP 593`_ stabilizes.
+    in `typing_extensions`.
 
     Those two declarations are equivalent::
 
@@ -115,6 +115,11 @@ if HAVE_ANNOTATED:
 
     .. versionadded:: 0.18.0
     .. note:: Requires Python 3.7+.
+    .. note::
+
+        Mypy 0.740 and older doesn't correctly handle this alias and silences possible issues in
+        code using it. Install a development version containing commit 6347ba75 or version 0.750 (once
+        it's released).
 
     .. _PEP 593: https://www.python.org/dev/peps/pep-0593/
     .. _typing_extensions: https://pypi.org/project/typing-extensions/
@@ -122,7 +127,7 @@ if HAVE_ANNOTATED:
 
     NoInject = Annotated[InjectT, _noinject_marker]
     """An experimental way to declare noninjectable dependencies utilizing a `PEP 593`_ implementation
-    in `typing_extensions`. This API is likely to change when `PEP 593`_ stabilizes.
+    in `typing_extensions`.
 
     Since :func:`inject` declares all function's parameters to be injectable there needs to be a way
     to opt out of it. This has been provided by :func:`noninjectable` but `noninjectable` suffers from
@@ -150,6 +155,11 @@ if HAVE_ANNOTATED:
 
     .. versionadded:: 0.18.0
     .. note:: Requires Python 3.7+.
+    .. note::
+
+        Mypy 0.740 and older doesn't correctly handle this alias and silences possible issues in
+        code using it. Install a development version containing commit 6347ba75 or version 0.750 (once
+        it's released).
 
     .. _PEP 593: https://www.python.org/dev/peps/pep-0593/
     .. _typing_extensions: https://pypi.org/project/typing-extensions/
