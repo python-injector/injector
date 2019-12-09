@@ -23,7 +23,7 @@ import threading
 import types
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
-from typing import Any, Callable, cast, Dict, Generic, List, overload, Tuple, Type, TypeVar, Union
+from typing import Any, Callable, cast, Dict, Generic, List, Optional, overload, Tuple, Type, TypeVar, Union
 
 HAVE_ANNOTATED = sys.version_info >= (3, 7, 0)
 
@@ -31,11 +31,19 @@ if HAVE_ANNOTATED:
     # Ignoring errors here as typing_extensions stub doesn't know about those things yet
     from typing_extensions import _AnnotatedAlias, Annotated, get_type_hints  # type: ignore
 else:
-    Annotated = None
+
+    class Annotated:  # type: ignore
+        pass
+
     from typing import get_type_hints as _get_type_hints
 
-    def get_type_hints(what, include_extras):
-        return _get_type_hints(what)
+    def get_type_hints(
+        obj: Callable[..., Any],
+        globalns: Optional[Dict[str, Any]] = None,
+        localns: Optional[Dict[str, Any]] = None,
+        include_extras: bool = False,
+    ) -> Dict[str, Any]:
+        return _get_type_hints(obj, globalns, localns)
 
 
 TYPING353 = hasattr(Union[str, int], '__origin__')
@@ -1064,8 +1072,10 @@ def _infer_injected_bindings(callable, only_explicit_bindings: bool):
 
     # variadic arguments aren't supported at the moment (this may change
     # in the future if someone has a good idea how to utilize them)
-    bindings.pop(spec.varargs, None)
-    bindings.pop(spec.varkw, None)
+    if spec.varargs:
+        bindings.pop(spec.varargs, None)
+    if spec.varkw:
+        bindings.pop(spec.varkw, None)
 
     for k, v in list(bindings.items()):
         if _is_specialization(v, Annotated):
