@@ -590,7 +590,7 @@ class Binder:
                 self._bindings[interface] = binding
                 return binding, self
 
-        raise UnsatisfiedRequirement(interface)
+        raise UnsatisfiedRequirement(None, interface)
 
     def _is_special_interface(self, interface):
         # "Special" interfaces are ones that you cannot bind yourself but
