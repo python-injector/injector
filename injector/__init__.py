@@ -1190,21 +1190,21 @@ def inject(constructor_or_class):
     >>> a = Injector(configure).get(A)
     [123, 'Bob']
 
-    As a convenience one can decorate a class itself:
+    As a convenience one can decorate a class itself::
 
-    >>> @inject
-    ... class B:
-    ...     def __init__(self, dependency: Dependency):
-    ...         self.dependency = dependency
+        @inject
+        class B:
+            def __init__(self, dependency: Dependency):
+                self.dependency = dependency
 
     This is equivalent to decorating its constructor. In particular this provides integration with
     `dataclasses <https://docs.python.org/3/library/dataclasses.html>`_ (the order of decorator
-    application is important here):
+    application is important here)::
 
-    >>> @inject
-    ... @dataclass
-    ... class C:
-    ...     dependency: Dependency
+        @inject
+        @dataclass
+        class C:
+            dependency: Dependency
 
     .. note::
 
