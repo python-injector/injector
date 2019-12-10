@@ -1,6 +1,13 @@
 Injector Change Log
 ===================
 
+0.18.1
+------
+
+- Fixed UnsatisfiedRequirement instantiation (trying to get its string representation would fail)
+- Fixed injecting a subclass of a generic type on Python versions older than 3.7.0
+- Fixed regression that caused BoundKey injection failure
+
 0.18.0
 ------
 
