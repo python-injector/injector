@@ -542,10 +542,14 @@ class Binder:
             return ClassProvider(to)
         elif isinstance(interface, BoundKey):
 
-            def proxy(**kwargs):
+            def proxy(injector: Injector):
+                binder = injector.binder
+                kwarg_providers = {
+                    name: binder.provider_for(None, provider) for (name, provider) in interface.kwargs.items()
+                }
+                kwargs = {name: provider.get(injector) for (name, provider) in kwarg_providers.items()}
                 return interface.interface(**kwargs)
 
-            proxy.__annotations__ = interface.kwargs.copy()
             return CallableProvider(inject(proxy))
         elif _is_specialization(interface, AssistedBuilder):
             (target,) = interface.__args__
