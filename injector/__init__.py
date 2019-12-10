@@ -989,7 +989,7 @@ def get_bindings(callable: Callable) -> Dict[str, type]:
         ...     pass
         ...
         >>> get_bindings(function2)
-        {'a': int}
+        {'a': <class 'int'>}
 
         >>> @inject
         ... @noninjectable('b')
@@ -997,14 +997,14 @@ def get_bindings(callable: Callable) -> Dict[str, type]:
         ...     pass
         ...
         >>> get_bindings(function3)
-        {'a': int}
+        {'a': <class 'int'>}
 
         >>> # The simple case of no @inject but injection requested with Inject[...]
         >>> def function4(a: Inject[int], b: str) -> None:
         ...     pass
         ...
         >>> get_bindings(function4)
-        {'a': int}
+        {'a': <class 'int'>}
 
         >>> # Using @inject with Inject is redundant but it should not break anything
         >>> @inject
@@ -1012,7 +1012,7 @@ def get_bindings(callable: Callable) -> Dict[str, type]:
         ...     pass
         ...
         >>> get_bindings(function5)
-        {'a': int, 'b': str}
+        {'a': <class 'int'>, 'b': <class 'str'>}
 
         >>> # We need to be able to exclude a parameter from injection with NoInject
         >>> @inject
@@ -1020,7 +1020,7 @@ def get_bindings(callable: Callable) -> Dict[str, type]:
         ...     pass
         ...
         >>> get_bindings(function6)
-        {'a': int}
+        {'a': <class 'int'>}
 
         >>> # The presence of NoInject should not trigger anything on its own
         >>> def function7(a: int, b: NoInject[str]) -> None:
