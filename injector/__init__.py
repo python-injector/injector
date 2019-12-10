@@ -301,7 +301,7 @@ class InstanceProvider(Provider):
         ...     def __init__(self):
         ...         self.contents = []
         >>> def configure(binder):
-        ...     binder.multibind(MyType, to=InstanceProvider(MyType()))
+        ...     binder.bind(MyType, to=InstanceProvider(MyType()))
         ...
         >>> injector = Injector(configure)
         >>> injector.get(MyType) is injector.get(MyType)
