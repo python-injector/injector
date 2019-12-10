@@ -264,16 +264,19 @@ class CallableProvider(Provider):
 
     ::
 
-        >>> Key = NewType('Key', int)
+        >>> class MyClass:
+        ...     def __init__(self, value: int) -> None:
+        ...         self.value = value
+        ...
         >>> def factory():
         ...     print('providing')
-        ...     return 333
+        ...     return MyClass(42)
         ...
         >>> def configure(binder):
-        ...     binder.bind(Key, to=CallableProvider(factory))
+        ...     binder.bind(MyClass, to=CallableProvider(factory))
         ...
         >>> injector = Injector(configure)
-        >>> injector.get(key) is injector.get(key)
+        >>> injector.get(MyClass) is injector.get(MyClass)
         providing
         providing
         False
