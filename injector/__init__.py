@@ -125,9 +125,8 @@ if HAVE_ANNOTATED:
     .. note:: Requires Python 3.7+.
     .. note::
 
-        Mypy 0.740 and older doesn't correctly handle this alias and silences possible issues in
-        code using it. Install a development version containing commit 6347ba75 or version 0.750 (once
-        it's released).
+        If you're using mypy you need the version 0.750 or newer to fully type-check code using this
+        construct.
 
     .. _PEP 593: https://www.python.org/dev/peps/pep-0593/
     .. _typing_extensions: https://pypi.org/project/typing-extensions/
@@ -165,9 +164,8 @@ if HAVE_ANNOTATED:
     .. note:: Requires Python 3.7+.
     .. note::
 
-        Mypy 0.740 and older doesn't correctly handle this alias and silences possible issues in
-        code using it. Install a development version containing commit 6347ba75 or version 0.750 (once
-        it's released).
+        If you're using mypy you need the version 0.750 or newer to fully type-check code using this
+        construct.
 
     .. _PEP 593: https://www.python.org/dev/peps/pep-0593/
     .. _typing_extensions: https://pypi.org/project/typing-extensions/
