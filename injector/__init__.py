@@ -203,9 +203,14 @@ class Error(Exception):
 class UnsatisfiedRequirement(Error):
     """Requirement could not be satisfied."""
 
+    def __init__(self, owner: Optional[object], interface: type) -> None:
+        super().__init__(owner, interface)
+        self.owner = owner
+        self.interface = interface
+
     def __str__(self) -> str:
-        on = '%s has an ' % _describe(self.args[0]) if self.args[0] else ''
-        return '%sunsatisfied requirement on %s' % (on, _describe(self.args[1].interface))
+        on = '%s has an ' % _describe(self.owner) if self.owner else ''
+        return '%sunsatisfied requirement on %s' % (on, _describe(self.interface))
 
 
 class CallError(Error):
@@ -997,8 +1002,8 @@ class Injector:
                 try:
                     instance = self.get(interface)  # type: Any
                 except UnsatisfiedRequirement as e:
-                    if not e.args[0]:
-                        e = UnsatisfiedRequirement(owner_key, e.args[1])
+                    if not e.owner:
+                        e = UnsatisfiedRequirement(owner_key, e.interface)
                     raise e
                 dependencies[arg] = instance
         finally:
