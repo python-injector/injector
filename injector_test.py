@@ -1176,8 +1176,11 @@ def test_things_dont_break_in_presence_of_args_or_kwargs():
 
 def test_forward_references_in_annotations_are_handled():
     # See https://www.python.org/dev/peps/pep-0484/#forward-references for details
-    def configure(binder):
-        binder.bind(X, to=X('hello'))
+
+    class CustomModule(Module):
+        @provider
+        def provide_x(self) -> 'X':
+            return X('hello')
 
     @inject
     def fun(s: 'X') -> 'X':
@@ -1193,7 +1196,7 @@ def test_forward_references_in_annotations_are_handled():
             self.message = message
 
     try:
-        injector = Injector(configure)
+        injector = Injector(CustomModule)
         assert injector.call_with_injection(fun).message == 'hello'
     finally:
         del X

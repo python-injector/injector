@@ -791,6 +791,20 @@ class Module:
             binding = None
             if hasattr(function, '__binding__'):
                 binding = function.__binding__
+                if binding.interface == '__deferred__':
+                    # We could not evaluate a forward reference at @provider-decoration time, we need to
+                    # try again now.
+                    try:
+                        annotations = get_type_hints(function)
+                    except NameError as e:
+                        raise NameError(
+                            'Cannot avaluate forward reference annotation(s) in method %r belonging to %r: %s'
+                            % (function.__name__, type(self), e)
+                        ) from e
+                    return_type = annotations['return']
+                    binding = function.__func__.__binding__ = Binding(
+                        interface=return_type, provider=binding.provider, scope=binding.scope
+                    )
                 bind_method = binder.multibind if binding.is_multibinding() else binder.bind
                 bind_method(  # type: ignore
                     binding.interface, to=types.MethodType(binding.provider, self), scope=binding.scope
@@ -1206,16 +1220,23 @@ def multiprovider(function: CallableT) -> CallableT:
 
 def _mark_provider_function(function: Callable, *, allow_multi: bool) -> None:
     scope_ = getattr(function, '__scope__', None)
-    annotations = inspect.getfullargspec(function).annotations
-    return_type = annotations['return']
+    try:
+        annotations = get_type_hints(function)
+    except NameError:
+        return_type = '__deferred__'
+    else:
+        return_type = annotations['return']
+        _validate_provider_return_type(function, cast(type, return_type), allow_multi)
+    function.__binding__ = Binding(return_type, inject(function), scope_)  # type: ignore
+
+
+def _validate_provider_return_type(function: Callable, return_type: type, allow_multi: bool) -> None:
     origin = _get_origin(_punch_through_alias(return_type))
     if origin in {dict, list} and not allow_multi:
         raise Error(
             'Function %s needs to be decorated with multiprovider instead of provider if it is to '
             'provide values to a multibinding of type %s' % (function.__name__, return_type)
         )
-    binding = Binding(return_type, inject(function), scope_)
-    function.__binding__ = binding  # type: ignore
 
 
 ConstructorOrClassT = TypeVar('ConstructorOrClassT', bound=Union[Callable, Type])
