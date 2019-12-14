@@ -1194,7 +1194,7 @@ def test_forward_references_in_annotations_are_handled():
 
     try:
         injector = Injector(configure)
-        injector.call_with_injection(fun).message == 'hello'
+        assert injector.call_with_injection(fun).message == 'hello'
     finally:
         del X
 
