@@ -436,7 +436,7 @@ class Binder:
         interface: Type[List[T]],
         to: Union[List[T], Callable[..., List[T]], Provider[List[T]]],
         scope: Union[Type['Scope'], 'ScopeDecorator'] = None,
-    ) -> None:
+    ) -> None:  # pragma: no cover
         pass
 
     @overload
@@ -445,7 +445,7 @@ class Binder:
         interface: Type[Dict[K, V]],
         to: Union[Dict[K, V], Callable[..., Dict[K, V]], Provider[Dict[K, V]]],
         scope: Union[Type['Scope'], 'ScopeDecorator'] = None,
-    ) -> None:
+    ) -> None:  # pragma: no cover
         pass
 
     def multibind(
@@ -979,7 +979,7 @@ class Injector:
         except TypeError as e:
             reraise(e, CallError(self_, callable, args, dependencies, e, self._stack))
             # Needed because of a mypy-related issue (https://github.com/python/mypy/issues/8129).
-            assert False, "unreachable"
+            assert False, "unreachable"  # pragma: no cover
 
     @private
     @synchronized(lock)
@@ -1243,12 +1243,12 @@ ConstructorOrClassT = TypeVar('ConstructorOrClassT', bound=Union[Callable, Type]
 
 
 @overload
-def inject(constructor_or_class: CallableT) -> CallableT:
+def inject(constructor_or_class: CallableT) -> CallableT:  # pragma: no cover
     pass
 
 
 @overload
-def inject(constructor_or_class: Type[T]) -> Type[T]:
+def inject(constructor_or_class: Type[T]) -> Type[T]:  # pragma: no cover
     pass
 
 
