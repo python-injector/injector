@@ -66,7 +66,7 @@ TYPING353 = hasattr(Union[str, int], '__origin__')
 
 
 __author__ = 'Alec Thomas <alec@swapoff.org>'
-__version__ = '0.18.1'
+__version__ = '0.18.2'
 __version_tag__ = ''
 
 log = logging.getLogger('injector')

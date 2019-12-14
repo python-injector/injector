@@ -1,6 +1,13 @@
 Injector Change Log
 ===================
 
+0.18.2
+------
+
+- Added remaining type hints to the codebase so that the client code can have better static typing safety
+- Fixed UnsatisfiedRequirement string representation (this time for real)
+- Added forward return type reference support to provider methods
+
 0.18.1
 ------
 
