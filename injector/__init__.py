@@ -420,13 +420,40 @@ class Binder:
     ) -> None:
         """Bind an interface to an implementation.
 
+        Binding `T` to an instance of `T` like
+
+        ::
+
+            binder.bind(A, to=A('some', 'thing'))
+
+        is, for convenience, a shortcut for
+
+        ::
+
+            binder.bind(A, to=InstanceProvider(A('some', 'thing'))).
+
+        Likewise, binding to a callable like
+
+        ::
+
+            binder.bind(A, to=some_callable)
+
+        is a shortcut for
+
+        ::
+
+            binder.bind(A, to=CallableProvider(some_callable))
+
+        and, as such, if `some_callable` there has any annotated parameters they'll be provided
+        automatically without having to use :func:`inject` or :data:`Inject` with the callable.
+
         `typing.List` and `typing.Dict` instances are reserved for multibindings and trying to bind them
         here will result in an error (use :meth:`multibind` instead)::
 
             binder.bind(List[str], to=['hello', 'there'])  # Error
 
         :param interface: Type to bind.
-        :param to: Instance or class to bind to, or an explicit
+        :param to: Instance or class to bind to, or an instance of
              :class:`Provider` subclass.
         :param scope: Optional :class:`Scope` in which to bind.
         """
