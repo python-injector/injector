@@ -281,6 +281,12 @@ class CallableProvider(Provider):
 
     The callable is called every time new value is requested from the provider.
 
+    There's no need to explicitly use :func:`inject` or :data:`Inject` with the callable as it's
+    assumed that, if the callable has annotated parameters, they're meant to be provided
+    automatically. It wouldn't make sense any other way, as there's no mechanism to provide
+    parameters to the callable at a later time, so either they'll be injected or there'll be
+    a `CallError`.
+
     ::
 
         >>> class MyClass:
