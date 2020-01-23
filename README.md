@@ -19,13 +19,13 @@ If you're not sure what dependency injection is or you'd like to learn more abou
 The core values of Injector are:
 
 * Simplicity - while being inspired by Guice, Injector does not slavishly replicate its API.
-  Providing a Pythonic API trumps faithfulness. Additionally some features are ommitted
+  Providing a Pythonic API trumps faithfulness. Additionally some features are omitted
   because supporting them would be cumbersome and introduce a little bit too much "magic"
   (member injection, method injection).
 
   Connected to this, Injector tries to be as nonintrusive as possible. For example while you may
   declare a class' constructor to expect some injectable parameters, the class' constructor
-  remains a standard constructor – you may instaniate the class just the same manually, if you want.
+  remains a standard constructor – you may instantiate the class just the same manually, if you want.
 
 * No global state – you can have as many [Injector](https://injector.readthedocs.io/en/latest/api.html#injector.Injector)
   instances as you like, each with a different configuration and each with different objects in different
