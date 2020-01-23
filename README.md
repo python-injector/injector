@@ -7,7 +7,7 @@ Injector - Python dependency injection framework, inspired by Guice
 Introduction
 ------------
 
-While dependency injection is easy to do in Python due to its support for keyword arguments, the ease with which objects can be mocked and its dynamic natura, a framework for assisting in this process can remove a lot of boiler-plate from larger applications. That's where Injector can help. It automatically and transitively provides dependencies for you. As an added benefit, Injector encourages nicely compartmentalised code through the use of :ref:`modules <module>`.
+While dependency injection is easy to do in Python due to its support for keyword arguments, the ease with which objects can be mocked and its dynamic nature, a framework for assisting in this process can remove a lot of boiler-plate from larger applications. That's where Injector can help. It automatically and transitively provides dependencies for you. As an added benefit, Injector encourages nicely compartmentalised code through the use of :ref:`modules <module>`.
 
 If you're not sure what dependency injection is or you'd like to learn more about it see:
 
