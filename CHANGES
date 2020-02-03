@@ -1,6 +1,11 @@
 Injector Change Log
 ===================
 
+0.18.3
+------
+
+- Fixed Python 3.5.3 compatibility
+
 0.18.2
 ------
 
