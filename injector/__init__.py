@@ -967,8 +967,12 @@ class Injector:
                 maximum_frames=2,
             )
         try:
-            init = cls.__init__
-            self.call_with_injection(init, self_=instance, kwargs=additional_kwargs)
+            # On Python 3.5.3 calling call_with_injection() with object.__init__ would fail further
+            # down the line as get_type_hints(object.__init__) raises an exception until Python 3.5.4.
+            # And since object.__init__ doesn't do anything useful and can't have any injectable
+            # arguments we can skip calling it altogether. See GH-135 for more information.
+            if cls.__init__ is object.__init__:
+                self.call_with_injection(cls.__init__, self_=instance, kwargs=additional_kwargs)
         except TypeError as e:
             reraise(e, CallError(instance, instance.__init__.__func__, (), additional_kwargs, e, self._stack))
         return instance
