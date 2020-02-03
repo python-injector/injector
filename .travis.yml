@@ -2,6 +2,9 @@ sudo: false
 language: python
 cache: pip
 python:
+  # There were significant typing-related changes in Python 3.5.4, let's make sure we test with the
+  # older versions as well
+  - "3.5.3"
   - "3.5"
   - "3.6"
   - "3.7"
