@@ -56,14 +56,14 @@ The core values of Injector are:
 
 * GitHub (code repository, issues): https://github.com/alecthomas/injector
 
-* PyPI (installable, stable distributions): https://pypi.python.org/pypi/injector. You can install it using pip:
+* PyPI (installable, stable distributions): https://pypi.org/project/injector/. You can install it using pip:
 
   ```bash
   pip install injector
   ```
 
-* Documentation: http://injector.readthedocs.org
-* Change log: http://injector.readthedocs.io/en/latest/changelog.html
+* Documentation: https://injector.readthedocs.org
+* Change log: https://injector.readthedocs.io/en/latest/changelog.html
 
 Injector works with CPython 3.5+ and PyPy 3 implementing Python 3.5+.
 

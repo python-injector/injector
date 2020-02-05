@@ -48,8 +48,8 @@ description = long_description.splitlines()[0].strip()
 
 setup(
     name='injector',
-    url='http://github.com/alecthomas/injector',
-    download_url='http://pypi.python.org/pypi/injector',
+    url='https://github.com/alecthomas/injector',
+    download_url='https://pypi.org/project/injector/',
     version=version,
     options=dict(egg_info=dict(tag_build=version_tag)),
     description=description,
