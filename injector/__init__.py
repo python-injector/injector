@@ -36,19 +36,34 @@ from typing import (
     Tuple,
     Type,
     TypeVar,
+    TYPE_CHECKING,
     Union,
 )
 
-from typing_extensions import NoReturn
+try:
+    from typing import NoReturn
+except ImportError:
+    from typing_extensions import NoReturn
 
 HAVE_ANNOTATED = sys.version_info >= (3, 7, 0)
 
-if HAVE_ANNOTATED:
+# This is a messy, type-wise, because we not only have two potentially conflicting imports here
+# but we also define our own versions in the else block in case we operate on Python 3.5
+# or 3.6 which didn't get Annotated support in get_type_hints(). The easiest way to make mypy
+# happy here is to tell it the versions from typing_extensions are canonical. Since this
+# typing_extensions import is only for mypy it'll work even without typing_extensions actually
+# installed so all's good.
+if TYPE_CHECKING:
+    from typing_extensions import _AnnotatedAlias, Annotated, get_type_hints
+elif HAVE_ANNOTATED:
     # Ignoring errors here as typing_extensions stub doesn't know about those things yet
-    from typing_extensions import _AnnotatedAlias, Annotated, get_type_hints  # type: ignore
+    try:
+        from typing import _AnnotatedAlias, Annotated, get_type_hints
+    except ImportError:
+        from typing_extensions import _AnnotatedAlias, Annotated, get_type_hints
 else:
 
-    class Annotated:  # type: ignore
+    class Annotated:
         pass
 
     from typing import get_type_hints as _get_type_hints
@@ -110,7 +125,7 @@ if HAVE_ANNOTATED:
     InjectT = TypeVar('InjectT')
     Inject = Annotated[InjectT, _inject_marker]
     """An experimental way to declare injectable dependencies utilizing a `PEP 593`_ implementation
-    in `typing_extensions`.
+    in Python 3.9 and backported to Python 3.7+ in `typing_extensions`.
 
     Those two declarations are equivalent::
 
@@ -150,7 +165,7 @@ if HAVE_ANNOTATED:
 
     NoInject = Annotated[InjectT, _noinject_marker]
     """An experimental way to declare noninjectable dependencies utilizing a `PEP 593`_ implementation
-    in `typing_extensions`.
+    in Python 3.9 and backported to Python 3.7+ in `typing_extensions`.
 
     Since :func:`inject` declares all function's parameters to be injectable there needs to be a way
     to opt out of it. This has been provided by :func:`noninjectable` but `noninjectable` suffers from
