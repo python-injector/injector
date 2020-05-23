@@ -29,15 +29,6 @@ The default scope is :class:`NoScope`.
 
 .. seealso:: :ref:`scopes`
 
-Keys
-````
-
-`Key` may be used to create unique types as necessary::
-
-    >>> from injector import Key
-    >>> Name = Key('name')
-    >>> Description = Key('description')
-
 Binding
 ```````
 

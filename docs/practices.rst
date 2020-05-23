@@ -126,11 +126,11 @@ As an illustration:
     from threading import Thread
     from time import sleep
 
-    from injector import inject, Injector, Key, Module, provider
+    from injector import inject, Injector, Module, provider
 
-    SubA = Key('SubA')
-    A = Key('A')
-    B = Key('B')
+    class A: pass
+    class SubA(A): pass
+    class B: pass
 
 
     class BadModule(Module):
@@ -146,11 +146,11 @@ As an illustration:
                 sleep(1)
 
             # This never executes
-            return 'suba'
+            return SubA()
 
         @provider
         def provide_b(self) -> B:
-            return 'b'
+            return B()
 
 
     injector = Injector([BadModule])
