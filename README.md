@@ -51,6 +51,13 @@ The core values of Injector are:
   is typed such that `injector.get(SomeType)` is statically declared to return an instance of
   `SomeType`, therefore making it possible for tools such as [mypy](https://github.com/python/mypy) to
   type-check correctly the code using it.
+  
+* The client code only knows about dependency injection to the extend it needs – 
+  [`inject`](https://injector.readthedocs.io/en/latest/api.html#injector.inject),
+  [`Inject`](https://injector.readthedocs.io/en/latest/api.html#injector.Inject) and
+  [`NoInject`](https://injector.readthedocs.io/en/latest/api.html#injector.NoInject) are simple markers
+  that don't really do anything on their own and your code can run just fine without Injector
+  orchestrating things.
 
 ### How to get Injector?
 
