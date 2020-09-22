@@ -320,7 +320,7 @@ class CallableProvider(Provider):
         providing
         providing
         False
-        """
+    """
 
     def __init__(self, callable: Callable[..., T]):
         self._callable = callable
@@ -1496,19 +1496,19 @@ def _describe(c: Any) -> str:
 class ProviderOf(Generic[T]):
     """Can be used to get a provider of an interface, for example:
 
-        >>> def provide_int():
-        ...     print('providing')
-        ...     return 123
-        >>>
-        >>> def configure(binder):
-        ...     binder.bind(int, to=provide_int)
-        >>>
-        >>> injector = Injector(configure)
-        >>> provider = injector.get(ProviderOf[int])
-        >>> value = provider.get()
-        providing
-        >>> value
-        123
+    >>> def provide_int():
+    ...     print('providing')
+    ...     return 123
+    >>>
+    >>> def configure(binder):
+    ...     binder.bind(int, to=provide_int)
+    >>>
+    >>> injector = Injector(configure)
+    >>> provider = injector.get(ProviderOf[int])
+    >>> value = provider.get()
+    providing
+    >>> value
+    123
     """
 
     def __init__(self, injector: Injector, interface: Type[T]):
