@@ -236,15 +236,9 @@ class CallError(Error):
             return self.args[0]
 
         instance, method, args, kwargs, original_error, stack = self.args
-        if hasattr(method, 'im_class'):
-            instance = method.__self__
-            method_name = method.__func__.__name__
-        else:
-            method_name = method.__name__
-
         cls = instance.__class__.__name__ if instance is not None else ''
 
-        full_method = '.'.join((cls, method_name)).strip('.')
+        full_method = '.'.join((cls, method.__name__)).strip('.')
 
         parameters = ', '.join(
             itertools.chain(
