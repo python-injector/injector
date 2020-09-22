@@ -7,3 +7,6 @@ htmlcov/
 .mypy_cache/
 .pytest_cache/
 coverage.xml
+/dist/
+/injector.egg-info/
+/.coverage
