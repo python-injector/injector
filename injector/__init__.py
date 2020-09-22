@@ -1203,9 +1203,7 @@ def _infer_injected_bindings(callable: Callable, only_explicit_bindings: bool) -
 
         if only_explicit_bindings and _inject_marker not in metadata or _noinject_marker in metadata:
             del bindings[k]
-            break
-
-        if _is_specialization(v, Union):
+        elif _is_specialization(v, Union):
             # We don't treat Optional parameters in any special way at the moment.
             if TYPING353:
                 union_members = v.__args__
