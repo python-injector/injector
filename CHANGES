@@ -1,6 +1,11 @@
 Injector Change Log
 ===================
 
+0.18.4
+------
+
+- Fixed a bug where only one of multiple NoInject annotations was interpreted
+
 0.18.3
 ------
 
