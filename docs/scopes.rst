@@ -24,6 +24,27 @@ A (redundant) example showing all three methods::
         def provide_thing(self) -> Thing:
             return Thing()
 
+ThreadLocals
+``````````
+
+ThreadLocals (instances local to a thread) are declared by binding them in the ThreadLocalScope. Just like for Singletons, this can be done in three ways:
+
+1.  Decorating the class with `@threadlocal`.
+2.  Decorating a `@provider` decorated Module method with `@threadlocal`.
+3.  Explicitly calling `binder.bind(X, scope=threadlocal)`.
+
+A (redundant) example showing all three methods::
+
+    @threadlocal
+    class Thing: pass
+    class ThingModule(Module):
+        def configure(self, binder):
+            binder.bind(Thing, scope=threadlocal)
+        @threadlocal
+        @provider
+        def provide_thing(self) -> Thing:
+            return Thing()
+
 Implementing new Scopes
 ```````````````````````
 
