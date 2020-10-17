@@ -47,12 +47,6 @@ This can be used like so::
     class MyClass:
         pass
 
-Scopes are bound in modules with the :meth:`Binder.bind_scope` method::
-
-    class MyModule(Module):
-        def configure(self, binder):
-            binder.bind_scope(CustomScope)
-
 Scopes can be retrieved from the injector, as with any other instance. They are singletons across the life of the injector::
 
     >>> injector = Injector([MyModule()])
