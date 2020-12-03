@@ -48,8 +48,8 @@ except ImportError:
 HAVE_ANNOTATED = sys.version_info >= (3, 7, 0)
 
 # This is a messy, type-wise, because we not only have two potentially conflicting imports here
-# but we also define our own versions in the else block in case we operate on Python 3.5
-# or 3.6 which didn't get Annotated support in get_type_hints(). The easiest way to make mypy
+# but we also define our own versions in the else block in case we operate on Python 3.6
+# which didn't get Annotated support in get_type_hints(). The easiest way to make mypy
 # happy here is to tell it the versions from typing_extensions are canonical. Since this
 # typing_extensions import is only for mypy it'll work even without typing_extensions actually
 # installed so all's good.
@@ -75,9 +75,6 @@ else:
         include_extras: bool = False,
     ) -> Dict[str, Any]:
         return _get_type_hints(obj, globalns, localns)
-
-
-TYPING353 = hasattr(Union[str, int], '__origin__')
 
 
 __author__ = 'Alec Thomas <alec@swapoff.org>'
@@ -671,37 +668,29 @@ class Binder:
         return any(_is_specialization(interface, cls) for cls in [AssistedBuilder, ProviderOf])
 
 
-if TYPING353:
+def _is_specialization(cls: type, generic_class: Any) -> bool:
+    # Starting with typing 3.5.3/Python 3.6 it is no longer necessarily true that
+    # issubclass(SomeGeneric[X], SomeGeneric) so we need some other way to
+    # determine whether a particular object is a generic class with type parameters
+    # provided. Fortunately there seems to be __origin__ attribute that's useful here.
 
-    def _is_specialization(cls: type, generic_class: Any) -> bool:
-        # Starting with typing 3.5.3/Python 3.6 it is no longer necessarily true that
-        # issubclass(SomeGeneric[X], SomeGeneric) so we need some other way to
-        # determine whether a particular object is a generic class with type parameters
-        # provided. Fortunately there seems to be __origin__ attribute that's useful here.
+    # We need to special-case Annotated as its __origin__ behaves differently than
+    # other typing generic classes. See https://github.com/python/typing/pull/635
+    # for some details.
+    if HAVE_ANNOTATED and generic_class is Annotated and isinstance(cls, _AnnotatedAlias):
+        return True
 
-        # We need to special-case Annotated as its __origin__ behaves differently than
-        # other typing generic classes. See https://github.com/python/typing/pull/635
-        # for some details.
-        if HAVE_ANNOTATED and generic_class is Annotated and isinstance(cls, _AnnotatedAlias):
-            return True
-
-        if not hasattr(cls, '__origin__'):
-            return False
-        origin = cast(Any, cls).__origin__
-        if not inspect.isclass(generic_class):
-            generic_class = type(generic_class)
-        if not inspect.isclass(origin):
-            origin = type(origin)
-        # __origin__ is generic_class is a special case to handle Union as
-        # Union cannot be used in issubclass() check (it raises an exception
-        # by design).
-        return origin is generic_class or issubclass(origin, generic_class)
-
-
-else:
-    # To maintain compatibility we fall back to an issubclass check.
-    def _is_specialization(cls: type, generic_class: Any) -> bool:
-        return isinstance(cls, type) and cls is not Any and issubclass(cls, generic_class)
+    if not hasattr(cls, '__origin__'):
+        return False
+    origin = cast(Any, cls).__origin__
+    if not inspect.isclass(generic_class):
+        generic_class = type(generic_class)
+    if not inspect.isclass(origin):
+        origin = type(origin)
+    # __origin__ is generic_class is a special case to handle Union as
+    # Union cannot be used in issubclass() check (it raises an exception
+    # by design).
+    return origin is generic_class or issubclass(origin, generic_class)
 
 
 def _punch_through_alias(type_: Any) -> type:
@@ -975,13 +964,9 @@ class Injector:
                 CallError(cls, getattr(cls.__new__, '__func__', cls.__new__), (), {}, e, self._stack),
                 maximum_frames=2,
             )
+        init = cls.__init__
         try:
-            # On Python 3.5.3 calling call_with_injection() with object.__init__ would fail further
-            # down the line as get_type_hints(object.__init__) raises an exception until Python 3.5.4.
-            # And since object.__init__ doesn't do anything useful and can't have any injectable
-            # arguments we can skip calling it altogether. See GH-135 for more information.
-            if cls.__init__ is not object.__init__:
-                self.call_with_injection(cls.__init__, self_=instance, kwargs=additional_kwargs)
+            self.call_with_injection(init, self_=instance, kwargs=additional_kwargs)
         except TypeError as e:
             reraise(e, CallError(instance, instance.__init__.__func__, (), additional_kwargs, e, self._stack))
         return instance
@@ -1199,10 +1184,7 @@ def _infer_injected_bindings(callable: Callable, only_explicit_bindings: bool) -
             del bindings[k]
         elif _is_specialization(v, Union):
             # We don't treat Optional parameters in any special way at the moment.
-            if TYPING353:
-                union_members = v.__args__
-            else:
-                union_members = v.__union_params__
+            union_members = v.__args__
             new_members = tuple(set(union_members) - {type(None)})
             # mypy stared complaining about this line for some reason:
             #     error: Variable "new_members" is not valid as a type

@@ -2,16 +2,11 @@ sudo: false
 language: python
 cache: pip
 python:
-  # There were significant typing-related changes in Python 3.5.4, let's make sure we test with the
-  # older versions as well
-  - "3.5.3"
-  - "3.5"
   - "3.6"
   - "3.7"
   - "3.8"
   - "3.9"
   - "nightly"
-  - "pypy3.5"
   - "pypy3"
 matrix:
   allow_failures:
@@ -21,10 +16,10 @@ install:
   # mypy can't be installed on pypy
   - if [[ "${TRAVIS_PYTHON_VERSION}" != "pypy"* ]] ; then pip install mypy ; fi
   # Black is Python 3.6+-only
-  - if [[ "${TRAVIS_PYTHON_VERSION}" != "pypy"* &&  "${TRAVIS_PYTHON_VERSION}" != "3.5"* ]] ; then pip install black ; fi
+  - if [[ "${TRAVIS_PYTHON_VERSION}" != "pypy"* ]] ; then pip install black ; fi
 script:
   - py.test -vv --cov=injector --cov-branch --cov-report html --cov-report term
   - if [[ "${TRAVIS_PYTHON_VERSION}" != "pypy"* ]] ; then mypy injector ; fi
-  - if [[ "${TRAVIS_PYTHON_VERSION}" != "pypy"* && "${TRAVIS_PYTHON_VERSION}" != "3.5"* ]] ; then black --check . ; fi
+  - if [[ "${TRAVIS_PYTHON_VERSION}" != "pypy"* ]] ; then black --check . ; fi
 after_success:
   - coveralls
