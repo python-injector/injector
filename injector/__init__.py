@@ -356,8 +356,10 @@ class InstanceProvider(Provider):
 class ListOfProviders(Provider, Generic[T]):
     """Provide a list of instances via other Providers."""
 
+    _providers: List[Provider[T]]
+
     def __init__(self) -> None:
-        self._providers = []  # type: List[Provider[T]]
+        self._providers = []
 
     def append(self, provider: Provider[T]) -> None:
         self._providers.append(provider)
@@ -378,7 +380,7 @@ class MapBindProvider(ListOfProviders[Dict[str, T]]):
     """A provider for map bindings."""
 
     def get(self, injector: 'Injector') -> Dict[str, T]:
-        map = {}  # type: Dict[str, T]
+        map: Dict[str, T] = {}
         for provider in self._providers:
             map.update(provider.get(injector))
         return map
@@ -405,6 +407,8 @@ class Binder:
         to instantiate it on your own.
     """
 
+    _bindings: Dict[type, Binding]
+
     @private
     def __init__(self, injector: 'Injector', auto_bind: bool = True, parent: 'Binder' = None) -> None:
         """Create a new Binder.
@@ -415,7 +419,7 @@ class Binder:
         """
         self.injector = injector
         self._auto_bind = auto_bind
-        self._bindings = {}  # type: Dict[type, Binding]
+        self._bindings = {}
         self.parent = parent
 
     def bind(
@@ -513,13 +517,14 @@ class Binder:
         :param scope: Optional Scope in which to bind.
         """
         if interface not in self._bindings:
+            provider: ListOfProviders
             if (
                 isinstance(interface, dict)
                 or isinstance(interface, type)
                 and issubclass(interface, dict)
                 or _get_origin(_punch_through_alias(interface)) is dict
             ):
-                provider = MapBindProvider()  # type: ListOfProviders
+                provider = MapBindProvider()
             else:
                 provider = MultiBindProvider()
             binding = self.create_binding(interface, provider, scope)
@@ -778,8 +783,10 @@ class SingletonScope(Scope):
     True
     """
 
+    _context: Dict[type, Provider]
+
     def configure(self) -> None:
-        self._context = {}  # type: Dict[type, Provider]
+        self._context = {}
 
     @synchronized(lock)
     def get(self, key: Type[T], provider: Provider[T]) -> Provider[T]:
@@ -863,6 +870,9 @@ class Injector:
         ``use_annotations`` parameter is removed
     """
 
+    _stack: Tuple[Tuple[object, Callable, Tuple[Tuple[str, type], ...]], ...]
+    binder: Binder
+
     def __init__(
         self,
         modules: Union[_InstallableModuleType, Iterable[_InstallableModuleType]] = None,
@@ -871,14 +881,12 @@ class Injector:
     ) -> None:
         # Stack of keys currently being injected. Used to detect circular
         # dependencies.
-        self._stack = ()  # type: Tuple[Tuple[object, Callable, Tuple[Tuple[str, type], ...]], ...]
+        self._stack = ()
 
         self.parent = parent
 
         # Binder
-        self.binder = Binder(
-            self, auto_bind=auto_bind, parent=parent.binder if parent is not None else None
-        )  # type: Binder
+        self.binder = Binder(self, auto_bind=auto_bind, parent=parent.binder if parent is not None else None)
 
         if not modules:
             modules = []
@@ -1045,7 +1053,7 @@ class Injector:
         try:
             for arg, interface in bindings.items():
                 try:
-                    instance = self.get(interface)  # type: Any
+                    instance: Any = self.get(interface)
                 except UnsatisfiedRequirement as e:
                     if not e.owner:
                         e = UnsatisfiedRequirement(owner_key, e.interface)
