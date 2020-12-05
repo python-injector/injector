@@ -41,9 +41,9 @@ from typing import (
 )
 
 try:
-    from typing import NoReturn
+    from typing import NoReturn, Awaitable
 except ImportError:
-    from typing_extensions import NoReturn
+    from typing_extensions import NoReturn, Awaitable
 
 HAVE_ANNOTATED = sys.version_info >= (3, 7, 0)
 
@@ -978,6 +978,47 @@ class Injector:
         except TypeError as e:
             reraise(e, CallError(instance, instance.__init__.__func__, (), additional_kwargs, e, self._stack))
         return instance
+
+    async def await_with_injection(
+            self, awaitable: Awaitable[T], self_: Any = None, args: Any = (), kwargs: Any = {}
+    ) -> T:
+        """Call a callable and provide it's dependencies if needed.
+
+        :param self_: Instance of a class callable belongs to if it's a method,
+            None otherwise.
+        :param args: Arguments to pass to callable.
+        :param kwargs: Keyword arguments to pass to callable.
+        :type callable: callable
+        :type args: tuple of objects
+        :type kwargs: dict of string -> object
+        :return: Value returned by callable.
+        """
+
+        bindings = get_bindings(awaitable)
+        signature = inspect.signature(awaitable)
+        full_args = args
+        if self_ is not None:
+            full_args = (self_,) + full_args
+        bound_arguments = signature.bind_partial(*full_args)
+
+        needed = dict(
+            (k, v) for (k, v) in bindings.items() if k not in kwargs and k not in bound_arguments.arguments
+        )
+
+        dependencies = self.args_to_inject(
+            function=awaitable,
+            bindings=needed,
+            owner_key=self_.__class__ if self_ is not None else callable.__module__,
+        )
+
+        dependencies.update(kwargs)
+
+        try:
+            return await awaitable(*full_args, **dependencies)
+        except TypeError as e:
+            reraise(e, CallError(self_, awaitable, args, dependencies, e, self._stack))
+            # Needed because of a mypy-related issue (https://github.com/python/mypy/issues/8129).
+            assert False, "unreachable"  # pragma: no cover
 
     def call_with_injection(
         self, callable: Callable[..., T], self_: Any = None, args: Any = (), kwargs: Any = {}
