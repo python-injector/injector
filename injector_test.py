@@ -1446,6 +1446,14 @@ def test_get_bindings():
 
     assert get_bindings(function3) == {'a': int}
 
+    # Let's verify that the inject/noninjectable ordering doesn't matter
+    @noninjectable('b')
+    @inject
+    def function3b(a: int, b: str) -> None:
+        pass
+
+    assert get_bindings(function3b) == {'a': int}
+
     if HAVE_ANNOTATED:
         # The simple case of no @inject but injection requested with Inject[...]
         def function4(a: Inject[int], b: str) -> None:
