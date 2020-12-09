@@ -6,6 +6,13 @@ import warnings
 warnings.filterwarnings("always", module=__name__)
 
 
+def obtain_requirements(file_name):
+    with open(file_name) as fd_in:
+        for line in fd_in:
+            if '#' not in line:
+                yield line.strip()
+
+
 class PyTest(Command):
     user_options = []
 
@@ -34,6 +41,11 @@ def read_injector_variable(name):
 version = read_injector_variable('__version__')
 version_tag = read_injector_variable('__version_tag__')
 
+
+requirements = list(obtain_requirements('requirements.txt'))
+requirements_dev = list(obtain_requirements('requirements-dev.txt'))
+
+
 try:
     import pypandoc
 
@@ -61,6 +73,7 @@ setup(
     author='Alec Thomas',
     author_email='alec@swapoff.org',
     cmdclass={'test': PyTest},
+    extras_require={'dev': requirements_dev},
     keywords=[
         'Dependency Injection',
         'DI',
@@ -69,5 +82,5 @@ setup(
         'IoC',
         'Inversion of Control container',
     ],
-    install_requires=['typing_extensions>=3.7.4;python_version<"3.9"'],
+    install_requires=requirements,
 )
