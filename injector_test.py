@@ -1481,7 +1481,7 @@ def test_get_bindings():
 
         assert get_bindings(function7) == {}
 
-        # There was a bug where in case of multiple NoInject-decorater parameters only the first one was
+        # There was a bug where in case of multiple NoInject-decorated parameters only the first one was
         # actually made noninjectable and we tried to inject something we couldn't possibly provide
         # into the second one.
         @inject
