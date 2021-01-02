@@ -216,6 +216,13 @@ You're probably thinking something like: "this is a large amount of work just to
 1.  Forces decoupling. In our example, this is illustrated by decoupling our configuration and database configuration.
 2.  After a type is configured, it can be injected anywhere with no additional effort. Simply `@inject` and it appears. We don't really illustrate that here, but you can imagine adding an arbitrary number of `RequestHandler` subclasses, all of which will automatically have a DB connection provided.
 
+
+Contributing
+------------
+
+For guidance on setting up a development environment, see the [contributing guideline](CONTRIBUTING.md)
+
+
 Footnote
 --------
 

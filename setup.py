@@ -1,25 +1,15 @@
-from setuptools import setup, Command
-import sys
+from setuptools import setup
 import warnings
 
 
 warnings.filterwarnings("always", module=__name__)
 
 
-class PyTest(Command):
-    user_options = []
-
-    def initialize_options(self):
-        pass
-
-    def finalize_options(self):
-        pass
-
-    def run(self):
-        import subprocess
-
-        errno = subprocess.call([sys.executable, '-m', 'pytest'])
-        raise SystemExit(errno)
+requirements_dev = []
+with open('requirements_dev.txt') as fd_in:
+    for line in fd_in:
+        if '#' not in line:
+            requirements_dev.append(line.strip())
 
 
 def read_injector_variable(name):
@@ -34,6 +24,7 @@ def read_injector_variable(name):
 version = read_injector_variable('__version__')
 version_tag = read_injector_variable('__version_tag__')
 
+
 try:
     import pypandoc
 
@@ -42,6 +33,7 @@ except ImportError:
     warnings.warn('Could not locate pandoc, using Markdown long_description.', ImportWarning)
     with open('README.md') as f:
         long_description = f.read()
+
 
 description = long_description.splitlines()[0].strip()
 
@@ -60,7 +52,7 @@ setup(
     package_data={'injector': ['py.typed']},
     author='Alec Thomas',
     author_email='alec@swapoff.org',
-    cmdclass={'test': PyTest},
+    extras_require={'dev': requirements_dev},
     keywords=[
         'Dependency Injection',
         'DI',
