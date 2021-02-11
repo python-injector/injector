@@ -6,13 +6,14 @@
 Welcome to Injector's documentation!
 ====================================
 
-.. image:: https://travis-ci.org/alecthomas/injector.png?branch=master
+.. image:: https://github.com/alecthomas/injector/workflows/CI/badge.svg
    :alt: Build status
-   :target: https://travis-ci.org/alecthomas/injector
+   :target: https://github.com/alecthomas/injector/actions?query=workflow%3ACI+branch%3Amaster
    
-.. image:: https://coveralls.io/repos/github/alecthomas/injector/badge.svg?branch=master
+.. image:: https://codecov.io/gh/alecthomas/injector/branch/master/graph/badge.svg
    :alt: Covergage status
-   :target: https://coveralls.io/github/alecthomas/injector?branch=master
+   :target: https://codecov.io/gh/alecthomas/injector
+
 
 GitHub (code repository, issues): https://github.com/alecthomas/injector
 
