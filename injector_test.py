@@ -53,17 +53,15 @@ if HAVE_ANNOTATED:
     from injector import Inject, NoInject
 
 
-def prepare_basic_injection():
-    class B:
-        pass
+class EmptyClass:
+    pass
 
-    class A:
-        @inject
-        def __init__(self, b: B):
-            """Construct a new A."""
-            self.b = b
 
-    return A, B
+class DependsOnEmptyClass:
+    @inject
+    def __init__(self, b: EmptyClass):
+        """Construct a new DependsOnEmptyClass."""
+        self.b = b
 
 
 def prepare_nested_injectors():
@@ -130,11 +128,9 @@ def test_scopes_are_only_bound_to_root_injector():
 
 
 def test_get_default_injected_instances():
-    A, B = prepare_basic_injection()
-
     def configure(binder):
-        binder.bind(A)
-        binder.bind(B)
+        binder.bind(DependsOnEmptyClass)
+        binder.bind(EmptyClass)
 
     injector = Injector(configure)
     assert injector.get(Injector) is injector
@@ -142,15 +138,13 @@ def test_get_default_injected_instances():
 
 
 def test_instantiate_injected_method():
-    A, _ = prepare_basic_injection()
-    a = A('Bob')
+    a = DependsOnEmptyClass('Bob')
     assert a.b == 'Bob'
 
 
 def test_method_decorator_is_wrapped():
-    A, _ = prepare_basic_injection()
-    assert A.__init__.__doc__ == 'Construct a new A.'
-    assert A.__init__.__name__ == '__init__'
+    assert DependsOnEmptyClass.__init__.__doc__ == 'Construct a new DependsOnEmptyClass.'
+    assert DependsOnEmptyClass.__init__.__name__ == '__init__'
 
 
 def test_decorator_works_for_function_with_no_args():
@@ -178,121 +172,104 @@ def test_providers_arent_called_for_dependencies_that_are_already_provided():
 
 
 def test_inject_direct():
-    A, B = prepare_basic_injection()
-
     def configure(binder):
-        binder.bind(A)
-        binder.bind(B)
+        binder.bind(DependsOnEmptyClass)
+        binder.bind(EmptyClass)
 
     injector = Injector(configure)
-    a = injector.get(A)
-    assert isinstance(a, A)
-    assert isinstance(a.b, B)
+    a = injector.get(DependsOnEmptyClass)
+    assert isinstance(a, DependsOnEmptyClass)
+    assert isinstance(a.b, EmptyClass)
 
 
 def test_configure_multiple_modules():
-    A, B = prepare_basic_injection()
-
     def configure_a(binder):
-        binder.bind(A)
+        binder.bind(DependsOnEmptyClass)
 
     def configure_b(binder):
-        binder.bind(B)
+        binder.bind(EmptyClass)
 
     injector = Injector([configure_a, configure_b])
-    a = injector.get(A)
-    assert isinstance(a, A)
-    assert isinstance(a.b, B)
+    a = injector.get(DependsOnEmptyClass)
+    assert isinstance(a, DependsOnEmptyClass)
+    assert isinstance(a.b, EmptyClass)
 
 
 def test_inject_with_missing_dependency():
-    A, _ = prepare_basic_injection()
-
     def configure(binder):
-        binder.bind(A)
+        binder.bind(DependsOnEmptyClass)
 
     injector = Injector(configure, auto_bind=False)
     with pytest.raises(UnsatisfiedRequirement):
-        injector.get(A)
+        injector.get(EmptyClass)
 
 
 def test_inject_named_interface():
-    class B:
-        pass
-
     class A:
         @inject
-        def __init__(self, b: B):
+        def __init__(self, b: EmptyClass):
             self.b = b
 
     def configure(binder):
         binder.bind(A)
-        binder.bind(B)
+        binder.bind(EmptyClass)
 
     injector = Injector(configure)
     a = injector.get(A)
     assert isinstance(a, A)
-    assert isinstance(a.b, B)
+    assert isinstance(a.b, EmptyClass)
 
 
-def prepare_transitive_injection():
-    class C:
-        pass
+class TransitiveC:
+    pass
 
-    class B:
-        @inject
-        def __init__(self, c: C):
-            self.c = c
 
-    class A:
-        @inject
-        def __init__(self, b: B):
-            self.b = b
+class TransitiveB:
+    @inject
+    def __init__(self, c: TransitiveC):
+        self.c = c
 
-    return A, B, C
+
+class TransitiveA:
+    @inject
+    def __init__(self, b: TransitiveB):
+        self.b = b
 
 
 def test_transitive_injection():
-    A, B, C = prepare_transitive_injection()
-
     def configure(binder):
-        binder.bind(A)
-        binder.bind(B)
-        binder.bind(C)
+        binder.bind(TransitiveA)
+        binder.bind(TransitiveB)
+        binder.bind(TransitiveC)
 
     injector = Injector(configure)
-    a = injector.get(A)
-    assert isinstance(a, A)
-    assert isinstance(a.b, B)
-    assert isinstance(a.b.c, C)
+    a = injector.get(TransitiveA)
+    assert isinstance(a, TransitiveA)
+    assert isinstance(a.b, TransitiveB)
+    assert isinstance(a.b.c, TransitiveC)
 
 
 def test_transitive_injection_with_missing_dependency():
-    A, B, _ = prepare_transitive_injection()
-
     def configure(binder):
-        binder.bind(A)
-        binder.bind(B)
+        binder.bind(TransitiveA)
+        binder.bind(TransitiveB)
 
     injector = Injector(configure, auto_bind=False)
     with pytest.raises(UnsatisfiedRequirement):
-        injector.get(A)
+        injector.get(TransitiveA)
     with pytest.raises(UnsatisfiedRequirement):
-        injector.get(B)
+        injector.get(TransitiveB)
 
 
 def test_inject_singleton():
-    class B:
-        pass
-
     class A:
         @inject
-        def __init__(self, b: B):
+        def __init__(self, b: EmptyClass):
             self.b = b
 
     def configure(binder):
         binder.bind(A)
-        binder.bind(B, scope=SingletonScope)
+        binder.bind(EmptyClass, scope=SingletonScope)
 
     injector1 = Injector(configure)
     a1 = injector1.get(A)
@@ -300,19 +277,20 @@ def test_inject_singleton():
     assert a1.b is a2.b
 
 
-def test_inject_decorated_singleton_class():
-    @singleton
-    class B:
-        pass
+@singleton
+class SingletonB:
+    pass
 
+
+def test_inject_decorated_singleton_class():
     class A:
         @inject
-        def __init__(self, b: B):
+        def __init__(self, b: SingletonB):
             self.b = b
 
     def configure(binder):
         binder.bind(A)
-        binder.bind(B)
+        binder.bind(SingletonB)
 
     injector1 = Injector(configure)
     a1 = injector1.get(A)
@@ -348,97 +326,105 @@ def test_threadlocal():
     assert a2 is not a3[0] and a3[0] is not None
 
 
-def test_injecting_interface_implementation():
-    class Interface:
-        pass
+class Interface2:
+    pass
 
+
+def test_injecting_interface_implementation():
     class Implementation:
         pass
 
     class A:
         @inject
-        def __init__(self, i: Interface):
+        def __init__(self, i: Interface2):
             self.i = i
 
     def configure(binder):
         binder.bind(A)
-        binder.bind(Interface, to=Implementation)
+        binder.bind(Interface2, to=Implementation)
 
     injector = Injector(configure)
     a = injector.get(A)
     assert isinstance(a.i, Implementation)
 
 
+class CyclicInterface:
+    pass
+
+
+class CyclicA:
+    @inject
+    def __init__(self, i: CyclicInterface):
+        self.i = i
+
+
+class CyclicB:
+    @inject
+    def __init__(self, a: CyclicA):
+        self.a = a
+
+
 def test_cyclic_dependencies():
-    class Interface:
-        pass
-
-    class A:
-        @inject
-        def __init__(self, i: Interface):
-            self.i = i
-
-    class B:
-        @inject
-        def __init__(self, a: A):
-            self.a = a
-
     def configure(binder):
-        binder.bind(Interface, to=B)
-        binder.bind(A)
+        binder.bind(CyclicInterface, to=CyclicB)
+        binder.bind(CyclicA)
 
     injector = Injector(configure)
     with pytest.raises(CircularDependency):
-        injector.get(A)
+        injector.get(CyclicA)
+
+
+class CyclicInterface2:
+    pass
+
+
+class CyclicA2:
+    @inject
+    def __init__(self, i: CyclicInterface2):
+        self.i = i
+
+
+class CyclicB2:
+    @inject
+    def __init__(self, a_builder: AssistedBuilder[CyclicA2]):
+        self.a = a_builder.build(i=self)
 
 
 def test_dependency_cycle_can_be_worked_broken_by_assisted_building():
-    class Interface:
-        pass
-
-    class A:
-        @inject
-        def __init__(self, i: Interface):
-            self.i = i
-
-    class B:
-        @inject
-        def __init__(self, a_builder: AssistedBuilder[A]):
-            self.a = a_builder.build(i=self)
-
     def configure(binder):
-        binder.bind(Interface, to=B)
-        binder.bind(A)
+        binder.bind(CyclicInterface2, to=CyclicB2)
+        binder.bind(CyclicA2)
 
     injector = Injector(configure)
 
     # Previously it'd detect a circular dependency here:
-    # 1. Constructing A requires Interface (bound to B)
-    # 2. Constructing B requires assisted build of A
-    # 3. Constructing A triggers circular dependency check
-    assert isinstance(injector.get(A), A)
+    # 1. Constructing CyclicA2 requires CyclicInterface2 (bound to CyclicB2)
+    # 2. Constructing CyclicB2 requires assisted build of CyclicA2
+    # 3. Constructing CyclicA2 triggers circular dependency check
+    assert isinstance(injector.get(CyclicA2), CyclicA2)
+
+
+class Interface5:
+    constructed = False
+
+    def __init__(self):
+        Interface5.constructed = True
 
 
 def test_that_injection_is_lazy():
-    class Interface:
-        constructed = False
-
-        def __init__(self):
-            Interface.constructed = True
-
     class A:
         @inject
-        def __init__(self, i: Interface):
+        def __init__(self, i: Interface5):
             self.i = i
 
     def configure(binder):
-        binder.bind(Interface)
+        binder.bind(Interface5)
         binder.bind(A)
 
     injector = Injector(configure)
-    assert not (Interface.constructed)
+    assert not (Interface5.constructed)
     injector.get(A)
-    assert Interface.constructed
+    assert Interface5.constructed
 
 
 def test_module_provider():
@@ -482,10 +468,11 @@ def test_inject_and_provide_coexist_happily():
     assert Injector(MyModule()).get(str) == 'Bob is 25 and weighs 50.0kg'
 
 
-def test_multibind():
-    Names = NewType('Names', List[str])
-    Passwords = NewType('Ages', Dict[str, str])
+Names = NewType('Names', List[str])
+Passwords = NewType('Ages', Dict[str, str])
 
+
+def test_multibind():
     # First let's have some explicit multibindings
     def configure(binder):
         binder.multibind(List[str], to=['not a name'])
@@ -597,45 +584,51 @@ def test_auto_bind_with_newtype():
     assert isinstance(injector.get(AliasOfA), A)
 
 
+class Request:
+    pass
+
+
+class RequestScope(Scope):
+    def configure(self):
+        self.context = None
+
+    @contextmanager
+    def __call__(self, request):
+        assert self.context is None
+        self.context = {}
+        binder = self.injector.get(Binder)
+        binder.bind(Request, to=request, scope=RequestScope)
+        yield
+        self.context = None
+
+    def get(self, key, provider):
+        if self.context is None:
+            raise UnsatisfiedRequirement(None, key)
+        try:
+            return self.context[key]
+        except KeyError:
+            provider = InstanceProvider(provider.get(self.injector))
+            self.context[key] = provider
+            return provider
+
+
+request = ScopeDecorator(RequestScope)
+
+
+@request
+class Handler:
+    def __init__(self, request):
+        self.request = request
+
+
+class RequestModule(Module):
+    @provider
+    @inject
+    def handler(self, request: Request) -> Handler:
+        return Handler(request)
+
+
 def test_custom_scope():
-    class RequestScope(Scope):
-        def configure(self):
-            self.context = None
-
-        @contextmanager
-        def __call__(self, request):
-            assert self.context is None
-            self.context = {}
-            binder = self.injector.get(Binder)
-            binder.bind(Request, to=request, scope=RequestScope)
-            yield
-            self.context = None
-
-        def get(self, key, provider):
-            if self.context is None:
-                raise UnsatisfiedRequirement(None, key)
-            try:
-                return self.context[key]
-            except KeyError:
-                provider = InstanceProvider(provider.get(self.injector))
-                self.context[key] = provider
-                return provider
-
-    request = ScopeDecorator(RequestScope)
-
-    class Request:
-        pass
-
-    @request
-    class Handler:
-        def __init__(self, request):
-            self.request = request
-
-    class RequestModule(Module):
-        @provider
-        @inject
-        def handler(self, request: Request) -> Handler:
-            return Handler(request)
 
     injector = Injector([RequestModule()], auto_bind=False)
 
@@ -716,16 +709,18 @@ def test_binder_provider_for_type_with_metaclass():
     assert isinstance(binder.provider_for(A, None).get(injector), A)
 
 
+class ClassA:
+    def __init__(self, parameter):
+        pass
+
+
+class ClassB:
+    @inject
+    def __init__(self, a: ClassA):
+        pass
+
+
 def test_injecting_undecorated_class_with_missing_dependencies_raises_the_right_error():
-    class ClassA:
-        def __init__(self, parameter):
-            pass
-
-    class ClassB:
-        @inject
-        def __init__(self, a: ClassA):
-            pass
-
     injector = Injector()
     try:
         injector.get(ClassB)
@@ -773,10 +768,11 @@ def test_assisted_builder_works_when_injected():
     assert (x.obj.a, x.obj.b) == (str(), 234)
 
 
-def test_assisted_builder_uses_bindings():
-    class Interface:
-        b = 0
+class Interface:
+    b = 0
 
+
+def test_assisted_builder_uses_bindings():
     def configure(binder):
         binder.bind(Interface, to=NeedsAssistance)
 
@@ -884,10 +880,11 @@ def test_injecting_into_method_of_object_that_is_falseish_works():
     injector.get(X)
 
 
-def test_callable_provider_injection():
-    Name = NewType("Name", str)
-    Message = NewType("Message", str)
+Name = NewType("Name", str)
+Message = NewType("Message", str)
 
+
+def test_callable_provider_injection():
     @inject
     def create_message(name: Name):
         return "Hello, " + name
@@ -991,47 +988,48 @@ def test_binding_an_instance_regression():
     assert injector.get(bytes) == text
 
 
+class PartialB:
+    @inject
+    def __init__(self, a: EmptyClass, b: str):
+        self.a = a
+        self.b = b
+
+
 def test_class_assisted_builder_of_partially_injected_class_old():
-    class A:
-        pass
-
-    class B:
-        @inject
-        def __init__(self, a: A, b: str):
-            self.a = a
-            self.b = b
-
     class C:
         @inject
-        def __init__(self, a: A, builder: ClassAssistedBuilder[B]):
+        def __init__(self, a: EmptyClass, builder: ClassAssistedBuilder[PartialB]):
             self.a = a
             self.b = builder.build(b='C')
 
     c = Injector().get(C)
     assert isinstance(c, C)
-    assert isinstance(c.b, B)
-    assert isinstance(c.b.a, A)
+    assert isinstance(c.b, PartialB)
+    assert isinstance(c.b.a, EmptyClass)
+
+
+class ImplicitA:
+    pass
+
+
+class ImplicitB:
+    @inject
+    def __init__(self, a: ImplicitA):
+        self.a = a
+
+
+class ImplicitC:
+    @inject
+    def __init__(self, b: ImplicitB):
+        self.b = b
 
 
 def test_implicit_injection_for_python3():
-    class A:
-        pass
-
-    class B:
-        @inject
-        def __init__(self, a: A):
-            self.a = a
-
-    class C:
-        @inject
-        def __init__(self, b: B):
-            self.b = b
-
     injector = Injector()
-    c = injector.get(C)
-    assert isinstance(c, C)
-    assert isinstance(c.b, B)
-    assert isinstance(c.b.a, A)
+    c = injector.get(ImplicitC)
+    assert isinstance(c, ImplicitC)
+    assert isinstance(c.b, ImplicitB)
+    assert isinstance(c.b.a, ImplicitA)
 
 
 def test_annotation_based_injection_works_in_provider_methods():
@@ -1053,21 +1051,23 @@ def test_annotation_based_injection_works_in_provider_methods():
     assert injector.get(object) is injector.get(object)
 
 
+class Fetcher:
+    def fetch(self, user_id):
+        assert user_id == 333
+        return {'name': 'John'}
+
+
+class Processor:
+    @noninjectable('provider_id')
+    @inject
+    @noninjectable('user_id')
+    def __init__(self, fetcher: Fetcher, user_id: int, provider_id: str):
+        assert provider_id == 'not injected'
+        data = fetcher.fetch(user_id)
+        self.name = data['name']
+
+
 def test_assisted_building_is_supported():
-    class Fetcher:
-        def fetch(self, user_id):
-            assert user_id == 333
-            return {'name': 'John'}
-
-    class Processor:
-        @noninjectable('provider_id')
-        @inject
-        @noninjectable('user_id')
-        def __init__(self, fetcher: Fetcher, user_id: int, provider_id: str):
-            assert provider_id == 'not injected'
-            data = fetcher.fetch(user_id)
-            self.name = data['name']
-
     def configure(binder):
         binder.bind(int, to=897)
         binder.bind(str, to='injected')
@@ -1294,26 +1294,24 @@ def test_explicitly_passed_parameters_override_injectable_values():
         del X
 
 
+class AssistedB:
+    @inject
+    def __init__(self, a: EmptyClass, b: str):
+        self.a = a
+        self.b = b
+
+
 def test_class_assisted_builder_of_partially_injected_class():
-    class A:
-        pass
-
-    class B:
-        @inject
-        def __init__(self, a: A, b: str):
-            self.a = a
-            self.b = b
-
     class C:
         @inject
-        def __init__(self, a: A, builder: ClassAssistedBuilder[B]):
+        def __init__(self, a: EmptyClass, builder: ClassAssistedBuilder[AssistedB]):
             self.a = a
             self.b = builder.build(b='C')
 
     c = Injector().get(C)
     assert isinstance(c, C)
-    assert isinstance(c.b, B)
-    assert isinstance(c.b.a, A)
+    assert isinstance(c.b, AssistedB)
+    assert isinstance(c.b.a, EmptyClass)
 
 
 # The test taken from Alec Thomas' pull request: https://github.com/alecthomas/injector/pull/73
@@ -1380,18 +1378,15 @@ def test_inject_decorator_does_not_break_manual_construction_of_pyqt_objects():
 
 
 def test_using_an_assisted_builder_with_a_provider_raises_an_injector_error():
-    class A:
-        pass
-
     class MyModule(Module):
         @provider
-        def provide_a(self, builder: AssistedBuilder[A]) -> A:
+        def provide_a(self, builder: AssistedBuilder[EmptyClass]) -> EmptyClass:
             return builder.build()
 
     injector = Injector(MyModule)
 
     with pytest.raises(Error):
-        injector.get(A)
+        injector.get(EmptyClass)
 
 
 def test_newtype_integration_works():
