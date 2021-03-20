@@ -74,6 +74,6 @@ Scopes can be retrieved from the injector, as with any other instance. They are 
     >>> injector.get(CustomScope) is injector.get(CustomScope)
     True
 
-Scopes have `configure` method that will be called once per each injector and can be used for any required initialization.
+Scopes have a `configure` method that will be called once per each injector and can be used for any required initialization.
 
 For scopes with a transient lifetime, such as those tied to HTTP requests, the usual solution is to use a thread or greenlet-local cache inside the scope. The scope is "entered" in some low-level code by calling a method on the scope instance that creates this cache. Once the request is complete, the scope is "left" and the cache cleared.
