@@ -68,6 +68,11 @@ The core values of Injector are:
   ```bash
   pip install injector
   ```
+* Conda-forge (installable, stable distributions): https://anaconda.org/conda-forge/injector. You can install it using conda:
+
+  ```bash
+  conda install -c conda-forge injector
+  ```
 
 * Documentation: https://injector.readthedocs.org
 * Change log: https://injector.readthedocs.io/en/latest/changelog.html
