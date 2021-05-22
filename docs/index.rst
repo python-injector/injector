@@ -52,7 +52,7 @@ The core values of Injector are:
 
     class MyClass:
         @inject
-        def __init__(t: SomeType):
+        def __init__(self, t: SomeType):
             # ...
 
     MyClass()
