@@ -11,7 +11,7 @@
 """Functional tests for the "Injector" dependency injection framework."""
 
 from contextlib import contextmanager
-from typing import Any, NewType
+from typing import Any, Generic, NewType
 import abc
 import sys
 import threading
@@ -29,7 +29,7 @@ from injector import (
     Scope,
     InstanceProvider,
     ClassProvider,
-    get_bindings,
+    T, get_bindings,
     inject,
     multiprovider,
     noninjectable,
@@ -1484,3 +1484,22 @@ def test_get_bindings():
             pass
 
         assert get_bindings(function8) == {}
+
+
+def test_inject_generic_class() -> None:
+    class GenericClass(Generic[T]):
+        pass
+
+    class InjectsGeneric:
+        @inject
+        def __init__(self, injected_generic: GenericClass[str]):
+            self.injected_generic = injected_generic
+
+    def bindings(binder: Binder) -> None:
+        binder.bind(GenericClass)
+
+    injector = Injector(bindings)
+    instance = injector.get(InjectsGeneric)
+
+    assert isinstance(instance, InjectsGeneric)
+    assert isinstance(instance.injected_generic, GenericClass)
