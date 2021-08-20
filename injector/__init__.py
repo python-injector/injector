@@ -77,6 +77,15 @@ else:
         return _get_type_hints(obj, globalns, localns)
 
 
+try:
+    from typing import _BaseGenericAlias as BaseGenericAlias  # type: ignore[attr-defined]
+except ImportError:  # pragma nocover
+
+    class BaseGenericAlias:  # type: ignore[no-redef]
+        __origin__ = None
+        pass
+
+
 __author__ = 'Alec Thomas <alec@swapoff.org>'
 __version__ = '0.18.4'
 __version_tag__ = ''
@@ -280,6 +289,18 @@ class ClassProvider(Provider):
 
     def get(self, injector: 'Injector') -> T:
         return injector.create_object(self._cls)
+
+
+class GenericClassProvider(Provider):
+    """Provides instances from a given generic class, created using an Injector."""
+
+    def __init__(self, generic_alias: BaseGenericAlias) -> None:
+        self._generic_alias = generic_alias
+
+    def get(self, injector: 'Injector') -> T:
+        instance: T = injector.create_object(self._generic_alias.__origin__)
+        instance.__orig_class__ = self._generic_alias  # type: ignore
+        return instance
 
 
 class CallableProvider(Provider):
@@ -635,7 +656,10 @@ class Binder:
             if to is not None:
                 return InstanceProvider(to)
             return ClassProvider(base_type)
-
+        elif isinstance(interface, BaseGenericAlias):
+            if to is not None:
+                return InstanceProvider(to)
+            return GenericClassProvider(base_type)
         else:
             raise UnknownProvider('couldn\'t determine provider for %r to %r' % (interface, to))
 
