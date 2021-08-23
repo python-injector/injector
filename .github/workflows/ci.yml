@@ -22,7 +22,7 @@ jobs:
     - name: Run tests
       run: |
         py.test -vv --cov=injector --cov-branch --cov-report html --cov-report term
-        if which mypy; then mypy injector ; fi
+        if which mypy; then mypy --show-error-codes injector ; fi
         if which black; then black --check . ; fi
     - name: Report coverage to Codecov
       uses: codecov/codecov-action@v1
