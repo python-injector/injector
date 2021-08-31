@@ -6,7 +6,6 @@ include COPYING
 include README.md
 include mypy.ini
 include pytest.ini
-include tox.ini
 recursive-include docs *.html
 recursive-include docs *.py
 recursive-include docs *.rst
