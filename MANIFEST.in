@@ -1,2 +1,12 @@
-include README.md
+include *.py
+include *.toml
+include *.txt
+include CHANGES
 include COPYING
+include README.md
+include mypy.ini
+include pytest.ini
+recursive-include docs *.html
+recursive-include docs *.py
+recursive-include docs *.rst
+recursive-include docs Makefile
