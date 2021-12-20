@@ -699,7 +699,7 @@ def _is_specialization(cls: type, generic_class: Any) -> bool:
 
 
 def _punch_through_alias(type_: Any) -> type:
-    if getattr(type_, '__qualname__', '') == 'NewType.<locals>.new_type':
+    if type(type_).__module__ == 'typing' and type(type_).__name__ == 'NewType':
         return type_.__supertype__
     else:
         return type_
