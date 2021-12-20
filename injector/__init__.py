@@ -33,6 +33,7 @@ from typing import (
     List,
     Optional,
     overload,
+    Set,
     Tuple,
     Type,
     TypeVar,
@@ -705,7 +706,7 @@ def _punch_through_alias(type_: Any) -> type:
         return type_
 
 
-def _get_origin(type_: type) -> type:
+def _get_origin(type_: type) -> Optional[type]:
     origin = getattr(type_, '__origin__', None)
     # Older typing behaves differently there and stores Dict and List as origin, we need to be flexible.
     if origin is List:
@@ -976,7 +977,9 @@ class Injector:
         try:
             self.call_with_injection(init, self_=instance, kwargs=additional_kwargs)
         except TypeError as e:
-            reraise(e, CallError(instance, instance.__init__.__func__, (), additional_kwargs, e, self._stack))
+            # Mypy says "Cannot access "__init__" directly"
+            init_function = instance.__init__.__func__  # type: ignore
+            reraise(e, CallError(instance, init_function, (), additional_kwargs, e, self._stack))
         return instance
 
     def call_with_injection(
@@ -1149,7 +1152,7 @@ def get_bindings(callable: Callable) -> Dict[str, type]:
         read_and_store_bindings(
             callable, _infer_injected_bindings(callable, only_explicit_bindings=look_for_explicit_bindings)
         )
-    noninjectables = getattr(callable, '__noninjectables__', set())
+    noninjectables: Set[str] = getattr(callable, '__noninjectables__', set())
     return {k: v for k, v in cast(Any, callable).__bindings__.items() if k not in noninjectables}
 
 
@@ -1394,7 +1397,7 @@ def noninjectable(*args: str) -> Callable[[CallableT], CallableT]:
             if arg not in argspec.args and arg not in argspec.kwonlyargs:
                 raise UnknownArgument('Unable to mark unknown argument %s ' 'as non-injectable.' % arg)
 
-        existing = getattr(function, '__noninjectables__', set())
+        existing: Set[str] = getattr(function, '__noninjectables__', set())
         merged = existing | set(args)
         cast(Any, function).__noninjectables__ = merged
         return function
