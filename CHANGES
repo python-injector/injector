@@ -1,6 +1,19 @@
 Injector Change Log
 ===================
 
+0.19.0
+------
+
+- Added the license to the source distribution, thanks to Joshua Adelman
+- Added Python 3.9 and 3.10 support, this includes fixing Python 3.10 compatibility, thanks to Torge Matthies
+- Improved the documentation, thanks to Takahiro Kojima
+- Improved the source distribution so that it can be used to build and install wheels, thanks to Janusz Skonieczny
+- Added requirements files for easier development, thanks to Greg Eremeev
+
+Backwards incompatible:
+
+- Removed Python 3.5 support
+
 0.18.4
 ------
 
