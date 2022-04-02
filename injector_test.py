@@ -11,7 +11,7 @@
 """Functional tests for the "Injector" dependency injection framework."""
 
 from contextlib import contextmanager
-from typing import Any, NewType
+from typing import Any, NewType, Optional
 import abc
 import sys
 import threading
@@ -1484,3 +1484,16 @@ def test_get_bindings():
             pass
 
         assert get_bindings(function8) == {}
+
+    # Default arguments to NoInject annotations should behave the same as noninjectable decorator w.r.t 'None'
+    @inject
+    @noninjectable('b')
+    def function9(self, a: int, b: Optional[str] = None):
+        pass
+
+    @inject
+    def function10(self, a: int, b: NoInject[Optional[str]] = None):
+        # b:s type is Union[NoInject[Union[str, None]], None]
+        pass
+
+    assert get_bindings(function9) == {'a': int} == get_bindings(function10)
