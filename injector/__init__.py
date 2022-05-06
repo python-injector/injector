@@ -651,8 +651,9 @@ class Binder:
 
     def get_binding(self, interface: type) -> Tuple[Binding, 'Binder']:
         is_scope = isinstance(interface, type) and issubclass(interface, Scope)
+        is_assisted_builder = _is_specialization(interface, AssistedBuilder)
         try:
-            return self._get_binding(interface, only_this_binder=is_scope)
+            return self._get_binding(interface, only_this_binder=is_scope or is_assisted_builder)
         except (KeyError, UnsatisfiedRequirement):
             if is_scope:
                 scope = interface
