@@ -369,12 +369,32 @@ class ListOfProviders(Provider, Generic[T]):
         return '%s(%r)' % (type(self).__name__, self._providers)
 
 
+@private
+class ClassListProvider(Provider[List[T]]):
+    """Provides a list of instances from a given class."""
+
+    def __init__(self, cls: Type[T]) -> None:
+        self._cls = cls
+
+    def get(self, injector: 'Injector') -> List[T]:
+        return [injector.create_object(self._cls)]
+
+
 class MultiBindProvider(ListOfProviders[List[T]]):
     """Used by :meth:`Binder.multibind` to flatten results of providers that
     return sequences."""
 
     def get(self, injector: 'Injector') -> List[T]:
         return [i for provider in self._providers for i in provider.get(injector)]
+
+
+class MultiBindClassProvider(MultiBindProvider):
+    """A provider for a list of instances from a list of classes."""
+
+    def __init__(self, classes: List[Type[T]]) -> None:
+        super().__init__()
+        for cls in classes:
+            self.append(ClassListProvider(cls))
 
 
 class MapBindProvider(ListOfProviders[Dict[str, T]]):

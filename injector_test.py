@@ -26,6 +26,7 @@ from injector import (
     Binder,
     CallError,
     Injector,
+    MultiBindClassProvider,
     Scope,
     InstanceProvider,
     ClassProvider,
@@ -473,6 +474,14 @@ Passwords = NewType('Ages', Dict[str, str])
 
 
 def test_multibind():
+    class A:
+        def print(self) -> str:
+            return 'A'
+
+    class B(A):
+        def print(self) -> str:
+            return 'B'
+
     # First let's have some explicit multibindings
     def configure(binder):
         binder.multibind(List[str], to=['not a name'])
@@ -483,6 +492,8 @@ def test_multibind():
         # To see that NewTypes are treated distinctly
         binder.multibind(Names, to=['Bob'])
         binder.multibind(Passwords, to={'Bob': 'password1'})
+        # To see that MultiBindClassProvider works for lists of types
+        binder.multibind(List[A], to=MultiBindClassProvider([A, B]))
 
     # Then @multiprovider-decorated Module methods
     class CustomModule(Module):
@@ -517,6 +528,8 @@ def test_multibind():
     assert injector.get(Dict[str, int]) == {'weight': 12, 'height': 33}
     assert injector.get(Names) == ['Bob', 'Alice', 'Clarice']
     assert injector.get(Passwords) == {'Bob': 'password1', 'Alice': 'aojrioeg3', 'Clarice': 'clarice30'}
+    assert injector.get(List[A])[0].print() == 'A'
+    assert injector.get(List[A])[1].print() == 'B'
 
 
 def test_regular_bind_and_provider_dont_work_with_multibind():
