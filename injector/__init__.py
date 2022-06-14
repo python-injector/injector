@@ -1148,10 +1148,33 @@ class _BindingNotYetAvailable(Exception):
     pass
 
 
+# See a comment in _infer_injected_bindings() for why this is useful.
+class _NoReturnAnnotationProxy:
+    def __init__(self, callable: Callable) -> None:
+        self.callable = callable
+
+    def __getattribute__(self, name: str) -> Any:
+        # get_type_hints() uses quite complex logic to determine the namespaces using which
+        # any forward references should be resolved. Instead of mirroring this logic here
+        # let's just take the easy way out and forward all attribute access to the original
+        # callable except for the annotations – we want to filter them.
+        callable = object.__getattribute__(self, 'callable')
+        if name == '__annotations__':
+            annotations = callable.__annotations__
+            return {name: value for (name, value) in annotations.items() if name != 'return'}
+        return getattr(callable, name)
+
+
 def _infer_injected_bindings(callable: Callable, only_explicit_bindings: bool) -> Dict[str, type]:
     spec = inspect.getfullargspec(callable)
+
     try:
-        bindings = get_type_hints(callable, include_extras=True)
+        # Return types don't matter for the purpose of dependency injection so instead of
+        # obtaining type hints of the callable directly let's wrap it in _NoReturnAnnotationProxy.
+        # The proxy removes the return type annotation (if present) from the annotations so that
+        # get_type_hints() works even if the return type is a forward reference that can't be
+        # resolved.
+        bindings = get_type_hints(cast(Callable, _NoReturnAnnotationProxy(callable)), include_extras=True)
     except NameError as e:
         raise _BindingNotYetAvailable(e)
 

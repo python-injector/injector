@@ -1507,3 +1507,12 @@ def test_get_bindings():
         pass
 
     assert get_bindings(function9) == {'a': int} == get_bindings(function10)
+
+    # If there's a return type annottion that contains an a forward reference that can't be
+    # resolved (for whatever reason) we don't want that to break things for us – return types
+    # don't matter for the purpose of dependency injection.
+    @inject
+    def function11(a: int) -> 'InvalidForwardReference':
+        pass
+
+    assert get_bindings(function11) == {'a': int}
