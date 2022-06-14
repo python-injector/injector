@@ -1200,34 +1200,6 @@ def test_forward_references_in_annotations_are_handled():
         del X
 
 
-def test_forward_references_in_annotations_are_handled():
-    # See https://www.python.org/dev/peps/pep-0484/#forward-references for details
-
-    class CustomModule(Module):
-        @provider
-        def provide_x(self) -> 'X':
-            return X('hello')
-
-    @inject
-    def fun(s: 'X') -> 'X':
-        return s
-
-    # The class needs to be module-global in order for the string -> object
-    # resolution mechanism to work. I could make it work with locals but it
-    # doesn't seem worth it.
-    global X
-
-    class X:
-        def __init__(self, message: str) -> None:
-            self.message = message
-
-    try:
-        injector = Injector(CustomModule)
-        assert injector.call_with_injection(fun).message == 'hello'
-    finally:
-        del X
-
-
 def test_more_useful_exception_is_raised_when_parameters_type_is_any():
     @inject
     def fun(a: Any) -> None:
