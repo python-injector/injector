@@ -11,7 +11,7 @@
 """Functional tests for the "Injector" dependency injection framework."""
 
 from contextlib import contextmanager
-from typing import Any, NewType
+from typing import Any, NewType, Optional
 import abc
 import sys
 import threading
@@ -1482,11 +1482,24 @@ def test_get_bindings():
 
     assert get_bindings(function8) == {}
 
+    # Default arguments to NoInject annotations should behave the same as noninjectable decorator w.r.t 'None'
+    @inject
+    @noninjectable('b')
+    def function9(self, a: int, b: Optional[str] = None):
+        pass
+
+    @inject
+    def function10(self, a: int, b: NoInject[Optional[str]] = None):
+        # b:s type is Union[NoInject[Union[str, None]], None]
+        pass
+
+    assert get_bindings(function9) == {'a': int} == get_bindings(function10)
+
     # If there's a return type annottion that contains an a forward reference that can't be
     # resolved (for whatever reason) we don't want that to break things for us – return types
     # don't matter for the purpose of dependency injection.
     @inject
-    def function9(a: int) -> 'InvalidForwardReference':
+    def function11(a: int) -> 'InvalidForwardReference':
         pass
 
-    assert get_bindings(function9) == {'a': int}
+    assert get_bindings(function11) == {'a': int}

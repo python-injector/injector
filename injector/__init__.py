@@ -1213,7 +1213,20 @@ def _infer_injected_bindings(callable: Callable, only_explicit_bindings: bool) -
             # mypy complains about this construct:
             #     error: The type alias is invalid in runtime context
             # See: https://github.com/python/mypy/issues/5354
-            bindings[k] = new_union  # type: ignore
+            union_metadata = {
+                metadata
+                for member in new_members
+                for metadata in getattr(member, '__metadata__', tuple())
+                if _is_specialization(member, Annotated)
+            }
+            if (
+                only_explicit_bindings
+                and _inject_marker not in union_metadata
+                or _noinject_marker in union_metadata
+            ):
+                del bindings[k]
+            else:
+                bindings[k] = new_union  # type: ignore
 
     return bindings
 
