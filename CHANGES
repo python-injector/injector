@@ -1,6 +1,18 @@
 Injector Change Log
 ===================
 
+0.20.0
+------
+
+- Fixed handling of Union combined with Annotated, thanks to Tobias Nilsson
+- Fixed AssitedBuilder/child Injector interaction, thanks to Erik Cederberg
+- Made get_bindings() and injections work even if a injectee's return type
+  annotation is a forward reference that can't be resolved
+
+Backwards incompatible:
+
+- Dropped Python 3.6 support
+
 0.19.0
 ------
 
