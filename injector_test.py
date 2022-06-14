@@ -805,6 +805,19 @@ def test_assisted_builder_injection_is_safe_to_use_with_multiple_injectors():
     assert (b1._injector, b2._injector) == (i1, i2)
 
 
+def test_assisted_builder_injection_is_safe_to_use_with_child_injectors():
+    class X:
+        @inject
+        def __init__(self, builder: AssistedBuilder[NeedsAssistance]):
+            self.builder = builder
+
+    i1 = Injector()
+    i2 = i1.create_child_injector()
+    b1 = i1.get(X).builder
+    b2 = i2.get(X).builder
+    assert (b1._injector, b2._injector) == (i1, i2)
+
+
 class TestThreadSafety:
     def setup(self):
         self.event = threading.Event()
