@@ -46,36 +46,18 @@ try:
 except ImportError:
     from typing_extensions import NoReturn
 
-HAVE_ANNOTATED = sys.version_info >= (3, 7, 0)
-
 # This is a messy, type-wise, because we not only have two potentially conflicting imports here
-# but we also define our own versions in the else block in case we operate on Python 3.6
-# which didn't get Annotated support in get_type_hints(). The easiest way to make mypy
-# happy here is to tell it the versions from typing_extensions are canonical. Since this
-# typing_extensions import is only for mypy it'll work even without typing_extensions actually
-# installed so all's good.
+# The easiest way to make mypy happy here is to tell it the versions from typing_extensions are
+# canonical. Since this typing_extensions import is only for mypy it'll work even without
+# typing_extensions actually installed so all's good.
 if TYPE_CHECKING:
     from typing_extensions import _AnnotatedAlias, Annotated, get_type_hints
-elif HAVE_ANNOTATED:
+else:
     # Ignoring errors here as typing_extensions stub doesn't know about those things yet
     try:
         from typing import _AnnotatedAlias, Annotated, get_type_hints
     except ImportError:
         from typing_extensions import _AnnotatedAlias, Annotated, get_type_hints
-else:
-
-    class Annotated:
-        pass
-
-    from typing import get_type_hints as _get_type_hints
-
-    def get_type_hints(
-        obj: Callable[..., Any],
-        globalns: Optional[Dict[str, Any]] = None,
-        localns: Optional[Dict[str, Any]] = None,
-        include_extras: bool = False,
-    ) -> Dict[str, Any]:
-        return _get_type_hints(obj, globalns, localns)
 
 
 __author__ = 'Alec Thomas <alec@swapoff.org>'
@@ -119,86 +101,85 @@ lock = threading.RLock()
 _inject_marker = object()
 _noinject_marker = object()
 
-if HAVE_ANNOTATED:
-    InjectT = TypeVar('InjectT')
-    Inject = Annotated[InjectT, _inject_marker]
-    """An experimental way to declare injectable dependencies utilizing a `PEP 593`_ implementation
-    in Python 3.9 and backported to Python 3.7+ in `typing_extensions`.
+InjectT = TypeVar('InjectT')
+Inject = Annotated[InjectT, _inject_marker]
+"""An experimental way to declare injectable dependencies utilizing a `PEP 593`_ implementation
+in Python 3.9 and backported to Python 3.7+ in `typing_extensions`.
 
-    Those two declarations are equivalent::
+Those two declarations are equivalent::
 
-        @inject
-        def fun(t: SomeType) -> None:
-            pass
+    @inject
+    def fun(t: SomeType) -> None:
+        pass
 
-        def fun(t: Inject[SomeType]) -> None:
-            pass
+    def fun(t: Inject[SomeType]) -> None:
+        pass
 
-    The advantage over using :func:`inject` is that if you have some noninjectable parameters
-    it may be easier to spot what are they. Those two are equivalent::
+The advantage over using :func:`inject` is that if you have some noninjectable parameters
+it may be easier to spot what are they. Those two are equivalent::
 
-        @inject
-        @noninjectable('s')
-        def fun(t: SomeType, s: SomeOtherType) -> None:
-            pass
+    @inject
+    @noninjectable('s')
+    def fun(t: SomeType, s: SomeOtherType) -> None:
+        pass
 
-        def fun(t: Inject[SomeType], s: SomeOtherType) -> None:
-            pass
+    def fun(t: Inject[SomeType], s: SomeOtherType) -> None:
+        pass
 
-    .. seealso::
+.. seealso::
 
-        Function :func:`get_bindings`
-            A way to inspect how various injection declarations interact with each other.
+    Function :func:`get_bindings`
+        A way to inspect how various injection declarations interact with each other.
 
-    .. versionadded:: 0.18.0
-    .. note:: Requires Python 3.7+.
-    .. note::
+.. versionadded:: 0.18.0
+.. note:: Requires Python 3.7+.
+.. note::
 
-        If you're using mypy you need the version 0.750 or newer to fully type-check code using this
-        construct.
+    If you're using mypy you need the version 0.750 or newer to fully type-check code using this
+    construct.
 
-    .. _PEP 593: https://www.python.org/dev/peps/pep-0593/
-    .. _typing_extensions: https://pypi.org/project/typing-extensions/
-    """
+.. _PEP 593: https://www.python.org/dev/peps/pep-0593/
+.. _typing_extensions: https://pypi.org/project/typing-extensions/
+"""
 
-    NoInject = Annotated[InjectT, _noinject_marker]
-    """An experimental way to declare noninjectable dependencies utilizing a `PEP 593`_ implementation
-    in Python 3.9 and backported to Python 3.7+ in `typing_extensions`.
+NoInject = Annotated[InjectT, _noinject_marker]
+"""An experimental way to declare noninjectable dependencies utilizing a `PEP 593`_ implementation
+in Python 3.9 and backported to Python 3.7+ in `typing_extensions`.
 
-    Since :func:`inject` declares all function's parameters to be injectable there needs to be a way
-    to opt out of it. This has been provided by :func:`noninjectable` but `noninjectable` suffers from
-    two issues:
+Since :func:`inject` declares all function's parameters to be injectable there needs to be a way
+to opt out of it. This has been provided by :func:`noninjectable` but `noninjectable` suffers from
+two issues:
 
-    * You need to repeat the parameter name
-    * The declaration may be relatively distance in space from the actual parameter declaration, thus
-      hindering readability
+* You need to repeat the parameter name
+* The declaration may be relatively distance in space from the actual parameter declaration, thus
+  hindering readability
 
-    `NoInject` solves both of those concerns, for example (those two declarations are equivalent)::
+`NoInject` solves both of those concerns, for example (those two declarations are equivalent)::
 
-        @inject
-        @noninjectable('b')
-        def fun(a: TypeA, b: TypeB) -> None:
-            pass
+    @inject
+    @noninjectable('b')
+    def fun(a: TypeA, b: TypeB) -> None:
+        pass
 
-        @inject
-        def fun(a: TypeA, b: NoInject[TypeB]) -> None:
-            pass
+    @inject
+    def fun(a: TypeA, b: NoInject[TypeB]) -> None:
+        pass
 
-    .. seealso::
+.. seealso::
 
-        Function :func:`get_bindings`
-            A way to inspect how various injection declarations interact with each other.
+    Function :func:`get_bindings`
+        A way to inspect how various injection declarations interact with each other.
 
-    .. versionadded:: 0.18.0
-    .. note:: Requires Python 3.7+.
-    .. note::
+.. versionadded:: 0.18.0
+.. note:: Requires Python 3.7+.
+.. note::
 
-        If you're using mypy you need the version 0.750 or newer to fully type-check code using this
-        construct.
+    If you're using mypy you need the version 0.750 or newer to fully type-check code using this
+    construct.
 
-    .. _PEP 593: https://www.python.org/dev/peps/pep-0593/
-    .. _typing_extensions: https://pypi.org/project/typing-extensions/
-    """
+.. _PEP 593: https://www.python.org/dev/peps/pep-0593/
+.. _typing_extensions: https://pypi.org/project/typing-extensions/
+"""
 
 
 def reraise(original: Exception, exception: Exception, maximum_frames: int = 1) -> NoReturn:
@@ -683,7 +664,7 @@ def _is_specialization(cls: type, generic_class: Any) -> bool:
     # We need to special-case Annotated as its __origin__ behaves differently than
     # other typing generic classes. See https://github.com/python/typing/pull/635
     # for some details.
-    if HAVE_ANNOTATED and generic_class is Annotated and isinstance(cls, _AnnotatedAlias):
+    if generic_class is Annotated and isinstance(cls, _AnnotatedAlias):
         return True
 
     if not hasattr(cls, '__origin__'):
