@@ -1200,6 +1200,34 @@ def test_forward_references_in_annotations_are_handled():
         del X
 
 
+def test_forward_references_in_annotations_are_handled():
+    # See https://www.python.org/dev/peps/pep-0484/#forward-references for details
+
+    class CustomModule(Module):
+        @provider
+        def provide_x(self) -> 'X':
+            return X('hello')
+
+    @inject
+    def fun(s: 'X') -> 'X':
+        return s
+
+    # The class needs to be module-global in order for the string -> object
+    # resolution mechanism to work. I could make it work with locals but it
+    # doesn't seem worth it.
+    global X
+
+    class X:
+        def __init__(self, message: str) -> None:
+            self.message = message
+
+    try:
+        injector = Injector(CustomModule)
+        assert injector.call_with_injection(fun).message == 'hello'
+    finally:
+        del X
+
+
 def test_more_useful_exception_is_raised_when_parameters_type_is_any():
     @inject
     def fun(a: Any) -> None:
@@ -1481,3 +1509,12 @@ def test_get_bindings():
         pass
 
     assert get_bindings(function8) == {}
+
+    # If there's a return type annottion that contains an a forward reference that can't be
+    # resolved (for whatever reason) we don't want that to break things for us – return types
+    # don't matter for the purpose of dependency injection.
+    @inject
+    def function9(a: int) -> 'InvalidForwardReference':
+        pass
+
+    assert get_bindings(function9) == {'a': int}
