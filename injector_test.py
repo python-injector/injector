@@ -25,7 +25,9 @@ import pytest
 from injector import (
     Binder,
     CallError,
+    Inject,
     Injector,
+    NoInject,
     Scope,
     InstanceProvider,
     ClassProvider,
@@ -46,11 +48,7 @@ from injector import (
     ClassAssistedBuilder,
     Error,
     UnknownArgument,
-    HAVE_ANNOTATED,
 )
-
-if HAVE_ANNOTATED:
-    from injector import Inject, NoInject
 
 
 class EmptyClass:
@@ -1449,38 +1447,37 @@ def test_get_bindings():
 
     assert get_bindings(function3b) == {'a': int}
 
-    if HAVE_ANNOTATED:
-        # The simple case of no @inject but injection requested with Inject[...]
-        def function4(a: Inject[int], b: str) -> None:
-            pass
+    # The simple case of no @inject but injection requested with Inject[...]
+    def function4(a: Inject[int], b: str) -> None:
+        pass
 
-        assert get_bindings(function4) == {'a': int}
+    assert get_bindings(function4) == {'a': int}
 
-        # Using @inject with Inject is redundant but it should not break anything
-        @inject
-        def function5(a: Inject[int], b: str) -> None:
-            pass
+    # Using @inject with Inject is redundant but it should not break anything
+    @inject
+    def function5(a: Inject[int], b: str) -> None:
+        pass
 
-        assert get_bindings(function5) == {'a': int, 'b': str}
+    assert get_bindings(function5) == {'a': int, 'b': str}
 
-        # We need to be able to exclude a parameter from injection with NoInject
-        @inject
-        def function6(a: int, b: NoInject[str]) -> None:
-            pass
+    # We need to be able to exclude a parameter from injection with NoInject
+    @inject
+    def function6(a: int, b: NoInject[str]) -> None:
+        pass
 
-        assert get_bindings(function6) == {'a': int}
+    assert get_bindings(function6) == {'a': int}
 
-        # The presence of NoInject should not trigger anything on its own
-        def function7(a: int, b: NoInject[str]) -> None:
-            pass
+    # The presence of NoInject should not trigger anything on its own
+    def function7(a: int, b: NoInject[str]) -> None:
+        pass
 
-        assert get_bindings(function7) == {}
+    assert get_bindings(function7) == {}
 
-        # There was a bug where in case of multiple NoInject-decorated parameters only the first one was
-        # actually made noninjectable and we tried to inject something we couldn't possibly provide
-        # into the second one.
-        @inject
-        def function8(a: NoInject[int], b: NoInject[int]) -> None:
-            pass
+    # There was a bug where in case of multiple NoInject-decorated parameters only the first one was
+    # actually made noninjectable and we tried to inject something we couldn't possibly provide
+    # into the second one.
+    @inject
+    def function8(a: NoInject[int], b: NoInject[int]) -> None:
+        pass
 
-        assert get_bindings(function8) == {}
+    assert get_bindings(function8) == {}
