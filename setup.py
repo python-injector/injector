@@ -49,7 +49,7 @@ requirements_dev = list(obtain_requirements('requirements-dev.txt'))
 try:
     import pypandoc
 
-    long_description = pypandoc.convert('README.md', 'rst')
+    long_description = pypandoc.convert_file('README.md', 'rst')
 except ImportError:
     warnings.warn('Could not locate pandoc, using Markdown long_description.', ImportWarning)
     with open('README.md') as f:
