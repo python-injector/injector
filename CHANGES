@@ -1,6 +1,12 @@
 Injector Change Log
 ===================
 
+0.20.1
+------
+
+- Added support for PEP 604 union types (Python 3.10+), thanks to David Pärsson 
+- Fixed building with pypandoc 1.8+, thanks to Søren Fuglede Jørgensen
+
 0.20.0
 ------
 
