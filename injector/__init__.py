@@ -1166,6 +1166,10 @@ class _NoReturnAnnotationProxy:
 
 
 def _infer_injected_bindings(callable: Callable, only_explicit_bindings: bool) -> Dict[str, type]:
+    def _is_new_union_type(instance: Any) -> bool:
+        new_union_type = getattr(types, 'UnionType', None)
+        return new_union_type is not None and isinstance(instance, new_union_type)
+
     spec = inspect.getfullargspec(callable)
 
     try:
@@ -1204,7 +1208,7 @@ def _infer_injected_bindings(callable: Callable, only_explicit_bindings: bool) -
 
         if only_explicit_bindings and _inject_marker not in metadata or _noinject_marker in metadata:
             del bindings[k]
-        elif _is_specialization(v, Union):
+        elif _is_specialization(v, Union) or _is_new_union_type(v):
             # We don't treat Optional parameters in any special way at the moment.
             union_members = v.__args__
             new_members = tuple(set(union_members) - {type(None)})
