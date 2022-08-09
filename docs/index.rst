@@ -50,6 +50,8 @@ The core values of Injector are:
   a different configuration and each with different objects in different scopes. Code like this
   won't work for this very reason::
 
+    # This will NOT work:
+
     class MyClass:
         @inject
         def __init__(self, t: SomeType):
