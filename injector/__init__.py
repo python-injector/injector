@@ -61,7 +61,7 @@ else:
 
 
 __author__ = 'Alec Thomas <alec@swapoff.org>'
-__version__ = '0.20.0'
+__version__ = '0.20.1'
 __version_tag__ = ''
 
 log = logging.getLogger('injector')
@@ -254,7 +254,7 @@ class Provider(Generic[T]):
         raise NotImplementedError  # pragma: no cover
 
 
-class ClassProvider(Provider):
+class ClassProvider(Provider, Generic[T]):
     """Provides instances from a given class, created using an Injector."""
 
     def __init__(self, cls: Type[T]) -> None:
@@ -264,7 +264,7 @@ class ClassProvider(Provider):
         return injector.create_object(self._cls)
 
 
-class CallableProvider(Provider):
+class CallableProvider(Provider, Generic[T]):
     """Provides something using a callable.
 
     The callable is called every time new value is requested from the provider.
@@ -305,7 +305,7 @@ class CallableProvider(Provider):
         return '%s(%r)' % (type(self).__name__, self._callable)
 
 
-class InstanceProvider(Provider):
+class InstanceProvider(Provider, Generic[T]):
     """Provide a specific instance.
 
     ::
@@ -392,7 +392,9 @@ class Binder:
     _bindings: Dict[type, Binding]
 
     @private
-    def __init__(self, injector: 'Injector', auto_bind: bool = True, parent: 'Binder' = None) -> None:
+    def __init__(
+        self, injector: 'Injector', auto_bind: bool = True, parent: Optional['Binder'] = None
+    ) -> None:
         """Create a new Binder.
 
         :param injector: Injector we are binding for.
@@ -460,7 +462,7 @@ class Binder:
         self,
         interface: Type[List[T]],
         to: Union[List[T], Callable[..., List[T]], Provider[List[T]]],
-        scope: Union[Type['Scope'], 'ScopeDecorator'] = None,
+        scope: Union[Type['Scope'], 'ScopeDecorator', None] = None,
     ) -> None:  # pragma: no cover
         pass
 
@@ -469,12 +471,12 @@ class Binder:
         self,
         interface: Type[Dict[K, V]],
         to: Union[Dict[K, V], Callable[..., Dict[K, V]], Provider[Dict[K, V]]],
-        scope: Union[Type['Scope'], 'ScopeDecorator'] = None,
+        scope: Union[Type['Scope'], 'ScopeDecorator', None] = None,
     ) -> None:  # pragma: no cover
         pass
 
     def multibind(
-        self, interface: type, to: Any, scope: Union['ScopeDecorator', Type['Scope']] = None
+        self, interface: type, to: Any, scope: Union['ScopeDecorator', Type['Scope'], None] = None
     ) -> None:
         """Creates or extends a multi-binding.
 
@@ -555,7 +557,7 @@ class Binder:
         instance(self)
 
     def create_binding(
-        self, interface: type, to: Any = None, scope: Union['ScopeDecorator', Type['Scope']] = None
+        self, interface: type, to: Any = None, scope: Union['ScopeDecorator', Type['Scope'], None] = None
     ) -> Binding:
         provider = self.provider_for(interface, to)
         scope = scope or getattr(to or interface, '__scope__', NoScope)
@@ -864,9 +866,9 @@ class Injector:
 
     def __init__(
         self,
-        modules: Union[_InstallableModuleType, Iterable[_InstallableModuleType]] = None,
+        modules: Union[_InstallableModuleType, Iterable[_InstallableModuleType], None] = None,
         auto_bind: bool = True,
-        parent: 'Injector' = None,
+        parent: Optional['Injector'] = None,
     ) -> None:
         # Stack of keys currently being injected. Used to detect circular
         # dependencies.
@@ -896,7 +898,7 @@ class Injector:
     def _log_prefix(self) -> str:
         return '>' * (len(self._stack) + 1) + ' '
 
-    def get(self, interface: Type[T], scope: Union[ScopeDecorator, Type[Scope]] = None) -> T:
+    def get(self, interface: Type[T], scope: Union[ScopeDecorator, Type[Scope], None] = None) -> T:
         """Get an instance of the given interface.
 
         .. note::
@@ -1166,6 +1168,10 @@ class _NoReturnAnnotationProxy:
 
 
 def _infer_injected_bindings(callable: Callable, only_explicit_bindings: bool) -> Dict[str, type]:
+    def _is_new_union_type(instance: Any) -> bool:
+        new_union_type = getattr(types, 'UnionType', None)
+        return new_union_type is not None and isinstance(instance, new_union_type)
+
     spec = inspect.getfullargspec(callable)
 
     try:
@@ -1204,7 +1210,7 @@ def _infer_injected_bindings(callable: Callable, only_explicit_bindings: bool) -
 
         if only_explicit_bindings and _inject_marker not in metadata or _noinject_marker in metadata:
             del bindings[k]
-        elif _is_specialization(v, Union):
+        elif _is_specialization(v, Union) or _is_new_union_type(v):
             # We don't treat Optional parameters in any special way at the moment.
             union_members = v.__args__
             new_members = tuple(set(union_members) - {type(None)})

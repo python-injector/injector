@@ -11,7 +11,7 @@
 """Functional tests for the "Injector" dependency injection framework."""
 
 from contextlib import contextmanager
-from typing import Any, NewType, Optional
+from typing import Any, NewType, Optional, Union
 import abc
 import sys
 import threading
@@ -1516,3 +1516,19 @@ def test_get_bindings():
         pass
 
     assert get_bindings(function11) == {'a': int}
+
+
+# Tests https://github.com/alecthomas/injector/issues/202
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="Requires Python 3.10+")
+def test_get_bindings_for_pep_604():
+    @inject
+    def function1(a: int | None) -> None:
+        pass
+
+    assert get_bindings(function1) == {'a': int}
+
+    @inject
+    def function1(a: int | str) -> None:
+        pass
+
+    assert get_bindings(function1) == {'a': Union[int, str]}
