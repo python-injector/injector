@@ -392,7 +392,9 @@ class Binder:
     _bindings: Dict[type, Binding]
 
     @private
-    def __init__(self, injector: 'Injector', auto_bind: bool = True, parent: 'Binder' = None) -> None:
+    def __init__(
+        self, injector: 'Injector', auto_bind: bool = True, parent: Optional['Binder'] = None
+    ) -> None:
         """Create a new Binder.
 
         :param injector: Injector we are binding for.
@@ -460,7 +462,7 @@ class Binder:
         self,
         interface: Type[List[T]],
         to: Union[List[T], Callable[..., List[T]], Provider[List[T]]],
-        scope: Union[Type['Scope'], 'ScopeDecorator'] = None,
+        scope: Union[Type['Scope'], 'ScopeDecorator', None] = None,
     ) -> None:  # pragma: no cover
         pass
 
@@ -469,12 +471,12 @@ class Binder:
         self,
         interface: Type[Dict[K, V]],
         to: Union[Dict[K, V], Callable[..., Dict[K, V]], Provider[Dict[K, V]]],
-        scope: Union[Type['Scope'], 'ScopeDecorator'] = None,
+        scope: Union[Type['Scope'], 'ScopeDecorator', None] = None,
     ) -> None:  # pragma: no cover
         pass
 
     def multibind(
-        self, interface: type, to: Any, scope: Union['ScopeDecorator', Type['Scope']] = None
+        self, interface: type, to: Any, scope: Union['ScopeDecorator', Type['Scope'], None] = None
     ) -> None:
         """Creates or extends a multi-binding.
 
@@ -555,7 +557,7 @@ class Binder:
         instance(self)
 
     def create_binding(
-        self, interface: type, to: Any = None, scope: Union['ScopeDecorator', Type['Scope']] = None
+        self, interface: type, to: Any = None, scope: Union['ScopeDecorator', Type['Scope'], None] = None
     ) -> Binding:
         provider = self.provider_for(interface, to)
         scope = scope or getattr(to or interface, '__scope__', NoScope)
@@ -864,9 +866,9 @@ class Injector:
 
     def __init__(
         self,
-        modules: Union[_InstallableModuleType, Iterable[_InstallableModuleType]] = None,
+        modules: Union[_InstallableModuleType, Iterable[_InstallableModuleType], None] = None,
         auto_bind: bool = True,
-        parent: 'Injector' = None,
+        parent: Optional['Injector'] = None,
     ) -> None:
         # Stack of keys currently being injected. Used to detect circular
         # dependencies.
@@ -896,7 +898,7 @@ class Injector:
     def _log_prefix(self) -> str:
         return '>' * (len(self._stack) + 1) + ' '
 
-    def get(self, interface: Type[T], scope: Union[ScopeDecorator, Type[Scope]] = None) -> T:
+    def get(self, interface: Type[T], scope: Union[ScopeDecorator, Type[Scope], None] = None) -> T:
         """Get an instance of the given interface.
 
         .. note::
