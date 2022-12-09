@@ -254,7 +254,7 @@ class Provider(Generic[T]):
         raise NotImplementedError  # pragma: no cover
 
 
-class ClassProvider(Provider):
+class ClassProvider(Provider, Generic[T]):
     """Provides instances from a given class, created using an Injector."""
 
     def __init__(self, cls: Type[T]) -> None:
@@ -264,7 +264,7 @@ class ClassProvider(Provider):
         return injector.create_object(self._cls)
 
 
-class CallableProvider(Provider):
+class CallableProvider(Provider, Generic[T]):
     """Provides something using a callable.
 
     The callable is called every time new value is requested from the provider.
@@ -305,7 +305,7 @@ class CallableProvider(Provider):
         return '%s(%r)' % (type(self).__name__, self._callable)
 
 
-class InstanceProvider(Provider):
+class InstanceProvider(Provider, Generic[T]):
     """Provide a specific instance.
 
     ::
