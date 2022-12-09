@@ -5,6 +5,7 @@ build/
 htmlcov/
 *,cover
 .mypy_cache/
+/.dmypy.json
 .pytest_cache/
 coverage.xml
 /dist/
