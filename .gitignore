@@ -1,3 +1,8 @@
+/.*
+
+!/.gitignore
+!/.github
+
 .cache/
 __pycache__/
 docs/_build/
@@ -5,9 +10,7 @@ build/
 htmlcov/
 *,cover
 .mypy_cache/
-/.dmypy.json
 .pytest_cache/
 coverage.xml
 /dist/
 /injector.egg-info/
-/.coverage
