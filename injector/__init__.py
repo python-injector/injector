@@ -898,6 +898,7 @@ class Injector:
     def _log_prefix(self) -> str:
         return '>' * (len(self._stack) + 1) + ' '
 
+    @synchronized(lock)
     def get(self, interface: Type[T], scope: Union[ScopeDecorator, Type[Scope], None] = None) -> T:
         """Get an instance of the given interface.
 
