@@ -627,7 +627,6 @@ class RequestModule(Module):
 
 
 def test_custom_scope():
-
     injector = Injector([RequestModule()], auto_bind=False)
 
     with pytest.raises(UnsatisfiedRequirement):
