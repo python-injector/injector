@@ -943,7 +943,8 @@ class Injector:
         log.debug(
             '%sInjector.get(%r, scope=%r) using %r', self._log_prefix, interface, scope, binding.provider
         )
-        result = scope_instance.get(interface, binding.provider).get(self)
+        provider_instance = scope_instance.get(interface, binding.provider)
+        result = provider_instance.get(self)
         log.debug('%s -> %r', self._log_prefix, result)
         return result
 
