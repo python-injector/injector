@@ -24,6 +24,8 @@ A (redundant) example showing all three methods::
         def provide_thing(self) -> Thing:
             return Thing()
 
+If using hierarchies of injectors, classes decorated with `@singleton` will be created by and bound to the parent/ancestor injector closest to the root that can provide all of its dependencies.
+
 Implementing new Scopes
 ```````````````````````
 

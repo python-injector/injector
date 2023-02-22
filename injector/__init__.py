@@ -797,9 +797,24 @@ class SingletonScope(Scope):
         try:
             return self._context[key]
         except KeyError:
-            provider = InstanceProvider(provider.get(self.injector))
+            instance = self._get_instance(key, provider, self.injector)
+            provider = InstanceProvider(instance)
             self._context[key] = provider
             return provider
+
+    def _get_instance(self, key: Type[T], provider: Provider[T], injector: 'Injector') -> T:
+        if injector.parent and not injector.binder.has_explicit_binding_for(key):
+            try:
+                return self._get_instance_from_parent(key, provider, injector.parent)
+            except (CallError, UnsatisfiedRequirement):
+                pass
+        return provider.get(injector)
+
+    def _get_instance_from_parent(self, key: Type[T], provider: Provider[T], parent: 'Injector') -> T:
+        singleton_scope_binding, _ = parent.binder.get_binding(type(self))
+        singleton_scope = singleton_scope_binding.provider.get(parent)
+        provider = singleton_scope.get(key, provider)
+        return provider.get(parent)
 
 
 singleton = ScopeDecorator(SingletonScope)
