@@ -379,6 +379,13 @@ class Binding(_BindingBase):
         return _get_origin(_punch_through_alias(self.interface)) in {dict, list}
 
 
+@private
+class ImplicitBinding(Binding):
+    """A binding that was created implicitly by auto-binding."""
+
+    pass
+
+
 _InstallableModuleType = Union[Callable[['Binder'], None], 'Module', Type['Module']]
 
 
@@ -645,7 +652,7 @@ class Binder:
             # The special interface is added here so that requesting a special
             # interface with auto_bind disabled works
             if self._auto_bind or self._is_special_interface(interface):
-                binding = self.create_binding(interface)
+                binding = ImplicitBinding(*self.create_binding(interface))
                 self._bindings[interface] = binding
                 return binding, self
 
