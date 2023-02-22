@@ -658,6 +658,12 @@ class Binder:
 
         raise UnsatisfiedRequirement(None, interface)
 
+    def has_binding_for(self, interface: type) -> bool:
+        return interface in self._bindings
+
+    def has_explicit_binding_for(self, interface: type) -> bool:
+        return self.has_binding_for(interface) and not isinstance(self._bindings[interface], ImplicitBinding)
+
     def _is_special_interface(self, interface: type) -> bool:
         # "Special" interfaces are ones that you cannot bind yourself but
         # you can request them (for example you cannot bind ProviderOf(SomeClass)

@@ -1432,6 +1432,30 @@ class Data:
     assert injector.get(Data).name == 'data'
 
 
+def test_binder_does_not_have_a_binding_for_an_unbound_type():
+    injector = Injector()
+    assert not injector.binder.has_binding_for(int)
+    assert not injector.binder.has_explicit_binding_for(int)
+
+
+def test_binder_has_binding_for_explicitly_bound_type():
+    def configure(binder):
+        binder.bind(int, to=123)
+
+    injector = Injector([configure])
+    assert injector.binder.has_binding_for(int)
+    assert injector.binder.has_explicit_binding_for(int)
+
+
+def test_binder_has_implicit_binding_for_implicitly_bound_type():
+    injector = Injector()
+
+    injector.get(int)
+
+    assert injector.binder.has_binding_for(int)
+    assert not injector.binder.has_explicit_binding_for(int)
+
+
 def test_get_bindings():
     def function1(a: int) -> None:
         pass
