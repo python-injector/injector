@@ -294,6 +294,141 @@ def test_inject_decorated_singleton_class():
     a1 = injector1.get(A)
     a2 = injector1.get(A)
     assert a1.b is a2.b
+    assert a1 is not a2
+
+
+def test_injecting_an_auto_bound_decorated_singleton_class():
+    class A:
+        @inject
+        def __init__(self, b: SingletonB):
+            self.b = b
+
+    injector1 = Injector()
+    a1 = injector1.get(A)
+    a2 = injector1.get(A)
+    assert a1.b is a2.b
+    assert a1 is not a2
+
+
+def test_a_decorated_singleton_is_shared_between_parent_and_child_injectors_when_parent_creates_it_first():
+    parent_injector = Injector()
+
+    child_injector = parent_injector.create_child_injector()
+
+    assert parent_injector.get(SingletonB) is child_injector.get(SingletonB)
+
+
+def test_a_decorated_singleton_is_shared_between_parent_and_child_injectors_when_child_creates_it_first():
+    parent_injector = Injector()
+
+    child_injector = parent_injector.create_child_injector()
+
+    assert child_injector.get(SingletonB) is parent_injector.get(SingletonB)
+
+
+# Test for https://github.com/python-injector/injector/issues/207
+def test_a_decorated_singleton_is_shared_among_child_injectors():
+    parent_injector = Injector()
+
+    child_injector_1 = parent_injector.create_child_injector()
+    child_injector_2 = parent_injector.create_child_injector()
+
+    assert child_injector_1.get(SingletonB) is child_injector_2.get(SingletonB)
+
+
+def test_a_decorated_singleton_should_not_override_explicit_binds():
+    parent_injector = Injector()
+
+    child_injector = parent_injector.create_child_injector()
+    grand_child_injector = child_injector.create_child_injector()
+
+    bound_singleton = SingletonB()
+    child_injector.binder.bind(SingletonB, to=bound_singleton)
+
+    assert parent_injector.get(SingletonB) is not bound_singleton
+    assert child_injector.get(SingletonB) is bound_singleton
+    assert grand_child_injector.get(SingletonB) is bound_singleton
+
+
+def test_binding_a_singleton_to_a_child_injector_does_not_affect_the_parent_injector():
+    parent_injector = Injector()
+
+    child_injector = parent_injector.create_child_injector()
+    child_injector.binder.bind(EmptyClass, scope=singleton)
+
+    assert child_injector.get(EmptyClass) is child_injector.get(EmptyClass)
+    assert child_injector.get(EmptyClass) is not parent_injector.get(EmptyClass)
+    assert parent_injector.get(EmptyClass) is not parent_injector.get(EmptyClass)
+
+
+def test_a_decorated_singleton_should_not_override_a_child_provider():
+    parent_injector = Injector()
+
+    provided_instance = SingletonB()
+
+    class MyModule(Module):
+        @provider
+        def provide_name(self) -> SingletonB:
+            return provided_instance
+
+    child_injector = parent_injector.create_child_injector([MyModule])
+
+    assert child_injector.get(SingletonB) is provided_instance
+    assert parent_injector.get(SingletonB) is not provided_instance
+    assert parent_injector.get(SingletonB) is parent_injector.get(SingletonB)
+
+
+# Test for https://github.com/python-injector/injector/issues/207
+def test_a_decorated_singleton_is_created_as_close_to_the_root_where_dependencies_fulfilled():
+    class NonInjectableD:
+        @inject
+        def __init__(self, required) -> None:
+            self.required = required
+
+    @singleton
+    class SingletonC:
+        @inject
+        def __init__(self, d: NonInjectableD):
+            self.d = d
+
+    parent_injector = Injector()
+
+    child_injector_1 = parent_injector.create_child_injector()
+
+    child_injector_2 = parent_injector.create_child_injector()
+    child_injector_2_1 = child_injector_2.create_child_injector()
+
+    provided_d = NonInjectableD(required=True)
+    child_injector_2.binder.bind(NonInjectableD, to=provided_d)
+
+    assert child_injector_2_1.get(SingletonC) is child_injector_2.get(SingletonC)
+    assert child_injector_2.get(SingletonC).d is provided_d
+
+    with pytest.raises(CallError):
+        parent_injector.get(SingletonC)
+
+    with pytest.raises(CallError):
+        child_injector_1.get(SingletonC)
+
+
+def test_a_bound_decorated_singleton_is_created_as_close_to_the_root_where_it_exists_when_auto_bind_is_disabled():
+    parent_injector = Injector(auto_bind=False)
+
+    child_injector_1 = parent_injector.create_child_injector(auto_bind=False)
+
+    child_injector_2 = parent_injector.create_child_injector(auto_bind=False)
+    child_injector_2_1 = child_injector_2.create_child_injector(auto_bind=False)
+
+    child_injector_2.binder.bind(SingletonB)
+
+    assert child_injector_2_1.get(SingletonB) is child_injector_2_1.get(SingletonB)
+    assert child_injector_2_1.get(SingletonB) is child_injector_2.get(SingletonB)
+
+    with pytest.raises(UnsatisfiedRequirement):
+        parent_injector.get(SingletonB)
+
+    with pytest.raises(UnsatisfiedRequirement):
+        child_injector_1.get(SingletonB)
 
 
 def test_threadlocal():
@@ -1430,6 +1565,30 @@ class Data:
 
     injector = Injector([configure])
     assert injector.get(Data).name == 'data'
+
+
+def test_binder_does_not_have_a_binding_for_an_unbound_type():
+    injector = Injector()
+    assert not injector.binder.has_binding_for(int)
+    assert not injector.binder.has_explicit_binding_for(int)
+
+
+def test_binder_has_binding_for_explicitly_bound_type():
+    def configure(binder):
+        binder.bind(int, to=123)
+
+    injector = Injector([configure])
+    assert injector.binder.has_binding_for(int)
+    assert injector.binder.has_explicit_binding_for(int)
+
+
+def test_binder_has_implicit_binding_for_implicitly_bound_type():
+    injector = Injector()
+
+    injector.get(int)
+
+    assert injector.binder.has_binding_for(int)
+    assert not injector.binder.has_explicit_binding_for(int)
 
 
 def test_get_bindings():

@@ -379,6 +379,13 @@ class Binding(_BindingBase):
         return _get_origin(_punch_through_alias(self.interface)) in {dict, list}
 
 
+@private
+class ImplicitBinding(Binding):
+    """A binding that was created implicitly by auto-binding."""
+
+    pass
+
+
 _InstallableModuleType = Union[Callable[['Binder'], None], 'Module', Type['Module']]
 
 
@@ -645,11 +652,17 @@ class Binder:
             # The special interface is added here so that requesting a special
             # interface with auto_bind disabled works
             if self._auto_bind or self._is_special_interface(interface):
-                binding = self.create_binding(interface)
+                binding = ImplicitBinding(*self.create_binding(interface))
                 self._bindings[interface] = binding
                 return binding, self
 
         raise UnsatisfiedRequirement(None, interface)
+
+    def has_binding_for(self, interface: type) -> bool:
+        return interface in self._bindings
+
+    def has_explicit_binding_for(self, interface: type) -> bool:
+        return self.has_binding_for(interface) and not isinstance(self._bindings[interface], ImplicitBinding)
 
     def _is_special_interface(self, interface: type) -> bool:
         # "Special" interfaces are ones that you cannot bind yourself but
@@ -784,9 +797,24 @@ class SingletonScope(Scope):
         try:
             return self._context[key]
         except KeyError:
-            provider = InstanceProvider(provider.get(self.injector))
+            instance = self._get_instance(key, provider, self.injector)
+            provider = InstanceProvider(instance)
             self._context[key] = provider
             return provider
+
+    def _get_instance(self, key: Type[T], provider: Provider[T], injector: 'Injector') -> T:
+        if injector.parent and not injector.binder.has_explicit_binding_for(key):
+            try:
+                return self._get_instance_from_parent(key, provider, injector.parent)
+            except (CallError, UnsatisfiedRequirement):
+                pass
+        return provider.get(injector)
+
+    def _get_instance_from_parent(self, key: Type[T], provider: Provider[T], parent: 'Injector') -> T:
+        singleton_scope_binding, _ = parent.binder.get_binding(type(self))
+        singleton_scope = singleton_scope_binding.provider.get(parent)
+        provider = singleton_scope.get(key, provider)
+        return provider.get(parent)
 
 
 singleton = ScopeDecorator(SingletonScope)
@@ -943,7 +971,8 @@ class Injector:
         log.debug(
             '%sInjector.get(%r, scope=%r) using %r', self._log_prefix, interface, scope, binding.provider
         )
-        result = scope_instance.get(interface, binding.provider).get(self)
+        provider_instance = scope_instance.get(interface, binding.provider)
+        result = provider_instance.get(self)
         log.debug('%s -> %r', self._log_prefix, result)
         return result
 
