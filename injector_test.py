@@ -11,7 +11,7 @@
 """Functional tests for the "Injector" dependency injection framework."""
 
 from contextlib import contextmanager
-from typing import Any, NewType, Optional, Union
+from typing import Annotated, Any, NewType, Optional, Union
 import abc
 import sys
 import threading
@@ -1690,3 +1690,30 @@ def test_get_bindings_for_pep_604():
         pass
 
     assert get_bindings(function1) == {'a': Union[int, str]}
+
+
+# test for https://github.com/python-injector/injector/issues/217
+def test_annotated_instance_integration_works():
+    UserID = Annotated[int, "user_id"]
+
+    def configure(binder):
+        binder.bind(UserID, to=123)
+
+    injector = Injector([configure])
+    assert injector.get(UserID) == 123
+
+
+def test_annotated_class_integration():
+    class Shape(abc.ABC):
+        pass
+
+    class Circle(Shape):
+        pass
+
+    first = Annotated[Shape, "first"]
+
+    def configure(binder):
+        binder.bind(first, to=Circle)
+
+    injector = Injector([configure])
+    assert isinstance(injector.get(first), Circle)
