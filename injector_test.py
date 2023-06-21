@@ -1703,7 +1703,7 @@ def test_annotated_instance_integration_works():
     assert injector.get(UserID) == 123
 
 
-def test_annotated_class_integration():
+def test_annotated_class_integration_works():
     class Shape(abc.ABC):
         pass
 
@@ -1717,3 +1717,30 @@ def test_annotated_class_integration():
 
     injector = Injector([configure])
     assert isinstance(injector.get(first), Circle)
+
+
+def test_annotated_meta_separate_bindings():
+    first = Annotated[int, "first"]
+    second = Annotated[int, "second"]
+
+    def configure(binder):
+        binder.bind(first, to=123)
+        binder.bind(second, to=456)
+
+    injector = Injector([configure])
+    assert injector.get(first) == 123
+    assert injector.get(second) == 456
+    assert injector.get(first) != injector.get(second)
+
+
+def test_annotated_origin_separate_bindings():
+    UserID = Annotated[int, "user_id"]
+
+    def configure(binder):
+        binder.bind(UserID, to=123)
+        binder.bind(int, to=456)
+
+    injector = Injector([configure])
+    assert injector.get(UserID) == 123
+    assert injector.get(int) == 456
+    assert injector.get(UserID) != injector.get(int)
