@@ -707,7 +707,8 @@ def _punch_through_alias(type_: Any) -> type:
         return type_.__supertype__
     elif (
         sys.version_info >= (3, 9)
-        and type_.__name__ == 'Annotated'
+        and isinstance(type_, _AnnotatedAlias)
+        and getattr(type_, '__name__', '') == 'Annotated'
         and getattr(type_, '__metadata__', None) is not None
     ):
         return type_.__origin__
