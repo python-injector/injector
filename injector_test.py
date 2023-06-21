@@ -11,12 +11,17 @@
 """Functional tests for the "Injector" dependency injection framework."""
 
 from contextlib import contextmanager
-from typing import Annotated, Any, NewType, Optional, Union
+from typing import Any, NewType, Optional, Union
 import abc
 import sys
 import threading
 import traceback
 import warnings
+
+if sys.version_info >= (3, 9):
+    from typing import Annotated
+else:
+    from typing_extensions import Annotated
 
 from typing import Dict, List, NewType
 
