@@ -1,6 +1,5 @@
 pytest
 pytest-cov>=2.5.1
-dataclasses;python_version<"3.7"
 mypy;implementation_name=="cpython"
 black;implementation_name=="cpython"
 check-manifest
