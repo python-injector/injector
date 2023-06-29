@@ -859,7 +859,7 @@ class Module:
                             % (function.__name__, type(self), e)
                         ) from e
                     return_type = annotations['return']
-                    binding = function.__func__.__binding__ = Binding(
+                    binding = cast(Any, function.__func__).__binding__ = Binding(
                         interface=return_type, provider=binding.provider, scope=binding.scope
                     )
                 bind_method = binder.multibind if binding.is_multibinding() else binder.bind
