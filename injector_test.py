@@ -953,7 +953,7 @@ def test_assisted_builder_injection_is_safe_to_use_with_child_injectors():
 
 
 class TestThreadSafety:
-    def setup(self):
+    def setup_method(self):
         self.event = threading.Event()
 
         def configure(binder):
