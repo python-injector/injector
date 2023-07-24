@@ -1749,3 +1749,16 @@ def test_annotated_origin_separate_bindings():
     assert injector.get(UserID) == 123
     assert injector.get(int) == 456
     assert injector.get(UserID) != injector.get(int)
+
+
+def test_annotated_non_comparable_types():
+    foo = Annotated[int, float("nan")]
+    bar = Annotated[int, object()]
+
+    def configure(binder):
+        binder.bind(foo, to=123)
+        binder.bind(bar, to=456)
+
+    injector = Injector([configure])
+    assert injector.get(foo) == 123
+    assert injector.get(bar) == 456
