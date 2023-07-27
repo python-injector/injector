@@ -1,5 +1,6 @@
 include *.py
 include *.toml
+include requirements-dev.in
 include *.txt
 include CHANGES
 include COPYING
