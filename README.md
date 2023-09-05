@@ -72,7 +72,7 @@ The core values of Injector are:
 * Documentation: https://injector.readthedocs.org
 * Change log: https://injector.readthedocs.io/en/latest/changelog.html
 
-Injector works with CPython 3.7+ and PyPy 3 implementing Python 3.7+.
+Injector works with CPython 3.8+ and PyPy 3 implementing Python 3.8+.
 
 A Quick Example
 ---------------
