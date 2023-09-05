@@ -1119,10 +1119,6 @@ def get_bindings(callable: Callable) -> Dict[str, type]:
         >>> get_bindings(function3)
         {'a': <class 'int'>}
 
-        >>> import sys, pytest
-        >>> if sys.version_info < (3, 7, 0):
-        ...     pytest.skip('Python 3.7.0 required for sufficient Annotated support')
-
         >>> # The simple case of no @inject but injection requested with Inject[...]
         >>> def function4(a: Inject[int], b: str) -> None:
         ...     pass
