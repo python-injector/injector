@@ -1544,21 +1544,13 @@ def test_newtype_integration_works():
     assert injector.get(UserID) == 123
 
 
-@pytest.mark.skipif(sys.version_info < (3, 6), reason="Requires Python 3.6+")
 def test_dataclass_integration_works():
     import dataclasses
 
-    # Python 3.6+-only syntax below
-    exec(
-        """
-@inject
-@dataclasses.dataclass
-class Data:
-    name: str
-    """,
-        locals(),
-        globals(),
-    )
+    @inject
+    @dataclasses.dataclass
+    class Data:
+        name: str
 
     def configure(binder):
         binder.bind(str, to='data')
