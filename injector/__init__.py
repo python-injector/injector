@@ -531,7 +531,7 @@ class Binder:
 
         In this context the module is one of the following:
 
-        * function taking the :class:`Binder` as it's only parameter
+        * function taking the :class:`Binder` as its only parameter
 
           ::
 
@@ -540,7 +540,7 @@ class Binder:
 
             binder.install(configure)
 
-        * instance of :class:`Module` (instance of it's subclass counts)
+        * instance of :class:`Module` (instance of its subclass counts)
 
           ::
 
@@ -1005,7 +1005,7 @@ class Injector:
     def call_with_injection(
         self, callable: Callable[..., T], self_: Any = None, args: Any = (), kwargs: Any = {}
     ) -> T:
-        """Call a callable and provide it's dependencies if needed.
+        """Call a callable and provide its dependencies if needed.
 
         :param self_: Instance of a class callable belongs to if it's a method,
             None otherwise.
