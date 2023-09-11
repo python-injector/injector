@@ -1007,6 +1007,14 @@ class Injector:
     ) -> T:
         """Call a callable and provide its dependencies if needed.
 
+        Dependencies are provided when the callable is decorated with :func:`@inject <inject>`
+        or some individual parameters are wrapped in :data:`Inject` – otherwise
+        ``call_with_injection()`` is equivalent to just calling the callable directly.
+
+        If there is an overlap between arguments provided in ``args`` and ``kwargs``
+        and injectable dependencies the provided values take precedence and no dependency
+        injection process will take place for the corresponding parameters.
+
         :param self_: Instance of a class callable belongs to if it's a method,
             None otherwise.
         :param args: Arguments to pass to callable.
