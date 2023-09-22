@@ -23,6 +23,7 @@ import threading
 import types
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
+from collections import UserDict
 from typing import (
     Any,
     Callable,
@@ -240,6 +241,10 @@ class UnknownProvider(Error):
     """Tried to bind to a type whose provider couldn't be determined."""
 
 
+class NonUniqueBinding(Error):
+    """Tried to bind to a type that already has a binding when disallowed."""
+
+
 class UnknownArgument(Error):
     """Tried to mark an unknown argument as noninjectable."""
 
@@ -389,6 +394,14 @@ class ImplicitBinding(Binding):
 _InstallableModuleType = Union[Callable[['Binder'], None], 'Module', Type['Module']]
 
 
+class UniqueBindings(UserDict[type, Binding]):
+    """A dictionary that raises an exception when trying to add duplicate bindings."""
+    def __setitem__(self, key: type, value: Binding) -> None:
+        if key in self.data:
+            raise NonUniqueBinding(key.__name__)
+        super().__setitem__(key, value)
+
+
 class Binder:
     """Bind interfaces to implementations.
 
@@ -400,17 +413,22 @@ class Binder:
 
     @private
     def __init__(
-        self, injector: 'Injector', auto_bind: bool = True, parent: Optional['Binder'] = None
+        self,
+        injector: 'Injector',
+        auto_bind: bool = True,
+        parent: Optional['Binder'] = None,
+        unique: bool = False,
     ) -> None:
         """Create a new Binder.
 
         :param injector: Injector we are binding for.
         :param auto_bind: Whether to automatically bind missing types.
         :param parent: Parent binder.
+        :parm unique: Whether to allow multiple bindings for the same type.
         """
         self.injector = injector
         self._auto_bind = auto_bind
-        self._bindings = {}
+        self._bindings = cast(Dict[type, Binding], UniqueBindings()) if unique else {}
         self.parent = parent
 
     def bind(
@@ -881,6 +899,7 @@ class Injector:
 
     :param auto_bind: Whether to automatically bind missing types.
     :param parent: Parent injector.
+    :unique: Whether to allow multiple bindings for the same type.
 
     .. versionadded:: 0.7.5
         ``use_annotations`` parameter
@@ -897,6 +916,7 @@ class Injector:
         modules: Union[_InstallableModuleType, Iterable[_InstallableModuleType], None] = None,
         auto_bind: bool = True,
         parent: Optional['Injector'] = None,
+        unique: bool = False,
     ) -> None:
         # Stack of keys currently being injected. Used to detect circular
         # dependencies.
@@ -905,7 +925,12 @@ class Injector:
         self.parent = parent
 
         # Binder
-        self.binder = Binder(self, auto_bind=auto_bind, parent=parent.binder if parent is not None else None)
+        self.binder = Binder(
+            self,
+            auto_bind=auto_bind,
+            parent=parent.binder if parent is not None else None,
+            unique=unique,
+        )
 
         if not modules:
             modules = []

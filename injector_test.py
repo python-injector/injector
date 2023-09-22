@@ -28,6 +28,7 @@ from injector import (
     Inject,
     Injector,
     NoInject,
+    NonUniqueBinding,
     Scope,
     InstanceProvider,
     ClassProvider,
@@ -1581,6 +1582,15 @@ def test_binder_has_implicit_binding_for_implicitly_bound_type():
 
     assert injector.binder.has_binding_for(int)
     assert not injector.binder.has_explicit_binding_for(int)
+
+
+def test_binder_with_uniqueness_checking_raises_error():
+    def configure(binder):
+        binder.bind(int, to=123)
+        binder.bind(int, to=456)
+
+    with pytest.raises(NonUniqueBinding):
+        _ = Injector([configure], unique=True)
 
 
 def test_get_bindings():
