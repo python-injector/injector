@@ -1,4 +1,4 @@
-git reset --hard HEAD~1Testing with Injector
+Testing with Injector
 =====================
 
 When you use unit test framework such as `unittest2` or `nose` you can also profit from `injector`. ::
