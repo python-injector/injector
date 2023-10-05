@@ -394,7 +394,7 @@ class ImplicitBinding(Binding):
 _InstallableModuleType = Union[Callable[['Binder'], None], 'Module', Type['Module']]
 
 
-class UniqueBindings(UserDict[type, Binding]):
+class UniqueBindings(UserDict):
     """A dictionary that raises an exception when trying to add duplicate bindings."""
 
     def __setitem__(self, key: type, value: Binding) -> None:
