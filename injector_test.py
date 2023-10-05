@@ -63,12 +63,12 @@ class DependsOnEmptyClass:
         self.b = b
 
 
-def prepare_nested_injectors():
+def prepare_nested_injectors(unique=False):
     def configure(binder):
         binder.bind(str, to='asd')
 
     parent = Injector(configure)
-    child = parent.create_child_injector()
+    child = parent.create_child_injector(unique=unique)
     return parent, child
 
 
@@ -1584,13 +1584,28 @@ def test_binder_has_implicit_binding_for_implicitly_bound_type():
     assert not injector.binder.has_explicit_binding_for(int)
 
 
-def test_binder_with_uniqueness_checking_raises_error():
+def test_injector_with_uniqueness_checking_raises_error():
     def configure(binder):
         binder.bind(int, to=123)
         binder.bind(int, to=456)
 
     with pytest.raises(NonUniqueBinding, match="Binding for 'int' already exists"):
         _ = Injector([configure], unique=True)
+
+
+def test_child_injector_with_uniqueness_checking_overrides_parent_bindings():
+    parent, child = prepare_nested_injectors(unique=True)
+    child.binder.bind(str, to='qwe')
+
+    assert (parent.get(str), child.get(str)) == ('asd', 'qwe')
+
+
+def test_child_injector_with_uniqueness_checking_raises_error():
+    _, child = prepare_nested_injectors(unique=True)
+    child.binder.bind(str, to='qwe')
+
+    with pytest.raises(NonUniqueBinding, match="Binding for 'str' already exists"):
+        child.binder.bind(str, to='zxc')
 
 
 def test_get_bindings():
