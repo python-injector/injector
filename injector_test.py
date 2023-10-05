@@ -1589,7 +1589,7 @@ def test_binder_with_uniqueness_checking_raises_error():
         binder.bind(int, to=123)
         binder.bind(int, to=456)
 
-    with pytest.raises(NonUniqueBinding):
+    with pytest.raises(NonUniqueBinding, match="Binding for 'int' already exists"):
         _ = Injector([configure], unique=True)
 
 

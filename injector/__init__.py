@@ -244,6 +244,13 @@ class UnknownProvider(Error):
 class NonUniqueBinding(Error):
     """Tried to bind to a type that already has a binding when disallowed."""
 
+    def __init__(self, interface: type) -> None:
+        super().__init__(interface)
+        self.interface = interface
+
+    def __str__(self) -> str:
+        return "Binding for '%s' already exists" % _describe(self.interface)
+
 
 class UnknownArgument(Error):
     """Tried to mark an unknown argument as noninjectable."""
@@ -399,7 +406,7 @@ class UniqueBindings(UserDict):
 
     def __setitem__(self, key: type, value: Binding) -> None:
         if key in self.data:
-            raise NonUniqueBinding(key.__name__)
+            raise NonUniqueBinding(key)
         super().__setitem__(key, value)
 
 
