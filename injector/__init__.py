@@ -396,6 +396,7 @@ _InstallableModuleType = Union[Callable[['Binder'], None], 'Module', Type['Modul
 
 class UniqueBindings(UserDict[type, Binding]):
     """A dictionary that raises an exception when trying to add duplicate bindings."""
+
     def __setitem__(self, key: type, value: Binding) -> None:
         if key in self.data:
             raise NonUniqueBinding(key.__name__)
