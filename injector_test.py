@@ -67,7 +67,7 @@ def prepare_nested_injectors(unique=False):
     def configure(binder):
         binder.bind(str, to='asd')
 
-    parent = Injector(configure)
+    parent = Injector(configure, unique=unique)
     child = parent.create_child_injector(unique=unique)
     return parent, child
 
@@ -1606,6 +1606,20 @@ def test_child_injector_with_uniqueness_checking_raises_error():
 
     with pytest.raises(NonUniqueBinding, match="Binding for 'str' already exists"):
         child.binder.bind(str, to='zxc')
+
+
+def test_child_injector_inherits_parent_uniqueness_checking():
+
+    def configure(binder):
+        binder.bind(str, to='asd')
+
+    parent = Injector(configure, unique=True)
+    child = parent.create_child_injector()  # no unique=True here
+
+    child.binder.bind(str, to='qwe')
+
+    with pytest.raises(NonUniqueBinding, match="Binding for 'str' already exists"):
+        child.binder.bind(str, to='qwe')
 
 
 def test_get_bindings():

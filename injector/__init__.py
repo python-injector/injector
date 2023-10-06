@@ -436,8 +436,16 @@ class Binder:
         """
         self.injector = injector
         self._auto_bind = auto_bind
-        self._bindings = cast(Dict[type, Binding], UniqueBindings()) if unique else {}
         self.parent = parent
+        self._unique = unique
+        if self._unique:
+            self._bindings = cast(Dict[type, Binding], UniqueBindings())
+        else:
+            self._bindings = {}
+
+    @property
+    def unique(self) -> bool:
+        return self._unique
 
     def bind(
         self,
@@ -1011,6 +1019,8 @@ class Injector:
 
     def create_child_injector(self, *args: Any, **kwargs: Any) -> 'Injector':
         kwargs['parent'] = self
+        if 'unique' not in kwargs:
+            kwargs['unique'] = self.binder.unique
         return Injector(*args, **kwargs)
 
     def create_object(self, cls: Type[T], additional_kwargs: Any = None) -> T:
