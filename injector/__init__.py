@@ -249,7 +249,8 @@ class NonUniqueBinding(Error):
         self.interface = interface
 
     def __str__(self) -> str:
-        return "Binding for '%s' already exists" % _describe(self.interface)
+        exists = "Binding for '%s' already exists" % _describe(self.interface)
+        return "%s for Binder/Injector with unique=True" % exists
 
 
 class UnknownArgument(Error):
