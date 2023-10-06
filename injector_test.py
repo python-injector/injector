@@ -1609,7 +1609,6 @@ def test_child_injector_with_uniqueness_checking_raises_error():
 
 
 def test_child_injector_inherits_parent_uniqueness_checking():
-
     def configure(binder):
         binder.bind(str, to='asd')
 
