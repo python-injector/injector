@@ -5,4 +5,5 @@
 #     pip install -r requirements-docs.in && pip freeze > requirements-docs.txt
 #
 # and then modifying the file manually to restrict black and mypy to CPython
+furo
 sphinx
