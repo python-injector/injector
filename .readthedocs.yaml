@@ -12,8 +12,10 @@ sphinx:
   configuration: docs/conf.py
   fail_on_warning: true
 
+python:
+  install:
+    - method: pip
+      path: .
 # TODO: pin the development dependency versions
 # See https://docs.readthedocs.io/en/stable/guides/reproducible-builds.html
-# python:
-#   install:
 #     - requirements: docs/requirements.txt
