@@ -1,0 +1,14 @@
+# Our direct dependencies used in development/CI.
+#
+# We generate requirements-dev.txt from this file by running
+#
+#     pip install -r requirements-dev.in && pip freeze > requirements-dev.txt
+#
+# and then modifying the file manually to restrict black and mypy to CPython
+
+pytest
+pytest-cov>=2.5.1
+mypy;implementation_name=="cpython"
+black;implementation_name=="cpython"
+check-manifest
+typing_extensions>=3.7.4;python_version<"3.9"

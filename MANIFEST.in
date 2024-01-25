@@ -1,5 +1,6 @@
 include *.py
 include *.toml
+include requirements-*.in
 include *.txt
 include CHANGES
 include COPYING
@@ -10,3 +11,4 @@ recursive-include docs *.html
 recursive-include docs *.py
 recursive-include docs *.rst
 recursive-include docs Makefile
+exclude .readthedocs.yaml

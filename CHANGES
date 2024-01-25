@@ -1,6 +1,15 @@
 Injector Change Log
 ===================
 
+0.21.0
+------
+
+- Improved the documentation, thanks to jonathanmach and Jakub Wilk
+- Fixed a thread-safety regression
+- Improved the type annotations, thanks to David Pärsson
+- Fixed singleton scope behavior with parent/child injectors, thanks to David Pärsson
+- Stopped using a deprecated test function, thanks to ljnsn
+
 0.20.1
 ------
 

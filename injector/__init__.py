@@ -61,7 +61,7 @@ else:
 
 
 __author__ = 'Alec Thomas <alec@swapoff.org>'
-__version__ = '0.20.1'
+__version__ = '0.21.0'
 __version_tag__ = ''
 
 log = logging.getLogger('injector')
@@ -531,7 +531,7 @@ class Binder:
 
         In this context the module is one of the following:
 
-        * function taking the :class:`Binder` as it's only parameter
+        * function taking the :class:`Binder` as its only parameter
 
           ::
 
@@ -540,7 +540,7 @@ class Binder:
 
             binder.install(configure)
 
-        * instance of :class:`Module` (instance of it's subclass counts)
+        * instance of :class:`Module` (instance of its subclass counts)
 
           ::
 
@@ -1007,7 +1007,15 @@ class Injector:
     def call_with_injection(
         self, callable: Callable[..., T], self_: Any = None, args: Any = (), kwargs: Any = {}
     ) -> T:
-        """Call a callable and provide it's dependencies if needed.
+        """Call a callable and provide its dependencies if needed.
+
+        Dependencies are provided when the callable is decorated with :func:`@inject <inject>`
+        or some individual parameters are wrapped in :data:`Inject` – otherwise
+        ``call_with_injection()`` is equivalent to just calling the callable directly.
+
+        If there is an overlap between arguments provided in ``args`` and ``kwargs``
+        and injectable dependencies the provided values take precedence and no dependency
+        injection process will take place for the corresponding parameters.
 
         :param self_: Instance of a class callable belongs to if it's a method,
             None otherwise.
@@ -1120,10 +1128,6 @@ def get_bindings(callable: Callable) -> Dict[str, type]:
         ...
         >>> get_bindings(function3)
         {'a': <class 'int'>}
-
-        >>> import sys, pytest
-        >>> if sys.version_info < (3, 7, 0):
-        ...     pytest.skip('Python 3.7.0 required for sufficient Annotated support')
 
         >>> # The simple case of no @inject but injection requested with Inject[...]
         >>> def function4(a: Inject[int], b: str) -> None:
