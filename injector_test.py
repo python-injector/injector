@@ -11,12 +11,18 @@
 """Functional tests for the "Injector" dependency injection framework."""
 
 from contextlib import contextmanager
+from dataclasses import dataclass
 from typing import Any, NewType, Optional, Union
 import abc
 import sys
 import threading
 import traceback
 import warnings
+
+if sys.version_info >= (3, 9):
+    from typing import Annotated
+else:
+    from typing_extensions import Annotated
 
 from typing import Dict, List, NewType
 
@@ -1682,3 +1688,114 @@ def test_get_bindings_for_pep_604():
         pass
 
     assert get_bindings(function1) == {'a': Union[int, str]}
+
+
+# test for https://github.com/python-injector/injector/issues/217
+def test_annotated_instance_integration_works():
+    UserID = Annotated[int, "user_id"]
+
+    def configure(binder):
+        binder.bind(UserID, to=123)
+
+    injector = Injector([configure])
+    assert injector.get(UserID) == 123
+
+
+def test_annotated_class_integration_works():
+    class Shape(abc.ABC):
+        pass
+
+    class Circle(Shape):
+        pass
+
+    first = Annotated[Shape, "first"]
+
+    def configure(binder):
+        binder.bind(first, to=Circle)
+
+    injector = Injector([configure])
+    assert isinstance(injector.get(first), Circle)
+
+
+def test_annotated_meta_separate_bindings():
+    first = Annotated[int, "first"]
+    second = Annotated[int, "second"]
+
+    def configure(binder):
+        binder.bind(first, to=123)
+        binder.bind(second, to=456)
+
+    injector = Injector([configure])
+    assert injector.get(first) == 123
+    assert injector.get(second) == 456
+    assert injector.get(first) != injector.get(second)
+
+
+def test_annotated_origin_separate_bindings():
+    UserID = Annotated[int, "user_id"]
+
+    def configure(binder):
+        binder.bind(UserID, to=123)
+        binder.bind(int, to=456)
+
+    injector = Injector([configure])
+    assert injector.get(UserID) == 123
+    assert injector.get(int) == 456
+    assert injector.get(UserID) != injector.get(int)
+
+
+def test_annotated_non_comparable_types():
+    foo = Annotated[int, float("nan")]
+    bar = Annotated[int, object()]
+
+    def configure(binder):
+        binder.bind(foo, to=123)
+        binder.bind(bar, to=456)
+
+    injector = Injector([configure])
+    assert injector.get(foo) == 123
+    assert injector.get(bar) == 456
+
+
+def test_annotated_injection():
+    UserID = Annotated[int, "user_id"]
+
+    def configure(binder):
+        binder.bind(UserID, to=123)
+
+    @inject
+    @dataclass
+    class Data:
+        def __init__(self, user_id: UserID) -> None:
+            self.user_id = user_id
+
+    injector = Injector([configure])
+    assert injector.get(Data).user_id == 123
+
+
+def test_annotated_call_with_injection():
+    UserID = Annotated[int, "user_id"]
+
+    def configure(binder):
+        binder.bind(UserID, to=123)
+
+    @inject
+    def fun(user_id: UserID) -> int:
+        return user_id
+
+    injector = Injector([configure])
+    assert injector.call_with_injection(fun) == 123
+
+def test_with_injector_wrapper():
+    UserID = Annotated[int, "user_id"]
+
+    def configure(binder):
+        binder.bind(UserID, to=123)
+
+    @dataclass
+    class Data:
+        user_id: Inject[UserID]
+
+    injector = Injector([configure])
+
+    assert injector.get(Data).user_id == 123

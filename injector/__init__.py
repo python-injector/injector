@@ -705,6 +705,8 @@ def _punch_through_alias(type_: Any) -> type:
         and type(type_).__name__ == 'NewType'
     ):
         return type_.__supertype__
+    elif isinstance(type_, _AnnotatedAlias) and getattr(type_, '__metadata__', None) is not None:
+        return type_.__origin__
     else:
         return type_
 
@@ -1237,8 +1239,17 @@ def _infer_injected_bindings(callable: Callable, only_explicit_bindings: bool) -
 
     for k, v in list(bindings.items()):
         if _is_specialization(v, Annotated):
-            v, metadata = v.__origin__, v.__metadata__
-            bindings[k] = v
+            origin, metadata = v.__origin__, v.__metadata__
+
+            if _inject_marker in metadata or _noinject_marker in metadata:
+                new_metadata = tuple(m for m in metadata if m not in [_inject_marker, _noinject_marker])
+                if len(new_metadata) == 0:
+                    new_type = origin
+                else:
+                    new_type = _AnnotatedAlias(origin, new_metadata)
+                bindings[k] = new_type
+            else:
+                bindings[k] = v
         else:
             metadata = tuple()
 
