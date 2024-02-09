@@ -1,8 +1,10 @@
 alabaster==0.7.13
 Babel==2.14.0
+beautifulsoup4==4.12.2
 certifi==2023.11.17
 charset-normalizer==3.3.2
 docutils==0.20.1
+furo==2023.9.10
 idna==3.6
 imagesize==1.4.1
 importlib-metadata==7.0.0
@@ -13,7 +15,9 @@ pygments==2.17.2
 pytz==2023.3.post1
 requests==2.31.0
 snowballstemmer==2.2.0
+soupsieve==2.5
 sphinx==7.1.2
+sphinx-basic-ng==1.0.0b2
 sphinxcontrib-applehelp==1.0.4
 sphinxcontrib-devhelp==1.0.2
 sphinxcontrib-htmlhelp==2.0.1
