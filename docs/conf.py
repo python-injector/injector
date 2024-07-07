@@ -133,12 +133,6 @@ html_static_path = ['_static']
 # typographically correct entities.
 # html_use_smartypants = True
 
-# Custom sidebar templates, maps document names to template names.
-html_sidebars = {
-    'index': ('sidebar.html', 'sourcelink.html', 'searchbox.html'),
-    '**': ('localtoc.html', 'relations.html', 'sourcelink.html', 'searchbox.html'),
-}
-
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
 # html_additional_pages = {}
