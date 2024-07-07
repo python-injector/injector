@@ -1,6 +1,20 @@
 Injector Change Log
 ===================
 
+0.22.0
+------
+
+Date: 2024-07-08
+
+Added:
+
+- Added support for injecting `PEP 593 <https://peps.python.org/pep-0593/>`_
+  `Annotated <https://docs.python.org/3/library/typing.html#typing.Annotated>`_
+
+Removed:
+
+- Dropped Python 3.7 support
+
 0.21.0
 ------
 
