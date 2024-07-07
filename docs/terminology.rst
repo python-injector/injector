@@ -78,7 +78,12 @@ Injection is the process of providing an instance of a type, to a method that us
 
 Here is an example of injection on a module provider method, and on the constructor of a normal class::
 
-    from injector import inject
+    from typing import NewType
+
+    from injector import Binder, Module, inject, provider
+
+    Name = NewType("Name", str)
+    Description = NewType("Description", str)
 
     class User:
         @inject
@@ -86,14 +91,12 @@ Here is an example of injection on a module provider method, and on the construc
             self.name = name
             self.description = description
 
-
     class UserModule(Module):
-        def configure(self, binder):
+        def configure(self, binder: Binder):
            binder.bind(User)
 
-
     class UserAttributeModule(Module):
-        def configure(self, binder):
+        def configure(self, binder: Binder):
             binder.bind(Name, to='Sherlock')
 
         @provider
