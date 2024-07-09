@@ -17,4 +17,4 @@ pytest==7.4.3
 pytest-cov==4.1.0
 tomli==2.0.1
 typing-extensions==4.9.0 ; python_version < "3.9"
-zipp==3.17.0
+zipp==3.19.1
