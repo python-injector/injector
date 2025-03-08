@@ -98,15 +98,15 @@ def synchronized(lock: threading.RLock) -> Callable[[CallableT], CallableT]:
 lock = threading.RLock()
 
 
-_inject_marker = object()
-_noinject_marker = object()
+inject_marker = object()
+noinject_marker = object()
 
 InjectT = TypeVar('InjectT')
-Inject = Annotated[InjectT, _inject_marker]
+Inject = Annotated[InjectT, inject_marker]
 """An experimental way to declare injectable dependencies utilizing a `PEP 593`_ implementation
 in Python 3.9 and backported to Python 3.7+ in `typing_extensions`.
 
-Those two declarations are equivalent::
+These three declarations are equivalent::
 
     @inject
     def fun(t: SomeType) -> None:
@@ -115,8 +115,11 @@ Those two declarations are equivalent::
     def fun(t: Inject[SomeType]) -> None:
         pass
 
+    def fun(t: Annotated[SomeType, inject_marker]) -> None:
+        pass
+
 The advantage over using :func:`inject` is that if you have some noninjectable parameters
-it may be easier to spot what are they. Those two are equivalent::
+it may be easier to spot what are they. These two are equivalent::
 
     @inject
     @noninjectable('s')
@@ -142,7 +145,7 @@ it may be easier to spot what are they. Those two are equivalent::
 .. _typing_extensions: https://pypi.org/project/typing-extensions/
 """
 
-NoInject = Annotated[InjectT, _noinject_marker]
+NoInject = Annotated[InjectT, noinject_marker]
 """An experimental way to declare noninjectable dependencies utilizing a `PEP 593`_ implementation
 in Python 3.9 and backported to Python 3.7+ in `typing_extensions`.
 
@@ -154,7 +157,7 @@ two issues:
 * The declaration may be relatively distance in space from the actual parameter declaration, thus
   hindering readability
 
-`NoInject` solves both of those concerns, for example (those two declarations are equivalent)::
+`NoInject` solves both of those concerns, for example (these three declarations are equivalent)::
 
     @inject
     @noninjectable('b')
@@ -163,6 +166,10 @@ two issues:
 
     @inject
     def fun(a: TypeA, b: NoInject[TypeB]) -> None:
+        pass
+
+    @inject
+    def fun(a: TypeA, b: Annotated[TypeB, noinject_marker]) -> None:
         pass
 
 .. seealso::
@@ -1166,7 +1173,7 @@ def get_bindings(callable: Callable) -> Dict[str, type]:
     if not hasattr(callable, '__bindings__'):
         type_hints = get_type_hints(callable, include_extras=True)
         has_injectable_parameters = any(
-            _is_specialization(v, Annotated) and _inject_marker in v.__metadata__ for v in type_hints.values()
+            _is_specialization(v, Annotated) and inject_marker in v.__metadata__ for v in type_hints.values()
         )
 
         if not has_injectable_parameters:
@@ -1244,7 +1251,7 @@ def _infer_injected_bindings(callable: Callable, only_explicit_bindings: bool) -
         else:
             metadata = tuple()
 
-        if only_explicit_bindings and _inject_marker not in metadata or _noinject_marker in metadata:
+        if only_explicit_bindings and inject_marker not in metadata or noinject_marker in metadata:
             del bindings[k]
         elif _is_specialization(v, Union) or _is_new_union_type(v):
             # We don't treat Optional parameters in any special way at the moment.
@@ -1264,8 +1271,8 @@ def _infer_injected_bindings(callable: Callable, only_explicit_bindings: bool) -
             }
             if (
                 only_explicit_bindings
-                and _inject_marker not in union_metadata
-                or _noinject_marker in union_metadata
+                and inject_marker not in union_metadata
+                or noinject_marker in union_metadata
             ):
                 del bindings[k]
             else:
