@@ -1754,3 +1754,16 @@ def test_annotated_non_comparable_types():
     injector = Injector([configure])
     assert injector.get(foo) == 123
     assert injector.get(bar) == 456
+
+
+def test_annotated_injection_with_attribute():
+
+    foo = Annotated[str, "foo"]
+    bar = Annotated[str, "bar"]
+
+    # noinspection PyUnusedLocal
+    @inject
+    def target(val_foo: foo, val_bar: bar):
+        pass
+
+    assert get_bindings(target) == {'val_foo': foo, 'val_bar': bar}
