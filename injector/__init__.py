@@ -1208,6 +1208,9 @@ def _infer_injected_bindings(callable: Callable, only_explicit_bindings: bool) -
         new_union_type = getattr(types, 'UnionType', None)
         return new_union_type is not None and isinstance(instance, new_union_type)
 
+    def _is_package_annotation(annotation: Any) -> bool:
+        return _is_specialization(annotation, Annotated) and (_inject_marker in annotation.__metadata__ or _noinject_marker in annotation.__metadata__)
+
     spec = inspect.getfullargspec(callable)
 
     try:
@@ -1238,7 +1241,8 @@ def _infer_injected_bindings(callable: Callable, only_explicit_bindings: bool) -
         bindings.pop(spec.varkw, None)
 
     for k, v in list(bindings.items()):
-        if _is_specialization(v, Annotated):
+        # extract metadata only from Inject and NonInject
+        if _is_package_annotation(v):
             v, metadata = v.__origin__, v.__metadata__
             bindings[k] = v
         else:

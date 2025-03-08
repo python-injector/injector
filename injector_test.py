@@ -11,6 +11,7 @@
 """Functional tests for the "Injector" dependency injection framework."""
 
 from contextlib import contextmanager
+from dataclasses import dataclass
 from typing import Any, NewType, Optional, Union
 import abc
 import sys
@@ -1754,3 +1755,53 @@ def test_annotated_non_comparable_types():
     injector = Injector([configure])
     assert injector.get(foo) == 123
     assert injector.get(bar) == 456
+
+
+def test_annotated_integration_with_annotated():
+    UserID = Annotated[int, 'user_id']
+
+    @inject
+    class TestClass:
+        def __init__(self, user_id: UserID):
+            self.user_id = user_id
+
+    def configure(binder):
+        binder.bind(UserID, to=123)
+
+    injector = Injector([configure])
+
+    test_class = injector.get(TestClass)
+    assert test_class.user_id == 123
+
+
+def test_newtype_integration_with_annotated():
+    UserID = NewType('UserID', int)
+
+    @inject
+    class TestClass:
+        def __init__(self, user_id: UserID):
+            self.user_id = user_id
+
+    def configure(binder):
+        binder.bind(UserID, to=123)
+
+    injector = Injector([configure])
+
+    test_class = injector.get(TestClass)
+    assert test_class.user_id == 123
+
+
+def test_dataclass_annotated_parameter():
+    Foo = Annotated[int, object()]
+
+    def configure(binder):
+        binder.bind(Foo, to=123)
+
+    @inject
+    @dataclass
+    class MyClass:
+        foo: Foo
+
+    injector = Injector([configure])
+    instance = injector.get(MyClass)
+    assert instance.foo == 123
