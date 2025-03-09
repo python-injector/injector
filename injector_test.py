@@ -1767,3 +1767,21 @@ def test_annotated_injection_with_attribute():
         pass
 
     assert get_bindings(target) == {'val_foo': foo, 'val_bar': bar}
+
+
+def test_annotated_injection_from_provider_to_attribute():
+    foo = Annotated[str, "foo"]
+    bar = Annotated[str, "bar"]
+
+    class TestModule(Module):
+        @provider
+        def provide_foo(self) -> foo:
+            return "foo"
+
+        @multiprovider
+        def provide_bars(self) -> list[bar]:
+            return ["bar"]
+
+    injector = Injector([TestModule])
+    assert injector.binder.has_explicit_binding_for(foo)
+    assert injector.binder.has_explicit_binding_for(list[bar])
