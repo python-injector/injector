@@ -1766,6 +1766,7 @@ def test_annotated_injection_with_attribute():
 
     assert get_bindings(target) == {'val_foo': foo, 'val_bar': bar}
 
+
 def test_annotated_injection_from_provider_to_attribute():
     foo = Annotated[str, "foo"]
     bar = Annotated[str, "bar"]
