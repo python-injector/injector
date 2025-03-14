@@ -1238,9 +1238,11 @@ def _infer_injected_bindings(callable: Callable, only_explicit_bindings: bool) -
         bindings.pop(spec.varkw, None)
 
     for k, v in list(bindings.items()):
-        if _is_specialization(v, Annotated) :
+        if _is_specialization(v, Annotated):
             origin, metadata = v.__origin__, v.__metadata__
-            if _inject_marker in metadata or _noinject_marker in metadata:  #replace original annotated type with its origin if annotation is injection marker
+            if (
+                _inject_marker in metadata or _noinject_marker in metadata
+            ):  # replace original annotated type with its origin if annotation is injection marker
                 bindings[k] = origin
         else:
             metadata = tuple()
