@@ -1,6 +1,11 @@
 Injector Change Log
 ===================
 
+0.23.0
+------
+
+- Allow injecting Annotated types into classes, thanks to Filip Nešťák
+
 0.22.0
 ------
 
