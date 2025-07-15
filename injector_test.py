@@ -10,13 +10,11 @@
 
 """Functional tests for the "Injector" dependency injection framework."""
 
-from contextlib import contextmanager
-from typing import Any, NewType, Optional, Union
 import abc
 import sys
 import threading
-import traceback
-import warnings
+from contextlib import contextmanager
+from typing import Any, Optional, Union
 
 if sys.version_info >= (3, 9):
     from typing import Annotated
@@ -1754,3 +1752,34 @@ def test_annotated_non_comparable_types():
     injector = Injector([configure])
     assert injector.get(foo) == 123
     assert injector.get(bar) == 456
+
+
+def test_annotated_injection_with_attribute():
+
+    foo = Annotated[str, "foo"]
+    bar = Annotated[str, "bar"]
+
+    # noinspection PyUnusedLocal
+    @inject
+    def target(val_foo: foo, val_bar: bar):
+        pass
+
+    assert get_bindings(target) == {'val_foo': foo, 'val_bar': bar}
+
+
+def test_annotated_injection_from_provider_to_attribute():
+    foo = Annotated[str, "foo"]
+    bar = Annotated[str, "bar"]
+
+    class TestModule(Module):
+        @provider
+        def provide_foo(self) -> foo:
+            return "foo"
+
+        @multiprovider
+        def provide_bars(self) -> List[bar]:
+            return ["bar"]
+
+    injector = Injector([TestModule])
+    assert injector.binder.has_explicit_binding_for(foo)
+    assert injector.binder.has_explicit_binding_for(List[bar])

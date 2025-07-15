@@ -1239,8 +1239,11 @@ def _infer_injected_bindings(callable: Callable, only_explicit_bindings: bool) -
 
     for k, v in list(bindings.items()):
         if _is_specialization(v, Annotated):
-            v, metadata = v.__origin__, v.__metadata__
-            bindings[k] = v
+            origin, metadata = v.__origin__, v.__metadata__
+            if (
+                _inject_marker in metadata or _noinject_marker in metadata
+            ):  # replace original annotated type with its origin if annotation is injection marker
+                bindings[k] = origin
         else:
             metadata = tuple()
 
@@ -1324,7 +1327,7 @@ def multiprovider(function: CallableT) -> CallableT:
 def _mark_provider_function(function: Callable, *, allow_multi: bool) -> None:
     scope_ = getattr(function, '__scope__', None)
     try:
-        annotations = get_type_hints(function)
+        annotations = get_type_hints(function, include_extras=True)
     except NameError:
         return_type = '__deferred__'
     else:
