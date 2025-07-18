@@ -1674,8 +1674,7 @@ def test_get_bindings():
     assert get_bindings(function11) == {'a': int}
 
 
-    # This will not inject `None` even if there is a provider configured to provide
-    # str | None elsewhere in the graph because `None` is stripped in
+    # This should correctly resolve str | None
     @inject
     def function12(a: str | None):
         pass
@@ -1690,7 +1689,7 @@ def test_get_bindings_for_pep_604():
     def function1(a: int | None) -> None:
         pass
 
-    assert get_bindings(function1) == {'a': int}
+    assert get_bindings(function1) == {'a': Union[int, None]}
 
     @inject
     def function1(a: int | str) -> None:
