@@ -1674,6 +1674,15 @@ def test_get_bindings():
     assert get_bindings(function11) == {'a': int}
 
 
+    # This will not inject `None` even if there is a provider configured to provide
+    # str | None elsewhere in the graph because `None` is stripped in
+    @inject
+    def function12(a: str | None):
+        pass
+
+    assert get_bindings(function12) == {'a': str | None}
+
+
 # Tests https://github.com/alecthomas/injector/issues/202
 @pytest.mark.skipif(sys.version_info < (3, 10), reason="Requires Python 3.10+")
 def test_get_bindings_for_pep_604():
