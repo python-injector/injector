@@ -674,31 +674,38 @@ class PluginC(Plugin):
     pass
 
 
-# TODO: callable provider?
+class PluginD(Plugin):
+    pass
+
+
 def test__multibind_list_of_plugins():
     def configure(binder: Binder):
         binder.multibind(List[Plugin], to=PluginA)
         binder.multibind(List[Plugin], to=[PluginB, PluginC()])
+        binder.multibind(List[Plugin], to=lambda: [PluginD()])
 
     injector = Injector([configure])
     plugins = injector.get(List[Plugin])
-    assert len(plugins) == 3
+    assert len(plugins) == 4
     assert isinstance(plugins[0], PluginA)
     assert isinstance(plugins[1], PluginB)
     assert isinstance(plugins[2], PluginC)
+    assert isinstance(plugins[3], PluginD)
 
 
 def test__multibind_dict_of_plugins():
     def configure(binder: Binder):
         binder.multibind(Dict[str, Plugin], to={'a': PluginA})
         binder.multibind(Dict[str, Plugin], to={'b': PluginB, 'c': PluginC()})
+        binder.multibind(Dict[str, Plugin], to={'d': PluginD()})
 
     injector = Injector([configure])
     plugins = injector.get(Dict[str, Plugin])
-    assert len(plugins) == 3
+    assert len(plugins) == 4
     assert isinstance(plugins['a'], PluginA)
     assert isinstance(plugins['b'], PluginB)
     assert isinstance(plugins['c'], PluginC)
+    assert isinstance(plugins['d'], PluginD)
 
 
 def test_regular_bind_and_provider_dont_work_with_multibind():
