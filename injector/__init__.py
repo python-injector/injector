@@ -245,6 +245,10 @@ class UnknownArgument(Error):
     """Tried to mark an unknown argument as noninjectable."""
 
 
+class InvalidInterface(Error):
+    """Cannot bind to the specified interface."""
+
+
 class Provider(Generic[T]):
     """Provides class instances."""
 
@@ -537,14 +541,22 @@ class Binder:
             assert isinstance(provider, ListOfProviders)
 
         if isinstance(provider, MultiBindProvider):
-            # TODO: error handling if interface is not a generic?
-            element_type = get_args(_punch_through_alias(interface))[0]
+            try:
+                element_type = get_args(_punch_through_alias(interface))[0]
+            except IndexError:
+                raise InvalidInterface(
+                    f"Use typing.List[T] or list[T] to specify the element type of the list"
+                )
             for element in _ensure_iterable(to):
                 provider.append(self.provider_for(element_type, element))
         elif isinstance(provider, MapBindProvider):
             if isinstance(to, dict):
-                # TODO: error handling if interface is not a generic?
-                value_type = get_args(_punch_through_alias(interface))[1]
+                try:
+                    value_type = get_args(_punch_through_alias(interface))[1]
+                except IndexError:
+                    raise InvalidInterface(
+                        f"Use typing.Dict[K, V] or dict[K, V] to specify the value type of the dict"
+                    )
                 for key, value in to.items():
                     provider.append(KeyValueProvider(key, self.provider_for(value_type, value)))
             else:

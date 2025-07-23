@@ -54,6 +54,7 @@ from injector import (
     ClassAssistedBuilder,
     Error,
     UnknownArgument,
+    InvalidInterface,
 )
 
 
@@ -706,6 +707,20 @@ def test__multibind_dict_of_plugins():
     assert isinstance(plugins['b'], PluginB)
     assert isinstance(plugins['c'], PluginC)
     assert isinstance(plugins['d'], PluginD)
+
+
+def test__multibinding_to_non_generic_type_raises_error():
+    def configure_list(binder: Binder):
+        binder.multibind(List, to=[1])
+
+    def configure_dict(binder: Binder):
+        binder.multibind(Dict, to={'a': 2})
+
+    with pytest.raises(InvalidInterface):
+        Injector([configure_list])
+
+    with pytest.raises(InvalidInterface):
+        Injector([configure_dict])
 
 
 def test_regular_bind_and_provider_dont_work_with_multibind():
