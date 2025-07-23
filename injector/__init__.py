@@ -29,6 +29,7 @@ from typing import (
     cast,
     Dict,
     Generic,
+    get_args,
     Iterable,
     List,
     Optional,
@@ -244,6 +245,10 @@ class UnknownArgument(Error):
     """Tried to mark an unknown argument as noninjectable."""
 
 
+class InvalidInterface(Error):
+    """Cannot bind to the specified interface."""
+
+
 class Provider(Generic[T]):
     """Provides class instances."""
 
@@ -355,7 +360,7 @@ class MultiBindProvider(ListOfProviders[List[T]]):
     return sequences."""
 
     def get(self, injector: 'Injector') -> List[T]:
-        return [i for provider in self._providers for i in provider.get(injector)]
+        return [i for provider in self._providers for i in _ensure_iterable(provider.get(injector))]
 
 
 class MapBindProvider(ListOfProviders[Dict[str, T]]):
@@ -366,6 +371,16 @@ class MapBindProvider(ListOfProviders[Dict[str, T]]):
         for provider in self._providers:
             map.update(provider.get(injector))
         return map
+
+
+@private
+class KeyValueProvider(Provider[Dict[str, T]]):
+    def __init__(self, key: str, inner_provider: Provider[T]) -> None:
+        self._key = key
+        self._provider = inner_provider
+
+    def get(self, injector: 'Injector') -> Dict[str, T]:
+        return {self._key: self._provider.get(injector)}
 
 
 _BindingBase = namedtuple('_BindingBase', 'interface provider scope')
@@ -468,7 +483,7 @@ class Binder:
     def multibind(
         self,
         interface: Type[List[T]],
-        to: Union[List[T], Callable[..., List[T]], Provider[List[T]]],
+        to: Union[List[Union[T, Type[T]]], Callable[..., List[T]], Provider[List[T]], Type[T]],
         scope: Union[Type['Scope'], 'ScopeDecorator', None] = None,
     ) -> None:  # pragma: no cover
         pass
@@ -477,7 +492,7 @@ class Binder:
     def multibind(
         self,
         interface: Type[Dict[K, V]],
-        to: Union[Dict[K, V], Callable[..., Dict[K, V]], Provider[Dict[K, V]]],
+        to: Union[Dict[K, Union[V, Type[V]]], Callable[..., Dict[K, V]], Provider[Dict[K, V]]],
         scope: Union[Type['Scope'], 'ScopeDecorator', None] = None,
     ) -> None:  # pragma: no cover
         pass
@@ -524,7 +539,28 @@ class Binder:
             binding = self._bindings[interface]
             provider = binding.provider
             assert isinstance(provider, ListOfProviders)
-        provider.append(self.provider_for(interface, to))
+
+        if isinstance(provider, MultiBindProvider):
+            try:
+                element_type = get_args(_punch_through_alias(interface))[0]
+            except IndexError:
+                raise InvalidInterface(
+                    f"Use typing.List[T] or list[T] to specify the element type of the list"
+                )
+            for element in _ensure_iterable(to):
+                provider.append(self.provider_for(element_type, element))
+        elif isinstance(provider, MapBindProvider):
+            if isinstance(to, dict):
+                try:
+                    value_type = get_args(_punch_through_alias(interface))[1]
+                except IndexError:
+                    raise InvalidInterface(
+                        f"Use typing.Dict[K, V] or dict[K, V] to specify the value type of the dict"
+                    )
+                for key, value in to.items():
+                    provider.append(KeyValueProvider(key, self.provider_for(value_type, value)))
+            else:
+                provider.append(self.provider_for(interface, to))
 
     def install(self, module: _InstallableModuleType) -> None:
         """Install a module into this binder.
@@ -694,6 +730,12 @@ def _is_specialization(cls: type, generic_class: Any) -> bool:
     # Union cannot be used in issubclass() check (it raises an exception
     # by design).
     return origin is generic_class or issubclass(origin, generic_class)
+
+
+def _ensure_iterable(item_or_list: Union[T, List[T]]) -> List[T]:
+    if isinstance(item_or_list, list):
+        return item_or_list
+    return [item_or_list]
 
 
 def _punch_through_alias(type_: Any) -> type:
