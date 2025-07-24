@@ -540,27 +540,26 @@ class Binder:
             provider = binding.provider
             assert isinstance(provider, ListOfProviders)
 
-        if isinstance(provider, MultiBindProvider):
+        if isinstance(provider, MultiBindProvider) and isinstance(to, list):
             try:
                 element_type = get_args(_punch_through_alias(interface))[0]
             except IndexError:
                 raise InvalidInterface(
                     f"Use typing.List[T] or list[T] to specify the element type of the list"
                 )
-            for element in _ensure_iterable(to):
+            for element in to:
                 provider.append(self.provider_for(element_type, element))
-        elif isinstance(provider, MapBindProvider):
-            if isinstance(to, dict):
-                try:
-                    value_type = get_args(_punch_through_alias(interface))[1]
-                except IndexError:
-                    raise InvalidInterface(
-                        f"Use typing.Dict[K, V] or dict[K, V] to specify the value type of the dict"
-                    )
-                for key, value in to.items():
-                    provider.append(KeyValueProvider(key, self.provider_for(value_type, value)))
-            else:
-                provider.append(self.provider_for(interface, to))
+        elif isinstance(provider, MapBindProvider) and isinstance(to, dict):
+            try:
+                value_type = get_args(_punch_through_alias(interface))[1]
+            except IndexError:
+                raise InvalidInterface(
+                    f"Use typing.Dict[K, V] or dict[K, V] to specify the value type of the dict"
+                )
+            for key, value in to.items():
+                provider.append(KeyValueProvider(key, self.provider_for(value_type, value)))
+        else:
+            provider.append(self.provider_for(interface, to))
 
     def install(self, module: _InstallableModuleType) -> None:
         """Install a module into this binder.
