@@ -54,6 +54,7 @@ from injector import (
     ClassAssistedBuilder,
     Error,
     UnknownArgument,
+    InvalidInterface,
 )
 
 
@@ -656,6 +657,70 @@ def test_multibind():
     assert injector.get(Dict[str, int]) == {'weight': 12, 'height': 33}
     assert injector.get(Names) == ['Bob', 'Alice', 'Clarice']
     assert injector.get(Passwords) == {'Bob': 'password1', 'Alice': 'aojrioeg3', 'Clarice': 'clarice30'}
+
+
+class Plugin(abc.ABC):
+    pass
+
+
+class PluginA(Plugin):
+    pass
+
+
+class PluginB(Plugin):
+    pass
+
+
+class PluginC(Plugin):
+    pass
+
+
+class PluginD(Plugin):
+    pass
+
+
+def test__multibind_list_of_plugins():
+    def configure(binder: Binder):
+        binder.multibind(List[Plugin], to=PluginA)
+        binder.multibind(List[Plugin], to=[PluginB, PluginC()])
+        binder.multibind(List[Plugin], to=lambda: [PluginD()])
+
+    injector = Injector([configure])
+    plugins = injector.get(List[Plugin])
+    assert len(plugins) == 4
+    assert isinstance(plugins[0], PluginA)
+    assert isinstance(plugins[1], PluginB)
+    assert isinstance(plugins[2], PluginC)
+    assert isinstance(plugins[3], PluginD)
+
+
+def test__multibind_dict_of_plugins():
+    def configure(binder: Binder):
+        binder.multibind(Dict[str, Plugin], to={'a': PluginA})
+        binder.multibind(Dict[str, Plugin], to={'b': PluginB, 'c': PluginC()})
+        binder.multibind(Dict[str, Plugin], to=lambda: {'d': PluginD()})
+
+    injector = Injector([configure])
+    plugins = injector.get(Dict[str, Plugin])
+    assert len(plugins) == 4
+    assert isinstance(plugins['a'], PluginA)
+    assert isinstance(plugins['b'], PluginB)
+    assert isinstance(plugins['c'], PluginC)
+    assert isinstance(plugins['d'], PluginD)
+
+
+def test__multibinding_to_non_generic_type_raises_error():
+    def configure_list(binder: Binder):
+        binder.multibind(List, to=[1])
+
+    def configure_dict(binder: Binder):
+        binder.multibind(Dict, to={'a': 2})
+
+    with pytest.raises(InvalidInterface):
+        Injector([configure_list])
+
+    with pytest.raises(InvalidInterface):
+        Injector([configure_dict])
 
 
 def test_regular_bind_and_provider_dont_work_with_multibind():
