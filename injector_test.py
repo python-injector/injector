@@ -698,7 +698,7 @@ def test__multibind_dict_of_plugins():
     def configure(binder: Binder):
         binder.multibind(Dict[str, Plugin], to={'a': PluginA})
         binder.multibind(Dict[str, Plugin], to={'b': PluginB, 'c': PluginC()})
-        binder.multibind(Dict[str, Plugin], to={'d': PluginD()})
+        binder.multibind(Dict[str, Plugin], to=lambda: {'d': PluginD()})
 
     injector = Injector([configure])
     plugins = injector.get(Dict[str, Plugin])
