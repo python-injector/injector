@@ -504,22 +504,25 @@ class Binder:
 
         A multi-binding contributes values to a list or to a dictionary. For example::
 
-            binder.multibind(List[str], to=['some', 'strings'])
-            binder.multibind(List[str], to=['other', 'strings'])
-            injector.get(List[str])  # ['some', 'strings', 'other', 'strings']
+            binder.multibind(list[Interface], to=A)
+            binder.multibind(list[Interface], to=[B, C()])
+            injector.get(list[Interface])  # [<A object at 0x1000>, <B object at 0x2000>, <C object at 0x3000>]
 
-            binder.multibind(Dict[str, int], to={'key': 11})
-            binder.multibind(Dict[str, int], to={'other_key': 33})
-            injector.get(Dict[str, int])  # {'key': 11, 'other_key': 33}
+            binder.multibind(dict[str, Interface], to={'key': A})
+            binder.multibind(dict[str, Interface], to={'other_key': B})
+            injector.get(dict[str, Interface])  # {'key': <A object at 0x1000>, 'other_key': <B object at 0x2000>}
 
         .. versionchanged:: 0.17.0
             Added support for using `typing.Dict` and `typing.List` instances as interfaces.
             Deprecated support for `MappingKey`, `SequenceKey` and single-item lists and
             dictionaries as interfaces.
 
-        :param interface: typing.Dict or typing.List instance to bind to.
-        :param to: Instance, class to bind to, or an explicit :class:`Provider`
-                subclass. Must provide a list or a dictionary, depending on the interface.
+        :param interface: A generic list[T] or dict[str, T] type to bind to.
+
+        :param to: A list/dict to bind to, where the values are either instances or classes implementing T. 
+                Can also be an explicit :class:`Provider` or a callable that returns a list/dict.
+                For lists, this can also be a class implementing T (e.g. multibind(list[T], to=A))
+        
         :param scope: Optional Scope in which to bind.
         """
         if interface not in self._bindings:
