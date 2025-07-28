@@ -506,11 +506,13 @@ class Binder:
 
             binder.multibind(list[Interface], to=A)
             binder.multibind(list[Interface], to=[B, C()])
-            injector.get(list[Interface])  # [<A object at 0x1000>, <B object at 0x2000>, <C object at 0x3000>]
+            injector.get(list[Interface])
+            # [<A object at 0x1000>, <B object at 0x2000>, <C object at 0x3000>]
 
             binder.multibind(dict[str, Interface], to={'key': A})
             binder.multibind(dict[str, Interface], to={'other_key': B})
-            injector.get(dict[str, Interface])  # {'key': <A object at 0x1000>, 'other_key': <B object at 0x2000>}
+            injector.get(dict[str, Interface])
+            # {'key': <A object at 0x1000>, 'other_key': <B object at 0x2000>}
 
         .. versionchanged:: 0.17.0
             Added support for using `typing.Dict` and `typing.List` instances as interfaces.
