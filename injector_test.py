@@ -1846,35 +1846,44 @@ def test_annotated_non_comparable_types():
 
 def test_annotated_integration_with_annotated():
     UserID = Annotated[int, 'user_id']
+    UserAge = Annotated[int, 'user_age']
 
     @inject
     class TestClass:
-        def __init__(self, user_id: UserID):
+        def __init__(self, user_id: UserID, user_age: UserAge):
             self.user_id = user_id
+            self.user_age = user_age
 
     def configure(binder):
         binder.bind(UserID, to=123)
+        binder.bind(UserAge, to=32)
 
     injector = Injector([configure])
 
     test_class = injector.get(TestClass)
     assert test_class.user_id == 123
+    assert test_class.user_age == 32
 
 
 def test_inject_annotation_with_annotated_type():
     UserID = Annotated[int, 'user_id']
+    UserAge = Annotated[int, 'user_age']
 
     class TestClass:
-        def __init__(self, user_id: Inject[UserID]):
+        def __init__(self, user_id: Inject[UserID], user_age: Inject[UserAge]):
             self.user_id = user_id
+            self.user_age = user_age
 
     def configure(binder):
         binder.bind(UserID, to=123)
+        binder.bind(UserAge, to=32)
+        binder.bind(int, to=456)
 
     injector = Injector([configure])
 
     test_class = injector.get(TestClass)
     assert test_class.user_id == 123
+    assert test_class.user_age == 32
 
 
 def test_inject_annotation_with_nested_annotated_type():
