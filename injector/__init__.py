@@ -360,7 +360,11 @@ class MultiBindProvider(ListOfProviders[List[T]]):
     return sequences."""
 
     def get(self, injector: 'Injector') -> List[T]:
-        return [i for provider in self._providers for i in _ensure_iterable(provider.get(injector))]
+        result: List[T] = []
+        for provider in self._providers:
+            instances: List[T] = _ensure_iterable(provider.get(injector))
+            result.extend(instances)
+        return result
 
 
 class MapBindProvider(ListOfProviders[Dict[str, T]]):
