@@ -1589,89 +1589,115 @@ def test_binder_has_implicit_binding_for_implicitly_bound_type():
     assert not injector.binder.has_explicit_binding_for(int)
 
 
-def test_get_bindings():
-    def function1(a: int) -> None:
+def test_gets_no_bindings_without_injection() -> None:
+    def function(a: int) -> None:
         pass
 
-    assert get_bindings(function1) == {}
+    assert get_bindings(function) == {}
 
+
+def test_gets_bindings_with_inject_decorator() -> None:
     @inject
-    def function2(a: int) -> None:
+    def function(a: int) -> None:
         pass
 
-    assert get_bindings(function2) == {'a': int}
+    assert get_bindings(function) == {'a': int}
 
+
+def test_gets_multiple_bindings_with_inject_decorator() -> None:
+    @inject
+    def function(a: int, b: str) -> None:
+        pass
+
+    assert get_bindings(function) == {'a': int, 'b': str}
+
+
+def test_only_gets_injectable_bindings_without_noninjectable_decorator() -> None:
     @inject
     @noninjectable('b')
-    def function3(a: int, b: str) -> None:
+    def function1(a: int, b: str) -> None:
         pass
-
-    assert get_bindings(function3) == {'a': int}
 
     # Let's verify that the inject/noninjectable ordering doesn't matter
     @noninjectable('b')
     @inject
-    def function3b(a: int, b: str) -> None:
+    def function2(a: int, b: str) -> None:
         pass
 
-    assert get_bindings(function3b) == {'a': int}
+    assert get_bindings(function1) == {'a': int} == get_bindings(function2)
 
-    # The simple case of no @inject but injection requested with Inject[...]
-    def function4(a: Inject[int], b: str) -> None:
+
+def test_gets_bindings_with_inject_annotation() -> None:
+    def function(a: Inject[int], b: str) -> None:
         pass
 
-    assert get_bindings(function4) == {'a': int}
+    assert get_bindings(function) == {'a': int}
 
-    # Using @inject with Inject is redundant but it should not break anything
+
+def test_gets_multiple_bindings_with_inject_annotation() -> None:
+    def function(a: Inject[int], b: Inject[str]) -> None:
+        pass
+
+    assert get_bindings(function) == {'a': int, 'b': str}
+
+
+def test_gets_bindings_inject_with_redundant_inject_annotation() -> None:
     @inject
-    def function5(a: Inject[int], b: str) -> None:
+    def function(a: Inject[int], b: str) -> None:
         pass
 
-    assert get_bindings(function5) == {'a': int, 'b': str}
+    assert get_bindings(function) == {'a': int, 'b': str}
 
-    # We need to be able to exclude a parameter from injection with NoInject
+
+def test_only_gets_bindings_without_noinject_annotation() -> None:
     @inject
-    def function6(a: int, b: NoInject[str]) -> None:
+    def function(a: int, b: NoInject[str]) -> None:
         pass
 
-    assert get_bindings(function6) == {'a': int}
+    assert get_bindings(function) == {'a': int}
 
-    # The presence of NoInject should not trigger anything on its own
-    def function7(a: int, b: NoInject[str]) -> None:
+
+def test_gets_no_bindings_for_noinject_annotation_only() -> None:
+    def function(a: int, b: NoInject[str]) -> None:
         pass
 
-    assert get_bindings(function7) == {}
+    assert get_bindings(function) == {}
 
+
+def test_gets_no_bindings_for_multiple_noinject_annotations() -> None:
     # There was a bug where in case of multiple NoInject-decorated parameters only the first one was
     # actually made noninjectable and we tried to inject something we couldn't possibly provide
     # into the second one.
     @inject
-    def function8(a: NoInject[int], b: NoInject[int]) -> None:
+    def function(a: NoInject[int], b: NoInject[int]) -> None:
         pass
 
-    assert get_bindings(function8) == {}
+    assert get_bindings(function) == {}
 
-    # Default arguments to NoInject annotations should behave the same as noninjectable decorator w.r.t 'None'
+
+def test_get_bindings_noinject_with_default_should_behave_identically() -> None:
     @inject
     @noninjectable('b')
-    def function9(self, a: int, b: Optional[str] = None):
+    def function1(self, a: int, b: Optional[str] = None) -> None:
         pass
 
     @inject
-    def function10(self, a: int, b: NoInject[Optional[str]] = None):
-        # b:s type is Union[NoInject[Union[str, None]], None]
+    def function2(self, a: int, b: NoInject[Optional[str]] = None) -> None:
+        # b's type is Union[NoInject[Union[str, None]], None]
         pass
 
-    assert get_bindings(function9) == {'a': int} == get_bindings(function10)
+    assert get_bindings(function1) == {'a': int} == get_bindings(function2)
 
+
+def test_get_bindings_with_an_invalid_forward_reference_return_type() -> None:
     # If there's a return type annottion that contains an a forward reference that can't be
     # resolved (for whatever reason) we don't want that to break things for us – return types
     # don't matter for the purpose of dependency injection.
     @inject
-    def function11(a: int) -> 'InvalidForwardReference':
+    def function(a: int) -> 'InvalidForwardReference':
         pass
 
-    assert get_bindings(function11) == {'a': int}
+    assert get_bindings(function) == {'a': int}
 
 
 # Tests https://github.com/alecthomas/injector/issues/202
