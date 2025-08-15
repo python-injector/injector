@@ -1700,6 +1700,67 @@ def test_get_bindings_with_an_invalid_forward_reference_return_type() -> None:
     assert get_bindings(function) == {'a': int}
 
 
+def test_gets_bindings_for_annotated_type_with_inject_decorator() -> None:
+    UserID = Annotated[int, 'user_id']
+
+    @inject
+    def function(a: UserID, b: str) -> None:
+        pass
+
+    assert get_bindings(function) == {'a': UserID, 'b': str}
+
+
+def test_gets_bindings_of_annotated_type_with_inject_annotation() -> None:
+    UserID = Annotated[int, 'user_id']
+
+    def function(a: Inject[UserID], b: Inject[str]) -> None:
+        pass
+
+    assert get_bindings(function) == {'a': UserID, 'b': str}
+
+
+def test_gets_bindings_of_new_type_with_inject_annotation() -> None:
+    Name = NewType('Name', str)
+
+    @inject
+    def function(a: Name, b: str) -> None:
+        pass
+
+    assert get_bindings(function) == {'a': Name, 'b': str}
+
+
+def test_gets_bindings_of_inject_annotation_with_new_type() -> None:
+    def function(a: Inject[Name], b: str) -> None:
+        pass
+
+    assert get_bindings(function) == {'a': Name}
+
+
+def test_get_bindings_of_nested_noinject_inject_annotation() -> None:
+    # This is not how this is intended to be used
+    def function(a: Inject[NoInject[int]], b: NoInject[Inject[str]]) -> None:
+        pass
+
+    assert get_bindings(function) == {}
+
+
+def test_get_bindings_of_nested_noinject_inject_annotation_and_inject_decorator() -> None:
+    # This is not how this is intended to be used
+    @inject
+    def function(a: Inject[NoInject[int]], b: NoInject[Inject[str]]) -> None:
+        pass
+
+    assert get_bindings(function) == {}
+
+
+def test_get_bindings_of_nested_inject_annotations() -> None:
+    # This is not how this is intended to be used
+    def function(a: Inject[Inject[int]]) -> None:
+        pass
+
+    assert get_bindings(function) == {'a': int}
+
+
 # Tests https://github.com/alecthomas/injector/issues/202
 @pytest.mark.skipif(sys.version_info < (3, 10), reason="Requires Python 3.10+")
 def test_get_bindings_for_pep_604():
@@ -1800,12 +1861,78 @@ def test_annotated_integration_with_annotated():
     assert test_class.user_id == 123
 
 
+def test_inject_annotation_with_annotated_type():
+    UserID = Annotated[int, 'user_id']
+
+    class TestClass:
+        def __init__(self, user_id: Inject[UserID]):
+            self.user_id = user_id
+
+    def configure(binder):
+        binder.bind(UserID, to=123)
+
+    injector = Injector([configure])
+
+    test_class = injector.get(TestClass)
+    assert test_class.user_id == 123
+
+
+def test_inject_annotation_with_nested_annotated_type():
+    UserID = Annotated[int, 'user_id']
+    SpecialUserID = Annotated[UserID, 'special_user_id']
+
+    class TestClass:
+        def __init__(self, user_id: Inject[SpecialUserID]):
+            self.user_id = user_id
+
+    def configure(binder):
+        binder.bind(SpecialUserID, to=123)
+
+    injector = Injector([configure])
+
+    test_class = injector.get(TestClass)
+    assert test_class.user_id == 123
+
+
+def test_noinject_annotation_with_annotated_type():
+    UserID = Annotated[int, 'user_id']
+
+    @inject
+    class TestClass:
+        def __init__(self, user_id: NoInject[UserID] = None):
+            self.user_id = user_id
+
+    def configure(binder):
+        binder.bind(UserID, to=123)
+
+    injector = Injector([configure])
+
+    test_class = injector.get(TestClass)
+    assert test_class.user_id is None
+
+
 def test_newtype_integration_with_annotated():
     UserID = NewType('UserID', int)
 
     @inject
     class TestClass:
         def __init__(self, user_id: UserID):
+            self.user_id = user_id
+
+    def configure(binder):
+        binder.bind(UserID, to=123)
+
+    injector = Injector([configure])
+
+    test_class = injector.get(TestClass)
+    assert test_class.user_id == 123
+
+
+def test_newtype_with_injection_annotation():
+    UserID = NewType('UserID', int)
+
+    class TestClass:
+        def __init__(self, user_id: Inject[UserID]):
             self.user_id = user_id
 
     def configure(binder):
