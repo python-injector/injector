@@ -1217,7 +1217,7 @@ def _infer_injected_bindings(callable: Callable, only_explicit_bindings: bool) -
         # Creates `Annotated[type, annotation]` from `Inject[Annotated[type, annotation]]`,
         # to support the injection of annotated types with the `Inject[]` annotation.
         origin = annotated_type.__origin__
-        for metadata in annotated_type.__metadata__:
+        for metadata in annotated_type.__metadata__:  # pragma: no branch
             if metadata in (_inject_marker, _noinject_marker):
                 break
             origin = Annotated[origin, metadata]
