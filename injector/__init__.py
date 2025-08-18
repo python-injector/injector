@@ -525,10 +525,10 @@ class Binder:
 
         :param interface: A generic list[T] or dict[str, T] type to bind to.
 
-        :param to: A list/dict to bind to, where the values are either instances or classes implementing T. 
+        :param to: A list/dict to bind to, where the values are either instances or classes implementing T.
                 Can also be an explicit :class:`Provider` or a callable that returns a list/dict.
                 For lists, this can also be a class implementing T (e.g. multibind(list[T], to=A))
-        
+
         :param scope: Optional Scope in which to bind.
         """
         if interface not in self._bindings:
