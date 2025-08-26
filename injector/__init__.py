@@ -1263,6 +1263,16 @@ def _infer_injected_bindings(callable: Callable, only_explicit_bindings: bool) -
             _inject_marker in annotation.__metadata__ or _noinject_marker in annotation.__metadata__
         )
 
+    def _recreate_annotated_origin(annotated_type: Any) -> Any:
+        # Creates `Annotated[type, annotation]` from `Inject[Annotated[type, annotation]]`,
+        # to support the injection of annotated types with the `Inject[]` annotation.
+        origin = annotated_type.__origin__
+        for metadata in annotated_type.__metadata__:  # pragma: no branch
+            if metadata in (_inject_marker, _noinject_marker):
+                break
+            origin = Annotated[origin, metadata]
+        return origin
+
     spec = inspect.getfullargspec(callable)
 
     try:
@@ -1295,7 +1305,7 @@ def _infer_injected_bindings(callable: Callable, only_explicit_bindings: bool) -
     for k, v in list(bindings.items()):
         # extract metadata only from Inject and NonInject
         if _is_injection_annotation(v):
-            v, metadata = v.__origin__, v.__metadata__
+            v, metadata = _recreate_annotated_origin(v), v.__metadata__
             bindings[k] = v
         else:
             metadata = tuple()
