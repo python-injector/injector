@@ -29,6 +29,7 @@ from typing import (
     cast,
     Dict,
     Generic,
+    get_args,
     Iterable,
     List,
     Optional,
@@ -244,6 +245,10 @@ class UnknownArgument(Error):
     """Tried to mark an unknown argument as noninjectable."""
 
 
+class InvalidInterface(Error):
+    """Cannot bind to the specified interface."""
+
+
 class Provider(Generic[T]):
     """Provides class instances."""
 
@@ -355,7 +360,11 @@ class MultiBindProvider(ListOfProviders[List[T]]):
     return sequences."""
 
     def get(self, injector: 'Injector') -> List[T]:
-        return [i for provider in self._providers for i in provider.get(injector)]
+        result: List[T] = []
+        for provider in self._providers:
+            instances: List[T] = _ensure_iterable(provider.get(injector))
+            result.extend(instances)
+        return result
 
 
 class MapBindProvider(ListOfProviders[Dict[str, T]]):
@@ -366,6 +375,16 @@ class MapBindProvider(ListOfProviders[Dict[str, T]]):
         for provider in self._providers:
             map.update(provider.get(injector))
         return map
+
+
+@private
+class KeyValueProvider(Provider[Dict[str, T]]):
+    def __init__(self, key: str, inner_provider: Provider[T]) -> None:
+        self._key = key
+        self._provider = inner_provider
+
+    def get(self, injector: 'Injector') -> Dict[str, T]:
+        return {self._key: self._provider.get(injector)}
 
 
 _BindingBase = namedtuple('_BindingBase', 'interface provider scope')
@@ -468,7 +487,7 @@ class Binder:
     def multibind(
         self,
         interface: Type[List[T]],
-        to: Union[List[T], Callable[..., List[T]], Provider[List[T]]],
+        to: Union[List[Union[T, Type[T]]], Callable[..., List[T]], Provider[List[T]], Type[T]],
         scope: Union[Type['Scope'], 'ScopeDecorator', None] = None,
     ) -> None:  # pragma: no cover
         pass
@@ -477,7 +496,7 @@ class Binder:
     def multibind(
         self,
         interface: Type[Dict[K, V]],
-        to: Union[Dict[K, V], Callable[..., Dict[K, V]], Provider[Dict[K, V]]],
+        to: Union[Dict[K, Union[V, Type[V]]], Callable[..., Dict[K, V]], Provider[Dict[K, V]]],
         scope: Union[Type['Scope'], 'ScopeDecorator', None] = None,
     ) -> None:  # pragma: no cover
         pass
@@ -489,22 +508,27 @@ class Binder:
 
         A multi-binding contributes values to a list or to a dictionary. For example::
 
-            binder.multibind(List[str], to=['some', 'strings'])
-            binder.multibind(List[str], to=['other', 'strings'])
-            injector.get(List[str])  # ['some', 'strings', 'other', 'strings']
+            binder.multibind(list[Interface], to=A)
+            binder.multibind(list[Interface], to=[B, C()])
+            injector.get(list[Interface])
+            # [<A object at 0x1000>, <B object at 0x2000>, <C object at 0x3000>]
 
-            binder.multibind(Dict[str, int], to={'key': 11})
-            binder.multibind(Dict[str, int], to={'other_key': 33})
-            injector.get(Dict[str, int])  # {'key': 11, 'other_key': 33}
+            binder.multibind(dict[str, Interface], to={'key': A})
+            binder.multibind(dict[str, Interface], to={'other_key': B})
+            injector.get(dict[str, Interface])
+            # {'key': <A object at 0x1000>, 'other_key': <B object at 0x2000>}
 
         .. versionchanged:: 0.17.0
             Added support for using `typing.Dict` and `typing.List` instances as interfaces.
             Deprecated support for `MappingKey`, `SequenceKey` and single-item lists and
             dictionaries as interfaces.
 
-        :param interface: typing.Dict or typing.List instance to bind to.
-        :param to: Instance, class to bind to, or an explicit :class:`Provider`
-                subclass. Must provide a list or a dictionary, depending on the interface.
+        :param interface: A generic list[T] or dict[str, T] type to bind to.
+
+        :param to: A list/dict to bind to, where the values are either instances or classes implementing T.
+                Can also be an explicit :class:`Provider` or a callable that returns a list/dict.
+                For lists, this can also be a class implementing T (e.g. multibind(list[T], to=A))
+
         :param scope: Optional Scope in which to bind.
         """
         if interface not in self._bindings:
@@ -524,7 +548,27 @@ class Binder:
             binding = self._bindings[interface]
             provider = binding.provider
             assert isinstance(provider, ListOfProviders)
-        provider.append(self.provider_for(interface, to))
+
+        if isinstance(provider, MultiBindProvider) and isinstance(to, list):
+            try:
+                element_type = get_args(_punch_through_alias(interface))[0]
+            except IndexError:
+                raise InvalidInterface(
+                    f"Use typing.List[T] or list[T] to specify the element type of the list"
+                )
+            for element in to:
+                provider.append(self.provider_for(element_type, element))
+        elif isinstance(provider, MapBindProvider) and isinstance(to, dict):
+            try:
+                value_type = get_args(_punch_through_alias(interface))[1]
+            except IndexError:
+                raise InvalidInterface(
+                    f"Use typing.Dict[K, V] or dict[K, V] to specify the value type of the dict"
+                )
+            for key, value in to.items():
+                provider.append(KeyValueProvider(key, self.provider_for(value_type, value)))
+        else:
+            provider.append(self.provider_for(interface, to))
 
     def install(self, module: _InstallableModuleType) -> None:
         """Install a module into this binder.
@@ -694,6 +738,12 @@ def _is_specialization(cls: type, generic_class: Any) -> bool:
     # Union cannot be used in issubclass() check (it raises an exception
     # by design).
     return origin is generic_class or issubclass(origin, generic_class)
+
+
+def _ensure_iterable(item_or_list: Union[T, List[T]]) -> List[T]:
+    if isinstance(item_or_list, list):
+        return item_or_list
+    return [item_or_list]
 
 
 def _punch_through_alias(type_: Any) -> type:
