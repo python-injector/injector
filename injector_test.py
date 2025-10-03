@@ -1826,6 +1826,14 @@ def test_get_bindings_of_nested_inject_annotations() -> None:
     assert get_bindings(function) == {'a': int}
 
 
+    # This should correctly resolve str | None
+    @inject
+    def function12(a: str | None):
+        pass
+
+    assert get_bindings(function12) == {'a': str | None}
+
+
 # Tests https://github.com/alecthomas/injector/issues/202
 @pytest.mark.skipif(sys.version_info < (3, 10), reason="Requires Python 3.10+")
 def test_get_bindings_for_pep_604():
@@ -1833,7 +1841,7 @@ def test_get_bindings_for_pep_604():
     def function1(a: int | None) -> None:
         pass
 
-    assert get_bindings(function1) == {'a': int}
+    assert get_bindings(function1) == {'a': Union[int, None]}
 
     @inject
     def function1(a: int | str) -> None:
