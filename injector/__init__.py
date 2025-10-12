@@ -28,6 +28,7 @@ from typing import (
     Any,
     Callable,
     Dict,
+    Generator,
     Generic,
     Iterable,
     List,
@@ -340,7 +341,7 @@ class InstanceProvider(Provider, Generic[T]):
 
 
 @private
-class ListOfProviders(Provider, Generic[T]):
+class Multibinder(Provider, Generic[T]):
     """Provide a list of instances via other Providers."""
 
     _multi_bindings: List['Binding']
@@ -354,16 +355,7 @@ class ListOfProviders(Provider, Generic[T]):
         pseudo_type = type(f"pseudo-type-{id(provider)}", (provider.__class__,), {})
         self._multi_bindings.append(Binding(pseudo_type, provider, scope))
 
-    def __repr__(self) -> str:
-        return '%s(%r)' % (type(self).__name__, self._multi_bindings)
-
-
-class MultiBindProvider(ListOfProviders[List[T]]):
-    """Used by :meth:`Binder.multibind` to flatten results of providers that
-    return sequences."""
-
-    def get(self, injector: 'Injector') -> List[T]:
-        result: List[T] = []
+    def get_scoped_providers(self, injector: 'Injector') -> Generator[Provider[T], None, None]:
         for binding in self._multi_bindings:
             if (
                 isinstance(binding.provider, ClassProvider)
@@ -377,19 +369,31 @@ class MultiBindProvider(ListOfProviders[List[T]]):
                 scope_binding, _ = self._binder.get_binding(binding.scope)
             scope_instance: Scope = scope_binding.provider.get(injector)
             provider_instance = scope_instance.get(binding.interface, binding.provider)
-            instances = _ensure_iterable(provider_instance.get(injector))
+            yield provider_instance
+
+    def __repr__(self) -> str:
+        return '%s(%r)' % (type(self).__name__, self._multi_bindings)
+
+
+class MultiBindProvider(Multibinder[List[T]]):
+    """Used by :meth:`Binder.multibind` to flatten results of providers that
+    return sequences."""
+
+    def get(self, injector: 'Injector') -> List[T]:
+        result: List[T] = []
+        for provider in self.get_scoped_providers(injector):
+            instances: List[T] = _ensure_iterable(provider.get(injector))
             result.extend(instances)
         return result
 
 
-class MapBindProvider(ListOfProviders[Dict[str, T]]):
+class MapBindProvider(Multibinder[Dict[str, T]]):
     """A provider for map bindings."""
 
     def get(self, injector: 'Injector') -> Dict[str, T]:
         map: Dict[str, T] = {}
-        for binding in self._multi_bindings:
-            # TODO: support scope
-            map.update(binding.provider.get(injector))
+        for provider in self.get_scoped_providers(injector):
+            map.update(provider.get(injector))
         return map
 
 
@@ -552,7 +556,7 @@ class Binder:
         :param scope: Optional Scope in which to bind.
         """
         if interface not in self._bindings:
-            provider: ListOfProviders
+            provider: Multibinder
             if (
                 isinstance(interface, dict)
                 or isinstance(interface, type)
@@ -566,7 +570,7 @@ class Binder:
             self._bindings[interface] = binding
         else:
             binding = self._bindings[interface]
-            assert isinstance(binding.provider, ListOfProviders)
+            assert isinstance(binding.provider, Multibinder)
             provider = binding.provider
 
         if isinstance(provider, MultiBindProvider) and isinstance(to, list):
