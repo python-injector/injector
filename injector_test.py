@@ -10,14 +10,14 @@
 
 """Functional tests for the "Injector" dependency injection framework."""
 
-from contextlib import contextmanager
-from dataclasses import dataclass
-from typing import Any, NewType, Optional, Union
 import abc
 import sys
 import threading
 import traceback
 import warnings
+from contextlib import contextmanager
+from dataclasses import dataclass
+from typing import Any, NewType, Optional, Union
 
 if sys.version_info >= (3, 9):
     from typing import Annotated
@@ -29,32 +29,32 @@ from typing import Dict, List, NewType
 import pytest
 
 from injector import (
+    AssistedBuilder,
     Binder,
     CallError,
+    CircularDependency,
+    ClassAssistedBuilder,
+    ClassProvider,
+    Error,
     Inject,
     Injector,
-    NoInject,
-    Scope,
     InstanceProvider,
-    ClassProvider,
+    InvalidInterface,
+    Module,
+    NoInject,
+    ProviderOf,
+    Scope,
+    ScopeDecorator,
+    SingletonScope,
+    UnknownArgument,
+    UnsatisfiedRequirement,
     get_bindings,
     inject,
     multiprovider,
     noninjectable,
+    provider,
     singleton,
     threadlocal,
-    UnsatisfiedRequirement,
-    CircularDependency,
-    Module,
-    SingletonScope,
-    ScopeDecorator,
-    AssistedBuilder,
-    provider,
-    ProviderOf,
-    ClassAssistedBuilder,
-    Error,
-    UnknownArgument,
-    InvalidInterface,
 )
 
 
@@ -721,6 +721,46 @@ def test__multibinding_to_non_generic_type_raises_error():
 
     with pytest.raises(InvalidInterface):
         Injector([configure_dict])
+
+
+def test_multibind_types_respect_the_bound_type_scope() -> None:
+    def configure(binder: Binder) -> None:
+        binder.bind(PluginA, to=PluginA, scope=singleton)
+        binder.multibind(List[Plugin], to=PluginA)
+
+    injector = Injector([configure])
+    first_list = injector.get(List[Plugin])
+    second_list = injector.get(List[Plugin])
+
+    assert first_list[0] is second_list[0]
+
+
+def test_multibind_scopes_applies_to_the_bound_items() -> None:
+    def configure(binder: Binder) -> None:
+        binder.multibind(List[Plugin], to=PluginA, scope=singleton)
+        binder.multibind(List[Plugin], to=PluginB)
+        binder.multibind(List[Plugin], to=PluginC, scope=singleton)
+
+    injector = Injector([configure])
+    first_list = injector.get(List[Plugin])
+    second_list = injector.get(List[Plugin])
+
+    assert first_list is not second_list
+    assert first_list[0] is second_list[0]
+    assert first_list[1] is not second_list[1]
+    assert first_list[2] is second_list[2]
+
+
+def test_multibind_scopes_does_not_apply_to_the_type_globally() -> None:
+    def configure(binder: Binder) -> None:
+        binder.multibind(List[Plugin], to=PluginA, scope=singleton)
+
+    injector = Injector([configure])
+    plugins = injector.get(List[Plugin])
+
+    assert plugins[0] is not injector.get(PluginA)
+    assert plugins[0] is not injector.get(Plugin)
+    assert injector.get(PluginA) is not injector.get(PluginA)
 
 
 def test_regular_bind_and_provider_dont_work_with_multibind():
