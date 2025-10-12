@@ -22,24 +22,24 @@ import sys
 import threading
 import types
 from abc import ABCMeta, abstractmethod
-from collections import namedtuple
+from dataclasses import dataclass
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
-    cast,
     Dict,
     Generic,
-    get_args,
     Iterable,
     List,
     Optional,
-    overload,
     Set,
     Tuple,
     Type,
     TypeVar,
-    TYPE_CHECKING,
     Union,
+    cast,
+    get_args,
+    overload,
 )
 
 try:
@@ -52,13 +52,13 @@ except ImportError:
 # canonical. Since this typing_extensions import is only for mypy it'll work even without
 # typing_extensions actually installed so all's good.
 if TYPE_CHECKING:
-    from typing_extensions import _AnnotatedAlias, Annotated, get_type_hints
+    from typing_extensions import Annotated, _AnnotatedAlias, get_type_hints
 else:
     # Ignoring errors here as typing_extensions stub doesn't know about those things yet
     try:
-        from typing import _AnnotatedAlias, Annotated, get_type_hints
+        from typing import Annotated, _AnnotatedAlias, get_type_hints
     except ImportError:
-        from typing_extensions import _AnnotatedAlias, Annotated, get_type_hints
+        from typing_extensions import Annotated, _AnnotatedAlias, get_type_hints
 
 
 __author__ = 'Alec Thomas <alec@swapoff.org>'
@@ -343,16 +343,19 @@ class InstanceProvider(Provider, Generic[T]):
 class ListOfProviders(Provider, Generic[T]):
     """Provide a list of instances via other Providers."""
 
-    _providers: List[Provider[T]]
+    _multi_bindings: List['Binding']
 
-    def __init__(self) -> None:
-        self._providers = []
+    def __init__(self, parent: 'Binder') -> None:
+        self._multi_bindings = []
+        self._binder = Binder(parent.injector, auto_bind=False, parent=parent)
 
-    def append(self, provider: Provider[T]) -> None:
-        self._providers.append(provider)
+    def append(self, provider: Provider[T], scope: Type['Scope']) -> None:
+        # HACK: generate a pseudo-type for this element in the list
+        pseudo_type = type(f"pseudo-type-{id(provider)}", (provider.__class__,), {})
+        self._multi_bindings.append(Binding(pseudo_type, provider, scope))
 
     def __repr__(self) -> str:
-        return '%s(%r)' % (type(self).__name__, self._providers)
+        return '%s(%r)' % (type(self).__name__, self._multi_bindings)
 
 
 class MultiBindProvider(ListOfProviders[List[T]]):
@@ -361,8 +364,11 @@ class MultiBindProvider(ListOfProviders[List[T]]):
 
     def get(self, injector: 'Injector') -> List[T]:
         result: List[T] = []
-        for provider in self._providers:
-            instances: List[T] = _ensure_iterable(provider.get(injector))
+        for binding in self._multi_bindings:
+            scope_binding, _ = self._binder.get_binding(binding.scope)
+            scope_instance: Scope = scope_binding.provider.get(injector)
+            provider_instance = scope_instance.get(binding.interface, binding.provider)
+            instances: List[T] = _ensure_iterable(provider_instance.get(injector))
             result.extend(instances)
         return result
 
@@ -372,8 +378,9 @@ class MapBindProvider(ListOfProviders[Dict[str, T]]):
 
     def get(self, injector: 'Injector') -> Dict[str, T]:
         map: Dict[str, T] = {}
-        for provider in self._providers:
-            map.update(provider.get(injector))
+        for binding in self._multi_bindings:
+            # TODO: support scope
+            map.update(binding.provider.get(injector))
         return map
 
 
@@ -387,7 +394,11 @@ class KeyValueProvider(Provider[Dict[str, T]]):
         return {self._key: self._provider.get(injector)}
 
 
-_BindingBase = namedtuple('_BindingBase', 'interface provider scope')
+@dataclass
+class _BindingBase:
+    interface: type
+    provider: Provider
+    scope: Type['Scope']
 
 
 @private
@@ -539,15 +550,15 @@ class Binder:
                 and issubclass(interface, dict)
                 or _get_origin(_punch_through_alias(interface)) is dict
             ):
-                provider = MapBindProvider()
+                provider = MapBindProvider(self)
             else:
-                provider = MultiBindProvider()
-            binding = self.create_binding(interface, provider, scope)
+                provider = MultiBindProvider(self)
+            binding = self.create_binding(interface, provider)
             self._bindings[interface] = binding
         else:
             binding = self._bindings[interface]
+            assert isinstance(binding.provider, ListOfProviders)
             provider = binding.provider
-            assert isinstance(provider, ListOfProviders)
 
         if isinstance(provider, MultiBindProvider) and isinstance(to, list):
             try:
@@ -557,7 +568,8 @@ class Binder:
                     f"Use typing.List[T] or list[T] to specify the element type of the list"
                 )
             for element in to:
-                provider.append(self.provider_for(element_type, element))
+                element_binding = self.create_binding(element_type, element, scope)
+                provider.append(element_binding.provider, element_binding.scope)
         elif isinstance(provider, MapBindProvider) and isinstance(to, dict):
             try:
                 value_type = get_args(_punch_through_alias(interface))[1]
@@ -566,9 +578,11 @@ class Binder:
                     f"Use typing.Dict[K, V] or dict[K, V] to specify the value type of the dict"
                 )
             for key, value in to.items():
-                provider.append(KeyValueProvider(key, self.provider_for(value_type, value)))
+                element_binding = self.create_binding(value_type, value, scope)
+                provider.append(KeyValueProvider(key, element_binding.provider), element_binding.scope)
         else:
-            provider.append(self.provider_for(interface, to))
+            element_binding = self.create_binding(interface, to, scope)
+            provider.append(element_binding.provider, element_binding.scope)
 
     def install(self, module: _InstallableModuleType) -> None:
         """Install a module into this binder.
@@ -611,10 +625,10 @@ class Binder:
         self, interface: type, to: Any = None, scope: Union['ScopeDecorator', Type['Scope'], None] = None
     ) -> Binding:
         provider = self.provider_for(interface, to)
-        scope = scope or getattr(to or interface, '__scope__', NoScope)
+        scope = scope or getattr(to or interface, '__scope__', None)
         if isinstance(scope, ScopeDecorator):
             scope = scope.scope
-        return Binding(interface, provider, scope)
+        return Binding(interface, provider, scope or NoScope)
 
     def provider_for(self, interface: Any, to: Any = None) -> Provider:
         base_type = _punch_through_alias(interface)
@@ -696,7 +710,7 @@ class Binder:
             # The special interface is added here so that requesting a special
             # interface with auto_bind disabled works
             if self._auto_bind or self._is_special_interface(interface):
-                binding = ImplicitBinding(*self.create_binding(interface))
+                binding = ImplicitBinding(**self.create_binding(interface).__dict__)
                 self._bindings[interface] = binding
                 return binding, self
 
@@ -817,7 +831,7 @@ class ScopeDecorator:
 class NoScope(Scope):
     """An unscoped provider."""
 
-    def get(self, unused_key: Type[T], provider: Provider[T]) -> Provider[T]:
+    def get(self, key: Type[T], provider: Provider[T]) -> Provider[T]:
         return provider
 
 
