@@ -738,7 +738,7 @@ def test_multibind_types_respect_the_bound_type_scope() -> None:
     assert third_list[0] is second_list[0]
 
 
-def test_multibind_scopes_applies_to_the_bound_items() -> None:
+def test_multibind_list_scopes_applies_to_the_bound_items() -> None:
     def configure(binder: Binder) -> None:
         binder.multibind(List[Plugin], to=PluginA, scope=singleton)
         binder.multibind(List[Plugin], to=PluginB)
