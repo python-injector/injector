@@ -739,7 +739,7 @@ def test_multibind_scopes_applies_to_the_bound_items() -> None:
     def configure(binder: Binder) -> None:
         binder.multibind(List[Plugin], to=PluginA, scope=singleton)
         binder.multibind(List[Plugin], to=PluginB)
-        binder.multibind(List[Plugin], to=PluginC, scope=singleton)
+        binder.multibind(List[Plugin], to=[PluginC], scope=singleton)
 
     injector = Injector([configure])
     first_list = injector.get(List[Plugin])
