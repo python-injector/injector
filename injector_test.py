@@ -731,8 +731,11 @@ def test_multibind_types_respect_the_bound_type_scope() -> None:
     injector = Injector([configure])
     first_list = injector.get(List[Plugin])
     second_list = injector.get(List[Plugin])
+    child_injector = injector.create_child_injector()
+    third_list = child_injector.get(List[Plugin])
 
     assert first_list[0] is second_list[0]
+    assert third_list[0] is second_list[0]
 
 
 def test_multibind_scopes_applies_to_the_bound_items() -> None:
