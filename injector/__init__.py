@@ -341,7 +341,7 @@ class InstanceProvider(Provider, Generic[T]):
 
 
 @private
-class Multibinder(Provider, Generic[T]):
+class MultiBinder(Provider, Generic[T]):
     """Provide a list of instances via other Providers."""
 
     _multi_bindings: List['Binding']
@@ -377,7 +377,7 @@ class Multibinder(Provider, Generic[T]):
         return '%s(%r)' % (type(self).__name__, self._multi_bindings)
 
 
-class MultiBindProvider(Multibinder[List[T]]):
+class MultiBindProvider(MultiBinder[List[T]]):
     """Used by :meth:`Binder.multibind` to flatten results of providers that
     return sequences."""
 
@@ -389,7 +389,7 @@ class MultiBindProvider(Multibinder[List[T]]):
         return result
 
 
-class MapBindProvider(Multibinder[Dict[str, T]]):
+class MapBindProvider(MultiBinder[Dict[str, T]]):
     """A provider for map bindings."""
 
     def get(self, injector: 'Injector') -> Dict[str, T]:
@@ -557,25 +557,8 @@ class Binder:
 
         :param scope: Optional Scope in which to bind.
         """
-        if interface not in self._bindings:
-            provider: Multibinder
-            if (
-                isinstance(interface, dict)
-                or isinstance(interface, type)
-                and issubclass(interface, dict)
-                or _get_origin(_punch_through_alias(interface)) is dict
-            ):
-                provider = MapBindProvider(self)
-            else:
-                provider = MultiBindProvider(self)
-            binding = self.create_binding(interface, provider)
-            self._bindings[interface] = binding
-        else:
-            binding = self._bindings[interface]
-            assert isinstance(binding.provider, Multibinder)
-            provider = binding.provider
-
-        if isinstance(provider, MultiBindProvider) and isinstance(to, list):
+        multi_binder = self._get_multi_binder(interface)
+        if isinstance(multi_binder, MultiBindProvider) and isinstance(to, list):
             try:
                 element_type = get_args(_punch_through_alias(interface))[0]
             except IndexError:
@@ -584,8 +567,8 @@ class Binder:
                 )
             for element in to:
                 element_binding = self.create_binding(element_type, element, scope)
-                provider.append(element_binding.provider, element_binding.scope)
-        elif isinstance(provider, MapBindProvider) and isinstance(to, dict):
+                multi_binder.append(element_binding.provider, element_binding.scope)
+        elif isinstance(multi_binder, MapBindProvider) and isinstance(to, dict):
             try:
                 value_type = get_args(_punch_through_alias(interface))[1]
             except IndexError:
@@ -594,10 +577,31 @@ class Binder:
                 )
             for key, value in to.items():
                 element_binding = self.create_binding(value_type, value, scope)
-                provider.append(KeyValueProvider(key, element_binding.provider), element_binding.scope)
+                multi_binder.append(KeyValueProvider(key, element_binding.provider), element_binding.scope)
         else:
             element_binding = self.create_binding(interface, to, scope)
-            provider.append(element_binding.provider, element_binding.scope)
+            multi_binder.append(element_binding.provider, element_binding.scope)
+    
+    def _get_multi_binder(self, interface: type) -> MultiBinder:
+        multi_binder: MultiBinder
+        if interface not in self._bindings:
+            if (
+                isinstance(interface, dict)
+                or isinstance(interface, type)
+                and issubclass(interface, dict)
+                or _get_origin(_punch_through_alias(interface)) is dict
+            ):
+                multi_binder = MapBindProvider(self)
+            else:
+                multi_binder = MultiBindProvider(self)
+            binding = self.create_binding(interface, multi_binder)
+            self._bindings[interface] = binding
+        else:
+            binding = self._bindings[interface]
+            assert isinstance(binding.provider, MultiBinder)
+            multi_binder = binding.provider
+        
+        return multi_binder
 
     def install(self, module: _InstallableModuleType) -> None:
         """Install a module into this binder.
