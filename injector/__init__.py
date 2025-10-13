@@ -352,7 +352,7 @@ class MultiBinder(Provider, Generic[T]):
 
     def append(self, provider: Provider[T], scope: Type['Scope']) -> None:
         # HACK: generate a pseudo-type for this element in the list.
-        # This is needed for scopes to work properly. Some, like the Singleton scope, 
+        # This is needed for scopes to work properly. Some, like the Singleton scope,
         # key instances by type, so we need one that is unique to this binding.
         pseudo_type = type(f"multibind-type-{id(provider)}", (provider.__class__,), {})
         self._multi_bindings.append(Binding(pseudo_type, provider, scope))
@@ -581,7 +581,7 @@ class Binder:
         else:
             element_binding = self.create_binding(interface, to, scope)
             multi_binder.append(element_binding.provider, element_binding.scope)
-    
+
     def _get_multi_binder(self, interface: type) -> MultiBinder:
         multi_binder: MultiBinder
         if interface not in self._bindings:
@@ -600,7 +600,7 @@ class Binder:
             binding = self._bindings[interface]
             assert isinstance(binding.provider, MultiBinder)
             multi_binder = binding.provider
-        
+
         return multi_binder
 
     def install(self, module: _InstallableModuleType) -> None:
