@@ -351,8 +351,10 @@ class Multibinder(Provider, Generic[T]):
         self._binder = Binder(parent.injector, auto_bind=False, parent=parent)
 
     def append(self, provider: Provider[T], scope: Type['Scope']) -> None:
-        # HACK: generate a pseudo-type for this element in the list
-        pseudo_type = type(f"pseudo-type-{id(provider)}", (provider.__class__,), {})
+        # HACK: generate a pseudo-type for this element in the list.
+        # This is needed for scopes to work properly. Some, like the Singleton scope, 
+        # key instances by type, so we need one that is unique to this binding.
+        pseudo_type = type(f"multibind-type-{id(provider)}", (provider.__class__,), {})
         self._multi_bindings.append(Binding(pseudo_type, provider, scope))
 
     def get_scoped_providers(self, injector: 'Injector') -> Generator[Provider[T], None, None]:
