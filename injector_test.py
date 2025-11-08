@@ -55,6 +55,7 @@ from injector import (
     Error,
     UnknownArgument,
     InvalidInterface,
+    named_provider,
 )
 
 
@@ -2032,3 +2033,35 @@ def test_dataclass_annotated_parameter():
     injector = Injector([configure])
     instance = injector.get(MyClass)
     assert instance.foo == 123
+
+
+def test_module_provider_with_annotated():
+    class MyModule(Module):
+        @provider
+        def provide_first(self) -> Annotated[str, 'first']:
+            return 'Bob'
+
+        @provider
+        def provide_second(self) -> Annotated[str, 'second']:
+            return 'Iger'
+
+    module = MyModule()
+    injector = Injector(module)
+    assert injector.get(Annotated[str, 'first']) == 'Bob'
+    assert injector.get(Annotated[str, 'second']) == 'Iger'
+
+
+def test_module_named_provider():
+    class MyModule(Module):
+        @named_provider('first')
+        def provide_first(self) -> str:
+            return 'Bob'
+
+        @named_provider('second')
+        def provide_second(self) -> str:
+            return 'Iger'
+
+    module = MyModule()
+    injector = Injector(module)
+    assert injector.get(Annotated[str, 'first']) == 'Bob'
+    assert injector.get(Annotated[str, 'second']) == 'Iger'

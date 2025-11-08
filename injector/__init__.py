@@ -1367,6 +1367,23 @@ def provider(function: CallableT) -> CallableT:
     return function
 
 
+def named_provider(name: str) -> CallableT:
+    """Decorator for :class:`Module` methods, creating annoted type a of a type.
+
+    >>> class MyModule(Module):
+    ...   @named_provider("first")
+    ...   def provide_name(self) -> str:
+    ...       return 'Bob'
+
+    """
+
+    def decorator(function: CallableT):
+        _mark_named_provider_function(function, name, allow_multi=False)
+        return function
+
+    return decorator
+
+
 def multiprovider(function: CallableT) -> CallableT:
     """Like :func:`provider`, but for multibindings. Example usage::
 
@@ -1390,13 +1407,27 @@ def multiprovider(function: CallableT) -> CallableT:
 def _mark_provider_function(function: Callable, *, allow_multi: bool) -> None:
     scope_ = getattr(function, '__scope__', None)
     try:
-        annotations = get_type_hints(function)
+        annotations = get_type_hints(function, include_extras=True)
     except NameError:
         return_type = '__deferred__'
     else:
         return_type = annotations['return']
         _validate_provider_return_type(function, cast(type, return_type), allow_multi)
     function.__binding__ = Binding(return_type, inject(function), scope_)  # type: ignore
+
+
+def _mark_named_provider_function(function: Callable, name: str, *, allow_multi: bool) -> None:
+    scope_ = getattr(function, '__scope__', None)
+    try:
+        annotations = get_type_hints(function, include_extras=True)
+    except NameError:
+        return_type = '__deferred__'
+    else:
+        raw_return_type = annotations['return']
+        return_type = Annotated[raw_return_type, name]
+
+        _validate_provider_return_type(function, cast(type, return_type), allow_multi)
+    function.__binding__ = Binding(return_type, inject(function), scope_)
 
 
 def _validate_provider_return_type(function: Callable, return_type: type, allow_multi: bool) -> None:
