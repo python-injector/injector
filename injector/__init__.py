@@ -1390,7 +1390,7 @@ def multiprovider(function: CallableT) -> CallableT:
 def _mark_provider_function(function: Callable, *, allow_multi: bool) -> None:
     scope_ = getattr(function, '__scope__', None)
     try:
-        annotations = get_type_hints(function)
+        annotations = get_type_hints(function, include_extras=True)
     except NameError:
         return_type = '__deferred__'
     else:
