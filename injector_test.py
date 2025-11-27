@@ -781,6 +781,44 @@ def test_multibind_list_scopes_applies_to_the_bound_items() -> None:
     assert first_list[2] is second_list[2]
 
 
+def test_multibind_list_scopes_applies_to_the_bound_items_not_types() -> None:
+    def configure(binder: Binder) -> None:
+        binder.multibind(List[Plugin], to=PluginA)
+        binder.multibind(List[Plugin], to=[PluginA, PluginB], scope=singleton)
+        binder.multibind(List[Plugin], to=PluginA)
+        binder.multibind(List[Plugin], to=PluginA, scope=singleton)
+
+    injector = Injector([configure])
+    first_list = injector.get(List[Plugin])
+    second_list = injector.get(List[Plugin])
+
+    assert first_list is not second_list
+    assert first_list[0] is not second_list[0]
+    assert first_list[1] is second_list[1]
+    assert first_list[2] is second_list[2]
+    assert first_list[3] is not second_list[3]
+    assert first_list[4] is second_list[4]
+
+
+def test_multibind_dict_scopes_applies_to_the_bound_items_in_the_multibound_dict() -> None:
+    SingletonPlugins = Annotated[Plugin, "singleton"]
+    OtherPlugins = Annotated[Plugin, "other"]
+
+    def configure(binder: Binder) -> None:
+        binder.multibind(Dict[str, SingletonPlugins], to={'a': PluginA}, scope=singleton)
+        binder.multibind(Dict[str, OtherPlugins], to={'a': PluginA})
+
+    injector = Injector([configure])
+    singletons_1 = injector.get(Dict[str, SingletonPlugins])
+    singletons_2 = injector.get(Dict[str, SingletonPlugins])
+    others_1 = injector.get(Dict[str, OtherPlugins])
+    others_2 = injector.get(Dict[str, OtherPlugins])
+
+    assert singletons_1['a'] is singletons_2['a']
+    assert singletons_1['a'] is not others_1['a']
+    assert others_1['a'] is not others_2['a']
+
+
 def test_multibind_list_scopes_applies_to_the_bound_items_in_the_multibound_list() -> None:
     SingletonPlugins = Annotated[Plugin, "singleton"]
     OtherPlugins = Annotated[Plugin, "other"]
