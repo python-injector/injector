@@ -634,7 +634,7 @@ def test_inject_and_provide_coexist_happily():
 
 
 Names = NewType('Names', List[str])
-Passwords = NewType('Ages', Dict[str, str])
+Passwords = NewType('Passwords', Dict[str, str])
 
 
 def test_multibind():
