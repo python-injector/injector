@@ -63,7 +63,7 @@ else:
 
 
 __author__ = 'Alec Thomas <alec@swapoff.org>'
-__version__ = '0.22.0'
+__version__ = '0.23.0'
 __version_tag__ = ''
 
 log = logging.getLogger('injector')
