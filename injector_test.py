@@ -765,7 +765,7 @@ def test_multibind_dict_types_use_their_own_bound_providers_and_scopes() -> None
     assert dictionary['b'] is not injector.get(PluginB)
 
 
-def test_multibind_list_scopes_applies_to_the_bound_items() -> None:
+def test_multibind_list_scopes_apply_to_the_bound_items() -> None:
     def configure(binder: Binder) -> None:
         binder.multibind(List[Plugin], to=PluginA, scope=singleton)
         binder.multibind(List[Plugin], to=PluginB)
@@ -781,7 +781,7 @@ def test_multibind_list_scopes_applies_to_the_bound_items() -> None:
     assert first_list[2] is second_list[2]
 
 
-def test_multibind_list_scopes_applies_to_the_bound_items_not_types() -> None:
+def test_multibind_list_scopes_apply_to_the_bound_items_not_types() -> None:
     def configure(binder: Binder) -> None:
         binder.multibind(List[Plugin], to=PluginA)
         binder.multibind(List[Plugin], to=[PluginA, PluginB], scope=singleton)
@@ -800,7 +800,7 @@ def test_multibind_list_scopes_applies_to_the_bound_items_not_types() -> None:
     assert first_list[4] is second_list[4]
 
 
-def test_multibind_dict_scopes_applies_to_the_bound_items_in_the_multibound_dict() -> None:
+def test_multibind_dict_scopes_apply_to_the_bound_items_in_the_multibound_dict() -> None:
     SingletonPlugins = Annotated[Plugin, "singleton"]
     OtherPlugins = Annotated[Plugin, "other"]
 
@@ -819,7 +819,7 @@ def test_multibind_dict_scopes_applies_to_the_bound_items_in_the_multibound_dict
     assert others_1['a'] is not others_2['a']
 
 
-def test_multibind_list_scopes_applies_to_the_bound_items_in_the_multibound_list() -> None:
+def test_multibind_list_scopes_apply_to_the_bound_items_in_the_multibound_list() -> None:
     SingletonPlugins = Annotated[Plugin, "singleton"]
     OtherPlugins = Annotated[Plugin, "other"]
 
@@ -838,7 +838,7 @@ def test_multibind_list_scopes_applies_to_the_bound_items_in_the_multibound_list
     assert others_1[0] is not others_2[0]
 
 
-def test_multibind_dict_scopes_applies_to_the_bound_items() -> None:
+def test_multibind_dict_scopes_apply_to_the_bound_items() -> None:
     def configure(binder: Binder) -> None:
         binder.multibind(Dict[str, Plugin], to={'a': PluginA}, scope=singleton)
         binder.multibind(Dict[str, Plugin], to={'b': PluginB})
