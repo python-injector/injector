@@ -4,8 +4,15 @@ Injector Change Log
 0.23.0
 ------
 
+Added:
+
 - Allow injecting Annotated types into classes, thanks to Filip Nešťák.
 - Fixed Annotated type support in `@provider` methods, thanks to Satwik Agrawal.
+- `multibind()` now accepts types and its instantiation respects global scopes and bindings. Thanks to Eiríkur Torfason.
+
+Backwards incompatible:
+
+- Changed so that the `scope` provided to `multibind()` applies to the individual bound types, within the collection. Previously the scope was applied to the collection, the `list` or `dict` instance. Thanks to Eiríkur Torfason.
 
 0.22.0
 ------
