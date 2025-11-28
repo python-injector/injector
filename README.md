@@ -1,8 +1,8 @@
 Injector - Python dependency injection framework, inspired by Guice
 ===================================================================
 
-[![image](https://github.com/alecthomas/injector/workflows/CI/badge.svg)](https://github.com/alecthomas/injector/actions?query=workflow%3ACI+branch%3Amaster)
-[![Coverage Status](https://codecov.io/gh/alecthomas/injector/branch/master/graph/badge.svg)](https://codecov.io/gh/alecthomas/injector)
+[![CI](https://github.com/python-injector/injector/actions/workflows/ci.yml/badge.svg)](https://github.com/python-injector/injector/actions/workflows/ci.yml)
+[![Coverage Status](https://codecov.io/gh/python-injector/injector/branch/master/graph/badge.svg)](https://codecov.io/gh/alecthomas/injector)
 
 Introduction
 ------------
