@@ -636,6 +636,9 @@ def test_inject_and_provide_coexist_happily():
 Names = NewType('Names', List[str])
 Passwords = NewType('Passwords', Dict[str, str])
 
+Animals = Annotated[List[str], 'Animals']
+AnimalFoods = Annotated[Dict[str, str], 'AnimalFoods']
+
 
 def test_multibind():
     # First let's have some explicit multibindings
@@ -648,6 +651,12 @@ def test_multibind():
         # To see that NewTypes are treated distinctly
         binder.multibind(Names, to=['Bob'])
         binder.multibind(Passwords, to={'Bob': 'password1'})
+        # To see that Annotated collections are treated distinctly
+        binder.multibind(Animals, to=['Dog'])
+        binder.multibind(AnimalFoods, to={'Dog': 'meat'})
+        # To see that collections of Annotated types are treated distinctly
+        binder.multibind(List[City], to=[City('Stockholm')])
+        binder.multibind(Dict[str, City], to={'Sweden': City('Stockholm')})
 
     # Then @multiprovider-decorated Module methods
     class CustomModule(Module):
@@ -669,11 +678,27 @@ def test_multibind():
 
         @multiprovider
         def provide_names(self) -> Names:
-            return ['Alice', 'Clarice']
+            return Names(['Alice', 'Clarice'])
 
         @multiprovider
         def provide_passwords(self) -> Passwords:
-            return {'Alice': 'aojrioeg3', 'Clarice': 'clarice30'}
+            return Passwords({'Alice': 'aojrioeg3', 'Clarice': 'clarice30'})
+
+        @multiprovider
+        def provide_animals(self) -> Animals:
+            return ['Cat', 'Fish']
+
+        @multiprovider
+        def provide_animal_foods(self) -> AnimalFoods:
+            return {'Cat': 'milk', 'Fish': 'flakes'}
+
+        @multiprovider
+        def provide_cities(self) -> List[City]:
+            return [City('New York'), City('Tokyo')]
+
+        @multiprovider
+        def provide_city_mapping(self) -> Dict[str, City]:
+            return {'USA': City('New York'), 'Japan': City('Tokyo')}
 
     injector = Injector([configure, CustomModule])
     assert injector.get(List[str]) == ['not a name', 'not a name either']
@@ -682,6 +707,10 @@ def test_multibind():
     assert injector.get(Dict[str, int]) == {'weight': 12, 'height': 33}
     assert injector.get(Names) == ['Bob', 'Alice', 'Clarice']
     assert injector.get(Passwords) == {'Bob': 'password1', 'Alice': 'aojrioeg3', 'Clarice': 'clarice30'}
+    assert injector.get(Animals) == ['Dog', 'Cat', 'Fish']
+    assert injector.get(AnimalFoods) == {'Dog': 'meat', 'Cat': 'milk', 'Fish': 'flakes'}
+    assert injector.get(List[City]) == ['Stockholm', 'New York', 'Tokyo']
+    assert injector.get(Dict[str, City]) == {'Sweden': 'Stockholm', 'USA': 'New York', 'Japan': 'Tokyo'}
 
 
 class Plugin(abc.ABC):
