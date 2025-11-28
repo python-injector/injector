@@ -723,7 +723,7 @@ def test__multibinding_to_non_generic_type_raises_error():
         Injector([configure_dict])
 
 
-def test_multibind_types_respect_the_bound_type_scope() -> None:
+def test_multibind_types_are_not_affected_by_the_bound_type_scope() -> None:
     def configure(binder: Binder) -> None:
         binder.bind(PluginA, to=PluginA, scope=singleton)
         binder.multibind(List[Plugin], to=PluginA)
@@ -731,11 +731,38 @@ def test_multibind_types_respect_the_bound_type_scope() -> None:
     injector = Injector([configure])
     first_list = injector.get(List[Plugin])
     second_list = injector.get(List[Plugin])
-    child_injector = injector.create_child_injector()
-    third_list = child_injector.get(List[Plugin])
 
-    assert first_list[0] is second_list[0]
-    assert third_list[0] is second_list[0]
+    assert injector.get(PluginA) is injector.get(PluginA)
+    assert first_list[0] is not injector.get(PluginA)
+    assert first_list[0] is not second_list[0]
+
+
+def test_multibind_types_are_not_affected_by_the_bound_type_provider() -> None:
+    def configure(binder: Binder) -> None:
+        binder.bind(PluginA, to=InstanceProvider(PluginA()))
+        binder.multibind(List[Plugin], to=PluginA)
+
+    injector = Injector([configure])
+    first_list = injector.get(List[Plugin])
+    second_list = injector.get(List[Plugin])
+
+    assert injector.get(PluginA) is injector.get(PluginA)
+    assert first_list[0] is not injector.get(PluginA)
+    assert first_list[0] is not second_list[0]
+
+
+def test_multibind_dict_types_use_their_own_bound_providers_and_scopes() -> None:
+    def configure(binder: Binder) -> None:
+        binder.bind(PluginA, to=InstanceProvider(PluginA()))
+        binder.bind(PluginB, to=PluginB, scope=singleton)
+        binder.multibind(Dict[str, Plugin], to={'a': PluginA, 'b': PluginB})
+
+    injector = Injector([configure])
+
+    dictionary = injector.get(Dict[str, Plugin])
+
+    assert dictionary['a'] is not injector.get(PluginA)
+    assert dictionary['b'] is not injector.get(PluginB)
 
 
 def test_multibind_list_scopes_applies_to_the_bound_items() -> None:
