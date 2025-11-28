@@ -69,6 +69,10 @@ class DependsOnEmptyClass:
         self.b = b
 
 
+City = NewType('City', str)
+Animal = Annotated[str, 'Animal']
+
+
 def prepare_nested_injectors():
     def configure(binder):
         binder.bind(str, to='asd')
@@ -576,6 +580,27 @@ def test_module_provider():
     module = MyModule()
     injector = Injector(module)
     assert injector.get(str) == 'Bob'
+
+
+def test_module_provider_keeps_annotated_types_and_new_types_separate() -> None:
+    class MyModule(Module):
+        @provider
+        def provide_name(self) -> str:
+            return 'Bob'
+
+        @provider
+        def provide_city(self) -> City:
+            return City('Stockholm')
+
+        @provider
+        def provide_animal(self) -> Animal:
+            return 'Dog'
+
+    module = MyModule()
+    injector = Injector(module)
+    assert injector.get(str) == 'Bob'
+    assert injector.get(City) == City('Stockholm')
+    assert injector.get(Animal) == 'Dog'
 
 
 def test_module_class_gets_instantiated():
