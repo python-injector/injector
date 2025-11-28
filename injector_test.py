@@ -69,6 +69,10 @@ class DependsOnEmptyClass:
         self.b = b
 
 
+City = NewType('City', str)
+Animal = Annotated[str, 'Animal']
+
+
 def prepare_nested_injectors():
     def configure(binder):
         binder.bind(str, to='asd')
@@ -578,6 +582,27 @@ def test_module_provider():
     assert injector.get(str) == 'Bob'
 
 
+def test_module_provider_keeps_annotated_types_and_new_types_separate() -> None:
+    class MyModule(Module):
+        @provider
+        def provide_name(self) -> str:
+            return 'Bob'
+
+        @provider
+        def provide_city(self) -> City:
+            return City('Stockholm')
+
+        @provider
+        def provide_animal(self) -> Animal:
+            return 'Dog'
+
+    module = MyModule()
+    injector = Injector(module)
+    assert injector.get(str) == 'Bob'
+    assert injector.get(City) == City('Stockholm')
+    assert injector.get(Animal) == 'Dog'
+
+
 def test_module_class_gets_instantiated():
     name = 'Meg'
 
@@ -609,7 +634,10 @@ def test_inject_and_provide_coexist_happily():
 
 
 Names = NewType('Names', List[str])
-Passwords = NewType('Ages', Dict[str, str])
+Passwords = NewType('Passwords', Dict[str, str])
+
+Animals = Annotated[List[str], 'Animals']
+AnimalFoods = Annotated[Dict[str, str], 'AnimalFoods']
 
 
 def test_multibind():
@@ -623,6 +651,12 @@ def test_multibind():
         # To see that NewTypes are treated distinctly
         binder.multibind(Names, to=['Bob'])
         binder.multibind(Passwords, to={'Bob': 'password1'})
+        # To see that Annotated collections are treated distinctly
+        binder.multibind(Animals, to=['Dog'])
+        binder.multibind(AnimalFoods, to={'Dog': 'meat'})
+        # To see that collections of Annotated types are treated distinctly
+        binder.multibind(List[City], to=[City('Stockholm')])
+        binder.multibind(Dict[str, City], to={'Sweden': City('Stockholm')})
 
     # Then @multiprovider-decorated Module methods
     class CustomModule(Module):
@@ -644,11 +678,27 @@ def test_multibind():
 
         @multiprovider
         def provide_names(self) -> Names:
-            return ['Alice', 'Clarice']
+            return Names(['Alice', 'Clarice'])
 
         @multiprovider
         def provide_passwords(self) -> Passwords:
-            return {'Alice': 'aojrioeg3', 'Clarice': 'clarice30'}
+            return Passwords({'Alice': 'aojrioeg3', 'Clarice': 'clarice30'})
+
+        @multiprovider
+        def provide_animals(self) -> Animals:
+            return ['Cat', 'Fish']
+
+        @multiprovider
+        def provide_animal_foods(self) -> AnimalFoods:
+            return {'Cat': 'milk', 'Fish': 'flakes'}
+
+        @multiprovider
+        def provide_cities(self) -> List[City]:
+            return [City('New York'), City('Tokyo')]
+
+        @multiprovider
+        def provide_city_mapping(self) -> Dict[str, City]:
+            return {'USA': City('New York'), 'Japan': City('Tokyo')}
 
     injector = Injector([configure, CustomModule])
     assert injector.get(List[str]) == ['not a name', 'not a name either']
@@ -657,6 +707,10 @@ def test_multibind():
     assert injector.get(Dict[str, int]) == {'weight': 12, 'height': 33}
     assert injector.get(Names) == ['Bob', 'Alice', 'Clarice']
     assert injector.get(Passwords) == {'Bob': 'password1', 'Alice': 'aojrioeg3', 'Clarice': 'clarice30'}
+    assert injector.get(Animals) == ['Dog', 'Cat', 'Fish']
+    assert injector.get(AnimalFoods) == {'Dog': 'meat', 'Cat': 'milk', 'Fish': 'flakes'}
+    assert injector.get(List[City]) == ['Stockholm', 'New York', 'Tokyo']
+    assert injector.get(Dict[str, City]) == {'Sweden': 'Stockholm', 'USA': 'New York', 'Japan': 'Tokyo'}
 
 
 class Plugin(abc.ABC):
@@ -679,7 +733,7 @@ class PluginD(Plugin):
     pass
 
 
-def test__multibind_list_of_plugins():
+def test_multibind_list_of_plugins():
     def configure(binder: Binder):
         binder.multibind(List[Plugin], to=PluginA)
         binder.multibind(List[Plugin], to=[PluginB, PluginC()])
@@ -694,7 +748,7 @@ def test__multibind_list_of_plugins():
     assert isinstance(plugins[3], PluginD)
 
 
-def test__multibind_dict_of_plugins():
+def test_multibind_dict_of_plugins():
     def configure(binder: Binder):
         binder.multibind(Dict[str, Plugin], to={'a': PluginA})
         binder.multibind(Dict[str, Plugin], to={'b': PluginB, 'c': PluginC()})
@@ -709,7 +763,7 @@ def test__multibind_dict_of_plugins():
     assert isinstance(plugins['d'], PluginD)
 
 
-def test__multibinding_to_non_generic_type_raises_error():
+def test_multibinding_to_non_generic_type_raises_error():
     def configure_list(binder: Binder):
         binder.multibind(List, to=[1])
 
@@ -723,7 +777,7 @@ def test__multibinding_to_non_generic_type_raises_error():
         Injector([configure_dict])
 
 
-def test_multibind_types_respect_the_bound_type_scope() -> None:
+def test_multibind_types_are_not_affected_by_the_bound_type_scope() -> None:
     def configure(binder: Binder) -> None:
         binder.bind(PluginA, to=PluginA, scope=singleton)
         binder.multibind(List[Plugin], to=PluginA)
@@ -731,14 +785,41 @@ def test_multibind_types_respect_the_bound_type_scope() -> None:
     injector = Injector([configure])
     first_list = injector.get(List[Plugin])
     second_list = injector.get(List[Plugin])
-    child_injector = injector.create_child_injector()
-    third_list = child_injector.get(List[Plugin])
 
-    assert first_list[0] is second_list[0]
-    assert third_list[0] is second_list[0]
+    assert injector.get(PluginA) is injector.get(PluginA)
+    assert first_list[0] is not injector.get(PluginA)
+    assert first_list[0] is not second_list[0]
 
 
-def test_multibind_list_scopes_applies_to_the_bound_items() -> None:
+def test_multibind_types_are_not_affected_by_the_bound_type_provider() -> None:
+    def configure(binder: Binder) -> None:
+        binder.bind(PluginA, to=InstanceProvider(PluginA()))
+        binder.multibind(List[Plugin], to=PluginA)
+
+    injector = Injector([configure])
+    first_list = injector.get(List[Plugin])
+    second_list = injector.get(List[Plugin])
+
+    assert injector.get(PluginA) is injector.get(PluginA)
+    assert first_list[0] is not injector.get(PluginA)
+    assert first_list[0] is not second_list[0]
+
+
+def test_multibind_dict_types_use_their_own_bound_providers_and_scopes() -> None:
+    def configure(binder: Binder) -> None:
+        binder.bind(PluginA, to=InstanceProvider(PluginA()))
+        binder.bind(PluginB, to=PluginB, scope=singleton)
+        binder.multibind(Dict[str, Plugin], to={'a': PluginA, 'b': PluginB})
+
+    injector = Injector([configure])
+
+    dictionary = injector.get(Dict[str, Plugin])
+
+    assert dictionary['a'] is not injector.get(PluginA)
+    assert dictionary['b'] is not injector.get(PluginB)
+
+
+def test_multibind_list_scopes_apply_to_the_bound_items() -> None:
     def configure(binder: Binder) -> None:
         binder.multibind(List[Plugin], to=PluginA, scope=singleton)
         binder.multibind(List[Plugin], to=PluginB)
@@ -754,7 +835,64 @@ def test_multibind_list_scopes_applies_to_the_bound_items() -> None:
     assert first_list[2] is second_list[2]
 
 
-def test_multibind_dict_scopes_applies_to_the_bound_items() -> None:
+def test_multibind_list_scopes_apply_to_the_bound_items_not_types() -> None:
+    def configure(binder: Binder) -> None:
+        binder.multibind(List[Plugin], to=PluginA)
+        binder.multibind(List[Plugin], to=[PluginA, PluginB], scope=singleton)
+        binder.multibind(List[Plugin], to=PluginA)
+        binder.multibind(List[Plugin], to=PluginA, scope=singleton)
+
+    injector = Injector([configure])
+    first_list = injector.get(List[Plugin])
+    second_list = injector.get(List[Plugin])
+
+    assert first_list is not second_list
+    assert first_list[0] is not second_list[0]
+    assert first_list[1] is second_list[1]
+    assert first_list[2] is second_list[2]
+    assert first_list[3] is not second_list[3]
+    assert first_list[4] is second_list[4]
+
+
+def test_multibind_dict_scopes_apply_to_the_bound_items_in_the_multibound_dict() -> None:
+    SingletonPlugins = Annotated[Plugin, "singleton"]
+    OtherPlugins = Annotated[Plugin, "other"]
+
+    def configure(binder: Binder) -> None:
+        binder.multibind(Dict[str, SingletonPlugins], to={'a': PluginA}, scope=singleton)
+        binder.multibind(Dict[str, OtherPlugins], to={'a': PluginA})
+
+    injector = Injector([configure])
+    singletons_1 = injector.get(Dict[str, SingletonPlugins])
+    singletons_2 = injector.get(Dict[str, SingletonPlugins])
+    others_1 = injector.get(Dict[str, OtherPlugins])
+    others_2 = injector.get(Dict[str, OtherPlugins])
+
+    assert singletons_1['a'] is singletons_2['a']
+    assert singletons_1['a'] is not others_1['a']
+    assert others_1['a'] is not others_2['a']
+
+
+def test_multibind_list_scopes_apply_to_the_bound_items_in_the_multibound_list() -> None:
+    SingletonPlugins = Annotated[Plugin, "singleton"]
+    OtherPlugins = Annotated[Plugin, "other"]
+
+    def configure(binder: Binder) -> None:
+        binder.multibind(List[SingletonPlugins], to=PluginA, scope=singleton)
+        binder.multibind(List[OtherPlugins], to=PluginA)
+
+    injector = Injector([configure])
+    singletons_1 = injector.get(List[SingletonPlugins])
+    singletons_2 = injector.get(List[SingletonPlugins])
+    others_1 = injector.get(List[OtherPlugins])
+    others_2 = injector.get(List[OtherPlugins])
+
+    assert singletons_1[0] is singletons_2[0]
+    assert singletons_1[0] is not others_1[0]
+    assert others_1[0] is not others_2[0]
+
+
+def test_multibind_dict_scopes_apply_to_the_bound_items() -> None:
     def configure(binder: Binder) -> None:
         binder.multibind(Dict[str, Plugin], to={'a': PluginA}, scope=singleton)
         binder.multibind(Dict[str, Plugin], to={'b': PluginB})
@@ -773,6 +911,7 @@ def test_multibind_dict_scopes_applies_to_the_bound_items() -> None:
 def test_multibind_scopes_does_not_apply_to_the_type_globally() -> None:
     def configure(binder: Binder) -> None:
         binder.multibind(List[Plugin], to=PluginA, scope=singleton)
+        binder.multibind(Dict[str, Plugin], to={'a': PluginA}, scope=singleton)
 
     injector = Injector([configure])
     plugins = injector.get(List[Plugin])

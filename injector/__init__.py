@@ -359,16 +359,7 @@ class MultiBinder(Provider, Generic[T]):
 
     def get_scoped_providers(self, injector: 'Injector') -> Generator[Provider[T], None, None]:
         for binding in self._multi_bindings:
-            if (
-                isinstance(binding.provider, ClassProvider)
-                and binding.scope is NoScope
-                and self._binder.parent
-                and self._binder.parent.has_explicit_binding_for(binding.provider._cls)
-            ):
-                parent_binding, _ = self._binder.parent.get_binding(binding.provider._cls)
-                scope_binding, _ = self._binder.parent.get_binding(parent_binding.scope)
-            else:
-                scope_binding, _ = self._binder.get_binding(binding.scope)
+            scope_binding, _ = self._binder.get_binding(binding.scope)
             scope_instance: Scope = scope_binding.provider.get(injector)
             provider_instance = scope_instance.get(binding.interface, binding.provider)
             yield provider_instance
