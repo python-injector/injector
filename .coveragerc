@@ -1,3 +1,7 @@
 [report]
 exclude_also =
     if TYPE_CHECKING:
+    def __repr__
+    @(abc\.)?abstractmethod
+    @overload
+    raise NotImplementedError
