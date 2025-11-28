@@ -679,7 +679,7 @@ class PluginD(Plugin):
     pass
 
 
-def test__multibind_list_of_plugins():
+def test_multibind_list_of_plugins():
     def configure(binder: Binder):
         binder.multibind(List[Plugin], to=PluginA)
         binder.multibind(List[Plugin], to=[PluginB, PluginC()])
@@ -694,7 +694,7 @@ def test__multibind_list_of_plugins():
     assert isinstance(plugins[3], PluginD)
 
 
-def test__multibind_dict_of_plugins():
+def test_multibind_dict_of_plugins():
     def configure(binder: Binder):
         binder.multibind(Dict[str, Plugin], to={'a': PluginA})
         binder.multibind(Dict[str, Plugin], to={'b': PluginB, 'c': PluginC()})
@@ -709,7 +709,7 @@ def test__multibind_dict_of_plugins():
     assert isinstance(plugins['d'], PluginD)
 
 
-def test__multibinding_to_non_generic_type_raises_error():
+def test_multibinding_to_non_generic_type_raises_error():
     def configure_list(binder: Binder):
         binder.multibind(List, to=[1])
 
