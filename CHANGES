@@ -8,7 +8,7 @@ Added:
 
 - Allow injecting Annotated types into classes, thanks to Filip Nešťák.
 - Fixed Annotated type support in `@provider` methods, thanks to Satwik Agrawal.
-- `multibind()` now accepts types and its instantiation respects global scopes and bindings. Thanks to Eiríkur Torfason.
+- `multibind()` now accepts types and providers, not just instances. Thanks to Eiríkur Torfason.
 
 Backwards incompatible:
 
