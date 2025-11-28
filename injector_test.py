@@ -857,6 +857,7 @@ def test_multibind_dict_scopes_apply_to_the_bound_items() -> None:
 def test_multibind_scopes_does_not_apply_to_the_type_globally() -> None:
     def configure(binder: Binder) -> None:
         binder.multibind(List[Plugin], to=PluginA, scope=singleton)
+        binder.multibind(Dict[str, Plugin], to={'a': PluginA}, scope=singleton)
 
     injector = Injector([configure])
     plugins = injector.get(List[Plugin])
