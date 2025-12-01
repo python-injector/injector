@@ -48,14 +48,8 @@ requirements = list(obtain_requirements('requirements.txt'))
 requirements_dev = list(obtain_requirements('requirements-dev.txt'))
 
 
-try:
-    import pypandoc
-
-    long_description = pypandoc.convert_file('README.md', 'rst')
-except ImportError:
-    warnings.warn('Could not locate pandoc, using Markdown long_description.', ImportWarning)
-    with open('README.md') as f:
-        long_description = f.read()
+with open('README.md') as f:
+    long_description = f.read()
 
 description = long_description.splitlines()[0].strip()
 
@@ -68,6 +62,7 @@ setup(
     options=dict(egg_info=dict(tag_build=version_tag)),
     description=description,
     long_description=long_description,
+    long_description_content_type='text/markdown',
     license='BSD',
     platforms=['any'],
     packages=['injector'],
