@@ -9,8 +9,10 @@ warnings.filterwarnings("always", module=__name__)
 def obtain_requirements(file_name):
     with open(file_name) as fd_in:
         for line in fd_in:
-            if '#' not in line:
-                yield line.strip()
+            line = line.split('#')[0]
+            line = line.strip()
+            if line:
+                yield line
 
 
 class PyTest(Command):
