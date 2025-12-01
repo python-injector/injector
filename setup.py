@@ -9,8 +9,10 @@ warnings.filterwarnings("always", module=__name__)
 def obtain_requirements(file_name):
     with open(file_name) as fd_in:
         for line in fd_in:
-            if '#' not in line:
-                yield line.strip()
+            line = line.split('#')[0]
+            line = line.strip()
+            if line:
+                yield line
 
 
 class PyTest(Command):
@@ -46,14 +48,8 @@ requirements = list(obtain_requirements('requirements.txt'))
 requirements_dev = list(obtain_requirements('requirements-dev.txt'))
 
 
-try:
-    import pypandoc
-
-    long_description = pypandoc.convert_file('README.md', 'rst')
-except ImportError:
-    warnings.warn('Could not locate pandoc, using Markdown long_description.', ImportWarning)
-    with open('README.md') as f:
-        long_description = f.read()
+with open('README.md') as f:
+    long_description = f.read()
 
 description = long_description.splitlines()[0].strip()
 
@@ -66,6 +62,7 @@ setup(
     options=dict(egg_info=dict(tag_build=version_tag)),
     description=description,
     long_description=long_description,
+    long_description_content_type='text/markdown',
     license='BSD',
     platforms=['any'],
     packages=['injector'],
