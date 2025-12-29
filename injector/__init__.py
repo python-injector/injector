@@ -1355,9 +1355,8 @@ def _infer_injected_bindings(callable: Callable, only_explicit_bindings: bool) -
         if only_explicit_bindings and _inject_marker not in metadata or _noinject_marker in metadata:
             del bindings[k]
         elif _is_specialization(v, Union) or _is_new_union_type(v):
-            # We don't treat Optional parameters in any special way at the moment.
             union_members = v.__args__
-            new_members = tuple(set(union_members) - {type(None)})
+            new_members = tuple(set(union_members))
             # mypy stared complaining about this line for some reason:
             #     error: Variable "new_members" is not valid as a type
             new_union = Union[new_members]  # type: ignore
