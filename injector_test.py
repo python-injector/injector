@@ -2031,7 +2031,7 @@ def test_get_bindings_for_pep_604():
     def function1(a: int | None) -> None:
         pass
 
-    assert get_bindings(function1) == {'a': int}
+    assert get_bindings(function1) == {'a': Union[int, None]}
 
     @inject
     def function1(a: int | str) -> None:
@@ -2246,3 +2246,54 @@ def test_module_provider_with_annotated():
     injector = Injector(module)
     assert injector.get(Annotated[str, 'first']) == 'Bob'
     assert injector.get(Annotated[str, 'second']) == 'Iger'
+
+
+@pytest.mark.parametrize(
+    "provide",
+    [True, False]
+)
+def test_optional_parameter_optional_provider(provide: bool) -> None:
+    class Dependency:
+        pass
+
+    class Dependent:
+        @inject
+        def __init__(self, dependency: Dependency | None = None) -> None:
+            self.dependency = dependency
+
+    class MyModule(Module):
+        @provider
+        def optional(self) -> Dependency | None:
+            return Dependency() if provide else None
+
+    injector = Injector([MyModule()])
+    instance = injector.get(Dependent)
+    assert instance.dependency or not provide
+
+
+@pytest.mark.parametrize(
+    "provide",
+    [True, False]
+)
+def test_required_parameter_optional_provider(provide: bool) -> None:
+    class Dependency:
+        def __init__(self, transitive: object = object()) -> None:
+            self.dependency = transitive
+
+    class Dependent:
+        @inject
+        def __init__(self, dependency: Dependency) -> None:
+            self.dependency = dependency
+
+    class MyModule(Module):
+        @provider
+        def optional(self) -> Dependency | None:
+            return Dependency(transitive="from provider") if provide else None
+
+    injector = Injector([MyModule()])
+    instance = injector.get(Dependent)
+    # the Dependency | None provider should never be used, and instead
+    # the default behavior of providing instances of Dependency should be
+    # used meaning in both provider branches this will be true
+    assert instance.dependency is not None
+    assert instance.dependency.dependency != "from provider"
