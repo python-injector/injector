@@ -1258,7 +1258,8 @@ def get_bindings(callable: Callable) -> Dict[str, type]:
     if not hasattr(callable, '__bindings__'):
         type_hints = get_type_hints(callable, include_extras=True)
         has_injectable_parameters = any(
-            _is_specialization(v, Annotated) and _inject_marker in v.__metadata__ for v in type_hints.values()
+            _is_specialization(v, Annotated) and _inject_marker in getattr(v, "__metadata__", ())
+            for v in type_hints.values()
         )
 
         if not has_injectable_parameters:
