@@ -27,11 +27,13 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
+    Collection,
     Dict,
     Generator,
     Generic,
     Iterable,
     List,
+    Mapping,
     Optional,
     Set,
     Tuple,
@@ -387,7 +389,7 @@ class MultiBindProvider(MultiBinder[List[T]]):
             element_type = get_args(_punch_through_alias(interface))[0]
         except IndexError:
             raise InvalidInterface(f"Use typing.List[T] or list[T] to specify the element type of the list")
-        if isinstance(to, list):
+        if isinstance(to, Collection):
             for element in to:
                 element_binding = self._binder.create_binding(element_type, element, scope)
                 self.append(element_binding.provider, element_binding.scope)
@@ -415,7 +417,7 @@ class MapBindProvider(MultiBinder[Dict[str, T]]):
             raise InvalidInterface(
                 f"Use typing.Dict[K, V] or dict[K, V] to specify the value type of the dict"
             )
-        if isinstance(to, dict):
+        if isinstance(to, Mapping):
             for key, value in to.items():
                 element_binding = self._binder.create_binding(value_type, value, scope)
                 self.append(KeyValueProvider(key, element_binding.provider), element_binding.scope)
@@ -544,7 +546,7 @@ class Binder:
     def multibind(
         self,
         interface: Type[List[T]],
-        to: Union[List[Union[T, Type[T]]], Callable[..., List[T]], Provider[List[T]], Type[T]],
+        to: Union[Collection[Union[T, Type[T]]], Callable[..., List[T]], Provider[List[T]], Type[T]],
         scope: Union[Type['Scope'], 'ScopeDecorator', None] = None,
     ) -> None:  # pragma: no cover
         pass
@@ -553,7 +555,7 @@ class Binder:
     def multibind(
         self,
         interface: Type[Dict[K, V]],
-        to: Union[Dict[K, Union[V, Type[V]]], Callable[..., Dict[K, V]], Provider[Dict[K, V]]],
+        to: Union[Mapping[K, Union[V, Type[V]]], Callable[..., Dict[K, V]], Provider[Dict[K, V]]],
         scope: Union[Type['Scope'], 'ScopeDecorator', None] = None,
     ) -> None:  # pragma: no cover
         pass
