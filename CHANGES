@@ -1,6 +1,12 @@
 Injector Change Log
 ===================
 
+0.24.0
+------
+
+- Fixed a regression with Python 3.13 where annotated types might not have the `__metadata__` attribute. Thanks to Kamyar Ghajar.
+- More flexible covariant types for multibinds.
+
 0.23.0
 ------
 
