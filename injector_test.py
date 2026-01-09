@@ -17,7 +17,7 @@ import traceback
 import warnings
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, NewType, Optional, Union
+from typing import Any, Literal, NewType, Optional, Union
 
 if sys.version_info >= (3, 9):
     from typing import Annotated
@@ -2246,3 +2246,14 @@ def test_module_provider_with_annotated():
     injector = Injector(module)
     assert injector.get(Annotated[str, 'first']) == 'Bob'
     assert injector.get(Annotated[str, 'second']) == 'Iger'
+
+
+# Test for https://github.com/alecthomas/injector/issues/303
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="Requires Python 3.10+")
+def test_can_inject_dataclass_with_literal_value():
+    @dataclass(slots=True)
+    class ServiceConfig:
+        environment: Literal["prod", "test"] = "test"
+
+    injector = Injector()
+    assert injector.get(ServiceConfig).environment == "test"
