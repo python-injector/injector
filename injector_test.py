@@ -733,19 +733,25 @@ class PluginD(Plugin):
     pass
 
 
+class PluginE(Plugin):
+    pass
+
+
 def test_multibind_list_of_plugins():
     def configure(binder: Binder):
         binder.multibind(List[Plugin], to=PluginA)
         binder.multibind(List[Plugin], to=[PluginB, PluginC()])
         binder.multibind(List[Plugin], to=lambda: [PluginD()])
+        binder.multibind(List[Plugin], to=(PluginE,))
 
     injector = Injector([configure])
     plugins = injector.get(List[Plugin])
-    assert len(plugins) == 4
+    assert len(plugins) == 5
     assert isinstance(plugins[0], PluginA)
     assert isinstance(plugins[1], PluginB)
     assert isinstance(plugins[2], PluginC)
     assert isinstance(plugins[3], PluginD)
+    assert isinstance(plugins[4], PluginE)
 
 
 def test_multibind_dict_of_plugins():
