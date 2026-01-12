@@ -927,6 +927,27 @@ def test_multibind_scopes_does_not_apply_to_the_type_globally() -> None:
     assert injector.get(PluginA) is not injector.get(PluginA)
 
 
+def test_multibind_respects_the_singleton_decorator() -> None:
+    @singleton
+    class SingletonPlugin(Plugin):
+        pass
+
+    def configure(binder: Binder) -> None:
+        binder.bind(Plugin, to=SingletonPlugin)
+        binder.multibind(List[Plugin], to=SingletonPlugin)
+        binder.multibind(List[Plugin], to=[SingletonPlugin])
+        binder.multibind(Dict[str, Plugin], to={'singleton1': SingletonPlugin, 'singleton2': SingletonPlugin})
+
+    injector = Injector([configure])
+    plugin_singleton = injector.get(Plugin)
+    plugins_list = injector.get(List[Plugin])
+    plugins_dict = injector.get(Dict[str, Plugin])
+
+    assert plugin_singleton is injector.get(Plugin)
+    assert plugins_list[0] is plugins_list[1]
+    assert plugins_dict['singleton1'] is plugins_dict['singleton2']
+
+
 def test_regular_bind_and_provider_dont_work_with_multibind():
     # We only want multibind and multiprovider to work to avoid confusion
 
