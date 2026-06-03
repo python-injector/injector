@@ -34,7 +34,7 @@ jobs:
         pip install .
     - name: Run tests
       run: |
-        py.test -vv --cov=injector --cov-branch --cov-report html --cov-report term
+        pytest -vv --cov=injector --cov-branch --cov-report html --cov-report term
         if which mypy; then mypy injector ; fi
         if which black; then black --check . ; fi
         check-manifest
