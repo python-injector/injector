@@ -53,7 +53,7 @@ __version_tag__ = ''
 log = logging.getLogger('injector')
 log.addHandler(logging.NullHandler())
 
-if log.level == logging.NOTSET:
+if log.level == logging.NOTSET:  # pragma: no branch
     log.setLevel(logging.WARN)
 
 T = TypeVar('T')
