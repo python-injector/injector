@@ -1049,6 +1049,15 @@ def test_custom_scope():
         injector.get(Handler)
 
 
+def test_get_accepts_a_scope_decorator_and_applies_that_scope():
+    class A:
+        pass
+
+    injector = Injector()
+    assert injector.get(A) is not injector.get(A)
+    assert injector.get(A, scope=singleton) is injector.get(A, scope=singleton)
+
+
 def test_binder_install():
     class ModuleA(Module):
         def configure(self, binder):
