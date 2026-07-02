@@ -2087,6 +2087,14 @@ def test_get_bindings_of_nested_inject_annotations() -> None:
     assert get_bindings(function) == {'a': int}
 
 
+def test_get_bindings_excludes_union_with_a_noinject_member() -> None:
+    @inject
+    def function_with_noinject_nested_in_union(a: Union[NoInject[int], str]) -> None:
+        pass
+
+    assert get_bindings(function_with_noinject_nested_in_union) == {}
+
+
 # Tests https://github.com/alecthomas/injector/issues/202
 def test_get_bindings_for_pep_604():
     @inject
