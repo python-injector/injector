@@ -43,6 +43,7 @@ from injector import (
     ScopeDecorator,
     SingletonScope,
     UnknownArgument,
+    UnknownProvider,
     UnsatisfiedRequirement,
     get_bindings,
     inject,
@@ -1119,6 +1120,12 @@ def test_binder_provider_for_type_with_metaclass():
     injector = Injector()
     binder = injector.binder
     assert isinstance(binder.provider_for(A, None).get(injector), A)
+
+
+def test_binder_provider_for_raises_unknown_provider_for_undeterminable_binding():
+    binder = Injector().binder
+    with pytest.raises(UnknownProvider):
+        binder.provider_for('not-a-type', to='a string value')
 
 
 class ClassA:
