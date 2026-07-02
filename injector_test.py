@@ -1675,6 +1675,32 @@ def test_create_object_wraps_new_typeerror_in_call_error():
         Injector().create_object(ClassWhoseNewRequiresAnArgument)
 
 
+def test_unsatisfied_requirement_message_names_owning_module_for_a_function():
+    class Unbound:
+        pass
+
+    @inject
+    def function(dependency: Unbound) -> None:
+        pass
+
+    injector = Injector(auto_bind=False)
+    with pytest.raises(UnsatisfiedRequirement) as exc_info:
+        injector.call_with_injection(function)
+
+    assert str(exc_info.value) == '%s has an unsatisfied requirement on Unbound' % __name__
+
+
+def test_unsatisfied_requirement_message_describes_a_tuple_interface():
+    class A:
+        pass
+
+    injector = Injector(auto_bind=False)
+    with pytest.raises(UnsatisfiedRequirement) as exc_info:
+        injector.get((A,))
+
+    assert str(exc_info.value) == 'unsatisfied requirement on [A]'
+
+
 def test_optionals_are_ignored_for_now():
     @inject
     def fun(s: str = None):
