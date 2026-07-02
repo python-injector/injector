@@ -1666,6 +1666,15 @@ def test_more_useful_exception_is_raised_when_parameters_type_is_any():
         injector.call_with_injection(fun)
 
 
+def test_create_object_wraps_new_typeerror_in_call_error():
+    class ClassWhoseNewRequiresAnArgument:
+        def __new__(cls, required_argument):
+            return super().__new__(cls)
+
+    with pytest.raises(CallError):
+        Injector().create_object(ClassWhoseNewRequiresAnArgument)
+
+
 def test_optionals_are_ignored_for_now():
     @inject
     def fun(s: str = None):
