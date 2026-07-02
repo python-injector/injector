@@ -1634,6 +1634,16 @@ def test_forward_references_in_annotations_are_handled():
         del X
 
 
+def test_provider_with_unresolvable_forward_reference_return_type_raises_name_error():
+    class CustomModule(Module):
+        @provider
+        def provide_x(self) -> 'ReferenceThatCannotBeResolved':
+            return object()
+
+    with pytest.raises(NameError):
+        Injector(CustomModule)
+
+
 def test_more_useful_exception_is_raised_when_parameters_type_is_any():
     @inject
     def fun(a: Any) -> None:
