@@ -53,7 +53,7 @@ __version_tag__ = ''
 log = logging.getLogger('injector')
 log.addHandler(logging.NullHandler())
 
-if log.level == logging.NOTSET:
+if log.level == logging.NOTSET:  # pragma: no cover
     log.setLevel(logging.WARN)
 
 T = TypeVar('T')
@@ -782,9 +782,9 @@ def _punch_through_alias(type_: Any) -> type:
 def _get_origin(type_: type) -> Optional[type]:
     origin = getattr(type_, '__origin__', None)
     # Older typing behaves differently there and stores Dict and List as origin, we need to be flexible.
-    if origin is List:
+    if origin is List:  # pragma: no cover
         return list
-    elif origin is Dict:
+    elif origin is Dict:  # pragma: no cover
         return dict
     return origin
 

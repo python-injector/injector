@@ -43,6 +43,7 @@ from injector import (
     ScopeDecorator,
     SingletonScope,
     UnknownArgument,
+    UnknownProvider,
     UnsatisfiedRequirement,
     get_bindings,
     inject,
@@ -1049,6 +1050,15 @@ def test_custom_scope():
         injector.get(Handler)
 
 
+def test_get_accepts_a_scope_decorator_and_applies_that_scope():
+    class A:
+        pass
+
+    injector = Injector()
+    assert injector.get(A) is not injector.get(A)
+    assert injector.get(A, scope=singleton) is injector.get(A, scope=singleton)
+
+
 def test_binder_install():
     class ModuleA(Module):
         def configure(self, binder):
@@ -1110,6 +1120,12 @@ def test_binder_provider_for_type_with_metaclass():
     injector = Injector()
     binder = injector.binder
     assert isinstance(binder.provider_for(A, None).get(injector), A)
+
+
+def test_binder_provider_for_raises_unknown_provider_for_undeterminable_binding():
+    binder = Injector().binder
+    with pytest.raises(UnknownProvider):
+        binder.provider_for('not-a-type', to='a string value')
 
 
 class ClassA:
@@ -1618,6 +1634,16 @@ def test_forward_references_in_annotations_are_handled():
         del X
 
 
+def test_provider_with_unresolvable_forward_reference_return_type_raises_name_error():
+    class CustomModule(Module):
+        @provider
+        def provide_x(self) -> 'ReferenceThatCannotBeResolved':
+            return object()
+
+    with pytest.raises(NameError):
+        Injector(CustomModule)
+
+
 def test_more_useful_exception_is_raised_when_parameters_type_is_any():
     @inject
     def fun(a: Any) -> None:
@@ -1638,6 +1664,41 @@ def test_more_useful_exception_is_raised_when_parameters_type_is_any():
     # it quickly gets helpful when the stack gets deeper.
     with pytest.raises((CallError, TypeError)):
         injector.call_with_injection(fun)
+
+
+def test_create_object_wraps_new_typeerror_in_call_error():
+    class ClassWhoseNewRequiresAnArgument:
+        def __new__(cls, required_argument):
+            return super().__new__(cls)
+
+    with pytest.raises(CallError):
+        Injector().create_object(ClassWhoseNewRequiresAnArgument)
+
+
+def test_unsatisfied_requirement_message_names_owning_module_for_a_function():
+    class Unbound:
+        pass
+
+    @inject
+    def function(dependency: Unbound) -> None:
+        pass
+
+    injector = Injector(auto_bind=False)
+    with pytest.raises(UnsatisfiedRequirement) as exc_info:
+        injector.call_with_injection(function)
+
+    assert str(exc_info.value) == '%s has an unsatisfied requirement on Unbound' % __name__
+
+
+def test_unsatisfied_requirement_message_describes_a_tuple_interface():
+    class A:
+        pass
+
+    injector = Injector(auto_bind=False)
+    with pytest.raises(UnsatisfiedRequirement) as exc_info:
+        injector.get((A,))
+
+    assert str(exc_info.value) == 'unsatisfied requirement on [A]'
 
 
 def test_optionals_are_ignored_for_now():
@@ -2024,6 +2085,14 @@ def test_get_bindings_of_nested_inject_annotations() -> None:
         pass
 
     assert get_bindings(function) == {'a': int}
+
+
+def test_get_bindings_excludes_union_with_a_noinject_member() -> None:
+    @inject
+    def function_with_noinject_nested_in_union(a: Union[NoInject[int], str]) -> None:
+        pass
+
+    assert get_bindings(function_with_noinject_nested_in_union) == {}
 
 
 # Tests https://github.com/alecthomas/injector/issues/202
