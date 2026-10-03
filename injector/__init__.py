@@ -11,7 +11,7 @@
 """Injector - Python dependency injection framework, inspired by Guice
 
 :copyright: (c) 2012 by Alec Thomas
-:license: BSD
+:license: BSD-3-Clause
 """
 
 import functools
