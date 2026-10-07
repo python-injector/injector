@@ -923,6 +923,73 @@ def test_multibind_scopes_does_not_apply_to_the_type_globally() -> None:
     assert injector.get(PluginA) is not injector.get(PluginA)
 
 
+def test_multibinds_are_extended_by_child_injectors() -> None:
+    parent_injector = Injector()
+    parent_injector.binder.multibind(List[str], to=['parent name'])
+
+    child_injector = parent_injector.create_child_injector()
+    child_injector.binder.multibind(List[str], to=['child name'])
+
+    assert parent_injector.get(List[str]) == ['parent name']
+    assert child_injector.get(List[str]) == ['parent name', 'child name']
+
+
+def test_multibind_dict_is_extended_by_child_injectors() -> None:
+    parent_injector = Injector()
+    parent_injector.binder.multibind(Dict[str, str], to={'parent': 'p', 'shared': 'from_parent'})
+
+    child_injector = parent_injector.create_child_injector()
+    child_injector.binder.multibind(Dict[str, str], to={'child': 'c', 'shared': 'from_child'})
+
+    assert parent_injector.get(Dict[str, str]) == {'parent': 'p', 'shared': 'from_parent'}
+    assert child_injector.get(Dict[str, str]) == {'parent': 'p', 'shared': 'from_child', 'child': 'c'}
+
+
+def test_multibind_multi_level_hierarchy_extended_by_child_injectors() -> None:
+    parent = Injector()
+    parent.binder.multibind(List[str], to=['parent'])
+
+    child = parent.create_child_injector()
+    child.binder.multibind(List[str], to=['child'])
+
+    grandchild = child.create_child_injector()
+    grandchild.binder.multibind(List[str], to=['grandchild'])
+
+    assert parent.get(List[str]) == ['parent']
+    assert child.get(List[str]) == ['parent', 'child']
+    assert grandchild.get(List[str]) == ['parent', 'child', 'grandchild']
+
+
+def test_multibind_skipped_level_child_injector() -> None:
+    parent = Injector()
+    parent.binder.multibind(List[str], to=['parent'])
+
+    child = parent.create_child_injector()
+
+    grandchild = child.create_child_injector()
+    grandchild.binder.multibind(List[str], to=['grandchild'])
+
+    assert parent.get(List[str]) == ['parent']
+    assert child.get(List[str]) == ['parent']
+    assert grandchild.get(List[str]) == ['parent', 'grandchild']
+
+
+def test_multibind_child_only_when_parent_has_no_binding() -> None:
+    parent = Injector()
+    child = parent.create_child_injector()
+    child.binder.multibind(List[str], to=['only_child'])
+    assert child.get(List[str]) == ['only_child']
+
+
+def test_multibind_child_when_parent_has_non_multibinder_binding() -> None:
+    parent = Injector()
+    parent.binder._bindings[List[str]] = parent.binder.create_binding(List[str], ['not_a_multibinder'])
+    child = parent.create_child_injector()
+    child.binder.multibind(List[str], to=['child_multibind'])
+    assert child.get(List[str]) == ['child_multibind']
+
+
+
 def test_regular_bind_and_provider_dont_work_with_multibind():
     # We only want multibind and multiprovider to work to avoid confusion
 
