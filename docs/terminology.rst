@@ -133,6 +133,23 @@ Or transitively::
     >>> user.description
     'Sherlock is a man of astounding insight'
 
+The example above forms the following dependency graph. Arrows point from
+an object or provider to the binding key it requires: ``User`` needs both
+``Name`` and ``Description``, and the ``Description`` provider also needs
+``Name``. The same ``Name`` binding supplies both injection sites.
+
+.. figure:: _static/user-dependency-graph.png
+    :alt: User depends on Name and Description; the provider for Description also depends on Name.
+    :width: 854px
+
+    Dependencies in the User example. ``Name`` is bound to ``'Sherlock'``;
+    ``Description`` is supplied by ``UserAttributeModule.describe``.
+    :download:`Editable SVG <_static/user-dependency-graph.svg>`.
+    `Edit diagram <https://svgdiagram.ai/diagram-sources/injector-user-dependency-graph?version=1>`__.
+
+This graph describes binding dependencies. Instance reuse is controlled by
+:ref:`scopes`, so a shared binding key does not by itself imply singleton scope.
+
 Assisted injection
 ``````````````````
 
