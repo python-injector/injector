@@ -1,7 +1,7 @@
 alabaster==0.7.13
 babel==2.14.0
 beautifulsoup4==4.12.3
-certifi==2024.7.4
+certifi==2026.10.19
 charset-normalizer==3.3.2
 docutils==0.20.1
 furo==2024.5.6
