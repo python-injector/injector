@@ -1232,7 +1232,7 @@ def get_bindings(callable: Callable) -> Dict[str, type]:
     """
     look_for_explicit_bindings = False
     if not hasattr(callable, '__bindings__'):
-        type_hints = get_type_hints(callable, include_extras=True)
+        type_hints = get_type_hints(cast(Callable, _NoReturnAnnotationProxy(callable)), include_extras=True)
         has_injectable_parameters = any(
             _is_specialization(v, Annotated) and _inject_marker in getattr(v, "__metadata__", ())
             for v in type_hints.values()
@@ -1268,7 +1268,12 @@ class _NoReturnAnnotationProxy:
         callable = object.__getattribute__(self, 'callable')
         if name == '__annotations__':
             annotations = callable.__annotations__
-            return {name: value for (name, value) in annotations.items() if name != 'return'}
+            noninjectables: Set[str] = getattr(callable, '__noninjectables__', set())
+            return {
+                name: value
+                for (name, value) in annotations.items()
+                if name != 'return' and name not in noninjectables
+            }
         return getattr(callable, name)
 
 
@@ -1297,9 +1302,8 @@ def _infer_injected_bindings(callable: Callable, only_explicit_bindings: bool) -
     try:
         # Return types don't matter for the purpose of dependency injection so instead of
         # obtaining type hints of the callable directly let's wrap it in _NoReturnAnnotationProxy.
-        # The proxy removes the return type annotation (if present) from the annotations so that
-        # get_type_hints() works even if the return type is a forward reference that can't be
-        # resolved.
+        # The proxy removes the return type and explicitly noninjectable parameters so that
+        # get_type_hints() does not try to resolve forward references we will never inject.
         bindings = get_type_hints(cast(Callable, _NoReturnAnnotationProxy(callable)), include_extras=True)
     except NameError as e:
         raise _BindingNotYetAvailable(e)
