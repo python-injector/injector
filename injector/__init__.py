@@ -330,9 +330,11 @@ class MultiBinder(Provider, Generic[T]):
 
     _multi_bindings: List['Binding']
 
-    def __init__(self, parent: 'Binder') -> None:
+    def __init__(self, parent: 'Binder', interface: Optional[type] = None) -> None:
         self._multi_bindings = []
         self._binder = Binder(parent.injector, auto_bind=False, parent=parent)
+        self._owner_binder = parent
+        self._interface = interface
 
     @abstractmethod
     def multibind(
@@ -348,6 +350,14 @@ class MultiBinder(Provider, Generic[T]):
         self._multi_bindings.append(Binding(pseudo_type, provider, scope))
 
     def get_scoped_providers(self, injector: 'Injector') -> Generator[Provider[T], None, None]:
+        if self._owner_binder.parent and self._interface is not None:
+            try:
+                parent_binding, _ = self._owner_binder.parent._get_binding(self._interface)
+                if isinstance(parent_binding.provider, MultiBinder):
+                    yield from parent_binding.provider.get_scoped_providers(injector)
+            except KeyError:
+                pass
+
         for binding in self._multi_bindings:
             scope_binding, _ = self._binder.get_binding(binding.scope)
             scope_instance: Scope = scope_binding.provider.get(injector)
@@ -365,6 +375,7 @@ class MultiBindProvider(MultiBinder[List[T]]):
     def multibind(
         self, interface: type, to: Any, scope: Union['ScopeDecorator', Type['Scope'], None]
     ) -> None:
+        self._interface = interface
         try:
             element_type = get_args(_punch_through_alias(interface))[0]
         except IndexError:
@@ -391,6 +402,7 @@ class MapBindProvider(MultiBinder[Dict[str, T]]):
     def multibind(
         self, interface: type, to: Any, scope: Union['ScopeDecorator', Type['Scope'], None]
     ) -> None:
+        self._interface = interface
         try:
             value_type = get_args(_punch_through_alias(interface))[1]
         except IndexError:
@@ -582,9 +594,9 @@ class Binder:
                 and issubclass(interface, dict)
                 or _get_origin(_punch_through_alias(interface)) is dict
             ):
-                multi_binder = MapBindProvider(self)
+                multi_binder = MapBindProvider(self, interface)
             else:
-                multi_binder = MultiBindProvider(self)
+                multi_binder = MultiBindProvider(self, interface)
             binding = self.create_binding(interface, multi_binder)
             self._bindings[interface] = binding
         else:

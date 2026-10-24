@@ -6,6 +6,7 @@ Injector Change Log
 
 - Dropped support for Python 3.8 and 3.9. Python 3.10+ is now required.
 - Use the SPDX license identifier `BSD-3-Clause` in package metadata.
+- Child injectors now respect and extend parent injector multibindings.
 
 0.24.0
 ------
