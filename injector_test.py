@@ -1892,6 +1892,83 @@ def test_only_gets_injectable_bindings_without_noninjectable_decorator() -> None
     assert get_bindings(function1) == {'a': int} == get_bindings(function2)
 
 
+@pytest.mark.parametrize('inject_first', [False, True])
+@pytest.mark.parametrize('body_type', ['UnresolvableBody', dict[str, Optional['RecursiveDict']]])
+def test_noninjectable_annotations_need_not_resolve(inject_first, body_type) -> None:
+    def function(value: int, body: body_type):
+        return value, body
+
+    if inject_first:
+        function = noninjectable('body')(inject(function))
+    else:
+        function = inject(noninjectable('body')(function))
+
+    injector = Injector()
+    injector.binder.bind(int, to=42)
+    body = {'value': None}
+
+    assert get_bindings(function) == {'value': int}
+    assert injector.call_with_injection(function, kwargs={'body': body}) == (42, body)
+    with pytest.raises(CallError):
+        injector.call_with_injection(function)
+
+
+def test_noninjectable_keyword_only_annotations_need_not_resolve() -> None:
+    @inject
+    @noninjectable('first')
+    @noninjectable('second')
+    def function(value: int, *, first: 'UnresolvableFirst', second: 'UnresolvableSecond'):
+        return value, first, second
+
+    assert get_bindings(function) == {'value': int}
+    assert Injector().call_with_injection(function, kwargs={'first': 'a', 'second': 'b'}) == (0, 'a', 'b')
+
+
+def test_noninjectable_constructor_annotations_need_not_resolve() -> None:
+    class Service:
+        @inject
+        @noninjectable('body')
+        def __init__(self, value: int, body: 'UnresolvableBody'):
+            self.value = value
+            self.body = body
+
+    service = Injector().create_object(Service, additional_kwargs={'body': 'provided'})
+    assert service.value == 0
+    assert service.body == 'provided'
+
+
+def test_noninjectable_does_not_hide_unresolved_injected_annotations() -> None:
+    from injector import _BindingNotYetAvailable
+
+    @inject
+    @noninjectable('body')
+    def function(value: 'UnresolvableDependency', body: 'UnresolvableBody'):
+        pass
+
+    with pytest.raises(_BindingNotYetAvailable, match='UnresolvableDependency'):
+        get_bindings(function)
+
+
+def test_noninjectable_annotations_need_not_resolve_with_explicit_inject() -> None:
+    @noninjectable('body')
+    def function(value: Inject[int], body: 'UnresolvableBody'):
+        return value, body
+
+    injector = Injector()
+    injector.binder.bind(int, to=42)
+    assert get_bindings(function) == {'value': int}
+    assert injector.call_with_injection(function, kwargs={'body': 'provided'}) == (42, 'provided')
+
+
+def test_noninjectable_annotations_need_not_resolve_without_injected_parameters() -> None:
+    @noninjectable('body')
+    def function(body: 'UnresolvableBody'):
+        return body
+
+    assert get_bindings(function) == {}
+    assert Injector().call_with_injection(function, kwargs={'body': 'provided'}) == 'provided'
+
+
 def test_gets_bindings_with_inject_annotation() -> None:
     def function(a: Inject[int], b: str) -> None:
         pass
