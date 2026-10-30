@@ -1532,6 +1532,17 @@ def noninjectable(*args: str) -> Callable[[CallableT], CallableT]:
     :func:`inject` and :func:`noninjectable`
     doesn't matter.
 
+    Like :func:`inject`, this decorator can be applied to a class to mark its
+    constructor parameters. When used with :func:`dataclasses.dataclass`, apply
+    it after the dataclass decorator has generated the constructor::
+
+        @inject
+        @noninjectable('user_id')
+        @dataclass
+        class SomeClass:
+            service: Service
+            user_id: int
+
     .. seealso::
 
         Generic type :data:`NoInject`
@@ -1543,6 +1554,23 @@ def noninjectable(*args: str) -> Callable[[CallableT], CallableT]:
     """
 
     def decorator(function: CallableT) -> CallableT:
+        if isinstance(function, type):
+            constructor = cast(Any, function).__init__
+            if isinstance(constructor, types.FunctionType):
+                # Keep metadata local to this class, even if its constructor is inherited.
+                copy = types.FunctionType(
+                    constructor.__code__,
+                    constructor.__globals__,
+                    constructor.__name__,
+                    constructor.__defaults__,
+                    constructor.__closure__,
+                )
+                functools.update_wrapper(copy, constructor)
+                copy.__kwdefaults__ = constructor.__kwdefaults__
+                constructor = copy
+            cast(Any, function).__init__ = decorator(constructor)
+            return cast(CallableT, function)
+
         argspec = inspect.getfullargspec(inspect.unwrap(function))
         for arg in args:
             if arg not in argspec.args and arg not in argspec.kwonlyargs:
