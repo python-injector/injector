@@ -1643,6 +1643,69 @@ def test_class_noninjectable_preserves_constructor_closure_and_defaults():
     assert parent.suffix == 'default'
 
 
+@pytest.mark.parametrize('descriptor_type', [staticmethod, classmethod])
+@pytest.mark.parametrize('inherit', [False, True])
+def test_class_noninjectable_preserves_constructor_descriptors(descriptor_type, inherit):
+    calls = []
+    if descriptor_type is staticmethod:
+
+        def constructor(marker: str, foo: int, *, bar: str = 'default'):
+            calls.append((marker, foo, bar))
+
+    else:
+
+        def constructor(cls, marker: str, foo: int, *, bar: str = 'default'):
+            calls.append((cls, marker, foo, bar))
+
+    original = inject(noninjectable('bar')(constructor))
+
+    class Parent:
+        __init__ = descriptor_type(original)
+
+    if inherit:
+
+        class Child(Parent):
+            pass
+
+    else:
+
+        class Child:
+            __init__ = descriptor_type(original)
+
+    class Sibling(Parent):
+        pass
+
+    descriptor = Parent.__dict__['__init__']
+    child_descriptor = Child.__dict__.get('__init__')
+    with pytest.raises(UnknownArgument, match='missing'):
+        noninjectable('missing')(Child)
+    assert Child.__dict__.get('__init__') is child_descriptor
+
+    assert noninjectable('foo')(Child) is Child
+    noninjectable('bar')(Child)
+    copied = Child.__dict__['__init__']
+    assert type(copied) is descriptor_type
+    assert copied.__func__ is not original
+    assert copied.__func__.__noninjectables__ == {'foo', 'bar'}
+    assert original.__noninjectables__ == {'bar'}
+    assert Parent.__dict__['__init__'] is descriptor
+    assert get_bindings(Parent.__init__) == {'marker': str, 'foo': int}
+    assert get_bindings(Sibling.__init__) == {'marker': str, 'foo': int}
+    assert get_bindings(Child.__init__) == {'marker': str}
+
+    class Grandchild(Child):
+        pass
+
+    for cls in (Parent, Child, Sibling, Grandchild):
+        cls('marker', 42)
+        expected = ('marker', 42, 'default')
+        if descriptor_type is classmethod:
+            expected = (cls,) + expected
+        assert calls[-1] == expected
+        cls('explicit', 43, bar='provided')
+        assert calls[-1][-3:] == ('explicit', 43, 'provided')
+
+
 def test_implicit_injection_fails_when_annotations_are_missing():
     class A:
         def __init__(self, n):

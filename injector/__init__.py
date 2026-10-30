@@ -1555,7 +1555,12 @@ def noninjectable(*args: str) -> Callable[[CallableT], CallableT]:
 
     def decorator(function: CallableT) -> CallableT:
         if isinstance(function, type):
-            constructor = cast(Any, function).__init__
+            # Read without binding so static/class methods retain their descriptor semantics.
+            descriptor = inspect.getattr_static(function, '__init__')
+            if isinstance(descriptor, (staticmethod, classmethod)):
+                constructor: Any = descriptor.__func__
+            else:
+                constructor = descriptor
             if isinstance(constructor, types.FunctionType):
                 # Keep metadata local to this class, even if its constructor is inherited.
                 copy = types.FunctionType(
@@ -1568,7 +1573,12 @@ def noninjectable(*args: str) -> Callable[[CallableT], CallableT]:
                 functools.update_wrapper(copy, constructor)
                 copy.__kwdefaults__ = constructor.__kwdefaults__
                 constructor = copy
-            cast(Any, function).__init__ = decorator(constructor)
+            constructor = decorator(constructor)
+            if isinstance(descriptor, staticmethod):
+                constructor = staticmethod(constructor)
+            elif isinstance(descriptor, classmethod):
+                constructor = classmethod(constructor)
+            cast(Any, function).__init__ = constructor
             return cast(CallableT, function)
 
         argspec = inspect.getfullargspec(inspect.unwrap(function))
