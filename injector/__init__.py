@@ -1573,6 +1573,9 @@ def noninjectable(*args: str) -> Callable[[CallableT], CallableT]:
                 functools.update_wrapper(copy, constructor)
                 copy.__kwdefaults__ = constructor.__kwdefaults__
                 constructor = copy
+            elif not args:
+                # Native constructors cannot store metadata; empty exclusions leave them unchanged.
+                return cast(CallableT, function)
             constructor = decorator(constructor)
             if isinstance(descriptor, staticmethod):
                 constructor = staticmethod(constructor)

@@ -1638,6 +1638,40 @@ def test_class_noninjectable_rejects_unknown_arguments_with_builtin_constructor(
     assert isinstance(Child(), Child)
 
 
+@pytest.mark.parametrize('base, arguments', [(object, ()), (list, ([1, 2],))])
+def test_class_noninjectable_empty_exclusions_preserve_builtin_constructor(base, arguments):
+    class Parent(base):
+        pass
+
+    class Child(Parent):
+        pass
+
+    class Sibling(Parent):
+        pass
+
+    constructor = base.__init__
+    snapshots = {cls: dict(vars(cls)) for cls in (base, Parent, Child, Sibling)}
+    for _ in range(2):
+        assert noninjectable()(Child) is Child
+        with pytest.raises(UnknownArgument, match='missing'):
+            noninjectable('missing')(Child)
+        for cls, snapshot in snapshots.items():
+            assert dict(vars(cls)) == snapshot
+            assert cls.__init__ is constructor
+            instance = cls(*arguments)
+            assert isinstance(instance, cls)
+            if base is list:
+                assert instance == [1, 2]
+
+    class Grandchild(Child):
+        pass
+
+    assert noninjectable()(Grandchild) is Grandchild
+    assert '__init__' not in vars(Grandchild)
+    assert Grandchild.__init__ is constructor
+    assert isinstance(Grandchild(*arguments), Grandchild)
+
+
 def test_class_noninjectable_preserves_constructor_closure_and_defaults():
     class Base:
         def __init__(self, foo):
