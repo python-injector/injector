@@ -1624,6 +1624,20 @@ def test_class_noninjectable_rejects_unknown_arguments_without_changing_construc
     assert Parent.__init__ is constructor
 
 
+@pytest.mark.parametrize('base', [object, list])
+def test_class_noninjectable_rejects_unknown_arguments_with_builtin_constructor(base):
+    class Child(base):
+        pass
+
+    constructor = Child.__init__
+    with pytest.raises(UnknownArgument, match='missing'):
+        noninjectable('missing')(Child)
+
+    assert Child.__init__ is constructor
+    assert '__init__' not in Child.__dict__
+    assert isinstance(Child(), Child)
+
+
 def test_class_noninjectable_preserves_constructor_closure_and_defaults():
     class Base:
         def __init__(self, foo):
