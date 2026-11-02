@@ -1561,7 +1561,12 @@ def noninjectable(*args: str) -> Callable[[CallableT], CallableT]:
                 constructor: Any = descriptor.__func__
             else:
                 constructor = descriptor
-            if isinstance(constructor, types.FunctionType):
+            # PyPy also represents native constructors as functions, but they cannot be copied.
+            if (
+                isinstance(constructor, types.FunctionType)
+                and isinstance(constructor.__code__, types.CodeType)
+                and isinstance(constructor.__globals__, dict)
+            ):
                 # Keep metadata local to this class, even if its constructor is inherited.
                 copy = types.FunctionType(
                     constructor.__code__,
