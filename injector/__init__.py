@@ -323,6 +323,21 @@ class InstanceProvider(Provider, Generic[T]):
 
 
 @private
+class ScopedClassProvider(Provider[T]):
+    """Apply a class decorator's singleton scope before wrapping a map value."""
+
+    def __init__(self, key: Type[T], provider: Provider[T], binder: 'Binder') -> None:
+        self._key = key
+        self._provider = provider
+        self._binder = binder
+
+    def get(self, injector: 'Injector') -> T:
+        scope_binding, _ = self._binder.get_binding(SingletonScope)
+        scope: Scope = scope_binding.provider.get(injector)
+        return scope.get(self._key, self._provider).get(injector)
+
+
+@private
 class MultiBinder(Provider, Generic[T]):
     """Provide a list of instances via other Providers."""
 
@@ -333,6 +348,7 @@ class MultiBinder(Provider, Generic[T]):
     def __init__(self, parent: 'Binder') -> None:
         self._multi_bindings = []
         self._binder = Binder(parent.injector, auto_bind=False, parent=parent)
+        self._class_keys: Dict[type, type] = {}
 
     @abstractmethod
     def multibind(
@@ -346,6 +362,20 @@ class MultiBinder(Provider, Generic[T]):
         # key instances by type, so we need one that is unique to this binding.
         pseudo_type = type(f"multibind-type-{id(provider)}", (provider.__class__,), {})
         self._multi_bindings.append(Binding(pseudo_type, provider, scope))
+
+    def create_element_binding(
+        self, interface: type, to: Any, scope: Union['ScopeDecorator', Type['Scope'], None]
+    ) -> 'Binding':
+        binding = self._binder.create_binding(interface, to, scope)
+        if scope is None and isinstance(to, type) and binding.scope is SingletonScope:
+            # A class decorator shares instances of that class within this collection.
+            # Explicit binding scopes keep their unique per-binding cache keys.
+            if to not in self._class_keys:
+                self._class_keys[to] = type(f"multibind-class-{id(to)}", (binding.provider.__class__,), {})
+            binding = Binding(
+                interface, ScopedClassProvider(self._class_keys[to], binding.provider, self._binder), NoScope
+            )
+        return binding
 
     def get_scoped_providers(self, injector: 'Injector') -> Generator[Provider[T], None, None]:
         for binding in self._multi_bindings:
@@ -371,10 +401,10 @@ class MultiBindProvider(MultiBinder[List[T]]):
             raise InvalidInterface(f"Use typing.List[T] or list[T] to specify the element type of the list")
         if isinstance(to, Collection):
             for element in to:
-                element_binding = self._binder.create_binding(element_type, element, scope)
+                element_binding = self.create_element_binding(element_type, element, scope)
                 self.append(element_binding.provider, element_binding.scope)
         else:
-            element_binding = self._binder.create_binding(interface, to, scope)
+            element_binding = self.create_element_binding(interface, to, scope)
             self.append(element_binding.provider, element_binding.scope)
 
     def get(self, injector: 'Injector') -> List[T]:
@@ -399,7 +429,7 @@ class MapBindProvider(MultiBinder[Dict[str, T]]):
             )
         if isinstance(to, Mapping):
             for key, value in to.items():
-                element_binding = self._binder.create_binding(value_type, value, scope)
+                element_binding = self.create_element_binding(value_type, value, scope)
                 self.append(KeyValueProvider(key, element_binding.provider), element_binding.scope)
         else:
             element_binding = self._binder.create_binding(interface, to, scope)
