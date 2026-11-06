@@ -6,6 +6,8 @@ Injector Change Log
 
 - Dropped support for Python 3.8 and 3.9. Python 3.10+ is now required.
 - Use the SPDX license identifier `BSD-3-Clause` in package metadata.
+- Fixed implicit ProviderOf wrappers using an ancestor Injector after a parent lookup,
+  so child binding overrides also apply to deferred lookups.
 
 0.24.0
 ------

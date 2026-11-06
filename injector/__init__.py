@@ -711,7 +711,16 @@ class Binder:
         is_scope = isinstance(interface, type) and issubclass(interface, Scope)
         is_assisted_builder = _is_specialization(interface, AssistedBuilder)
         try:
-            return self._get_binding(interface, only_this_binder=is_scope or is_assisted_builder)
+            binding, binder = self._get_binding(interface, only_this_binder=is_scope or is_assisted_builder)
+            if (
+                binder is not self
+                and isinstance(binding, ImplicitBinding)
+                and _is_specialization(interface, ProviderOf)
+            ):
+                # Implicit ProviderOf wrappers must capture the requesting Injector.
+                # Explicit bindings still follow the usual inheritance rules.
+                raise KeyError
+            return binding, binder
         except (KeyError, UnsatisfiedRequirement):
             if is_scope:
                 scope = interface

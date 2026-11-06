@@ -1365,6 +1365,220 @@ def test_providerof_is_safe_to_use_with_multiple_injectors():
     assert provider2.get() == 2
 
 
+class ProviderOfTestScope(SingletonScope):
+    pass
+
+
+@pytest.mark.parametrize('auto_bind', [True, False])
+@pytest.mark.parametrize('parent_first', [False, True])
+def test_providerof_child_override_is_independent_of_lookup_order(auto_bind, parent_first):
+    parent = Injector(lambda binder: binder.bind(str, to='parent'), auto_bind=auto_bind)
+    child = parent.create_child_injector(lambda binder: binder.bind(str, to='child'), auto_bind=auto_bind)
+    if parent_first:
+        assert parent.get(ProviderOf[str]).get() == 'parent'
+
+    assert child.get(str) == child.get(ProviderOf[str]).get() == 'child'
+    assert parent.get(ProviderOf[str]).get() == 'parent'
+
+
+@pytest.mark.parametrize('parent_has_target', [True, False])
+def test_providerof_cached_before_child_creation(parent_has_target):
+    parent = Injector(auto_bind=False)
+    if parent_has_target:
+        parent.binder.bind(str, to='parent')
+    parent_provider = parent.get(ProviderOf[str])
+    child = parent.create_child_injector(lambda binder: binder.bind(str, to='child'), auto_bind=False)
+
+    assert child.get(ProviderOf[str]).get() == 'child'
+    if parent_has_target:
+        assert parent_provider.get() == 'parent'
+    else:
+        with pytest.raises(UnsatisfiedRequirement):
+            parent_provider.get()
+
+
+@pytest.mark.parametrize('auto_bind', [True, False])
+def test_providerof_constructor_injection_uses_child(auto_bind):
+    class Consumer:
+        @inject
+        def __init__(self, deferred: ProviderOf[str]):
+            self.deferred = deferred
+
+    parent = Injector(auto_bind=auto_bind)
+    parent.binder.bind(Consumer)
+    parent.binder.bind(str, to='parent')
+    assert parent.get(Consumer).deferred.get() == 'parent'
+    child = parent.create_child_injector(lambda binder: binder.bind(str, to='child'), auto_bind=auto_bind)
+
+    assert child.get(Consumer).deferred.get() == 'child'
+
+
+def test_providerof_siblings_grandchildren_and_unrelated_injectors_are_independent():
+    parent = Injector(lambda binder: binder.bind(str, to='parent'))
+    parent_provider = parent.get(ProviderOf[str])
+    first = parent.create_child_injector(lambda binder: binder.bind(str, to='first'))
+    second = parent.create_child_injector(lambda binder: binder.bind(str, to='second'))
+    first_provider = first.get(ProviderOf[str])
+    second_provider = second.get(ProviderOf[str])
+    grandchild = first.create_child_injector(lambda binder: binder.bind(str, to='grandchild'))
+    unrelated = Injector(lambda binder: binder.bind(str, to='unrelated'))
+
+    assert grandchild.get(ProviderOf[str]).get() == 'grandchild'
+    assert unrelated.get(ProviderOf[str]).get() == 'unrelated'
+    assert second_provider.get() == 'second'
+    assert first_provider.get() == 'first'
+    assert parent_provider.get() == 'parent'
+
+
+def test_providerof_child_inherits_target_and_keeps_deferred_lookup_local():
+    creations = []
+
+    def provide_target():
+        target = EmptyClass()
+        creations.append(target)
+        return target
+
+    parent = Injector(lambda binder: binder.bind(EmptyClass, to=provide_target))
+    parent_provider = parent.get(ProviderOf[EmptyClass])
+    child = parent.create_child_injector()
+    child_provider = child.get(ProviderOf[EmptyClass])
+    assert child.get(ProviderOf[EmptyClass]) is child_provider
+    assert not creations
+
+    first = child_provider.get()
+    second = child_provider.get()
+    assert creations == [first, second]
+    assert first is not second
+
+    replacement = EmptyClass()
+    child.binder.bind(EmptyClass, to=InstanceProvider(replacement))
+    assert child_provider.get() is replacement
+    assert child.get(ProviderOf[EmptyClass]) is child_provider
+    assert parent_provider.get() is creations[-1]
+    assert len(creations) == 3
+    assert creations[-1] is not replacement
+
+
+@pytest.mark.parametrize('scope', [None, singleton, ProviderOfTestScope])
+@pytest.mark.parametrize('auto_bind', [True, False])
+def test_providerof_explicit_special_binding_is_inherited(scope, auto_bind):
+    parent = Injector(auto_bind=auto_bind)
+    parent.binder.bind(str, to='parent')
+    # Explicit specialization bindings accept a scope, but no target provider.
+    parent.binder.bind(ProviderOf[str], scope=scope)
+    child = parent.create_child_injector(lambda binder: binder.bind(str, to='child'), auto_bind=auto_bind)
+
+    assert parent.binder.has_explicit_binding_for(ProviderOf[str])
+    assert child.get(str) == 'child'
+    assert child.get(ProviderOf[str]) is parent.get(ProviderOf[str])
+    assert child.get(ProviderOf[str]).get() == 'parent'
+
+
+def test_providerof_explicit_middle_binding_overrides_implicit_ancestor():
+    parent = Injector(lambda binder: binder.bind(str, to='parent'))
+    parent.get(ProviderOf[str])
+    child = parent.create_child_injector(lambda binder: binder.bind(str, to='child'))
+    child.binder.bind(ProviderOf[str])
+    grandchild = child.create_child_injector(lambda binder: binder.bind(str, to='grandchild'))
+
+    assert grandchild.get(ProviderOf[str]) is child.get(ProviderOf[str])
+    assert grandchild.get(ProviderOf[str]).get() == 'child'
+
+
+@pytest.mark.parametrize('wrap_in_instance_provider', [True, False])
+def test_providerof_supplied_object_is_inherited_as_an_ordinary_binding(wrap_in_instance_provider):
+    original = Injector(lambda binder: binder.bind(str, to='original'))
+    supplied = ProviderOf(original, str)
+    target = InstanceProvider(supplied) if wrap_in_instance_provider else supplied
+    parent = Injector(auto_bind=False)
+    # The unspecialized class is an ordinary interface and accepts an instance.
+    parent.binder.bind(ProviderOf, to=target)
+    child = parent.create_child_injector(lambda binder: binder.bind(str, to='child'), auto_bind=False)
+
+    assert child.get(ProviderOf) is supplied
+    assert child.get(ProviderOf).get() == 'original'
+
+
+@pytest.mark.parametrize('wrap_in_instance_provider', [True, False])
+def test_providerof_specialization_still_rejects_supplied_objects(wrap_in_instance_provider):
+    injector = Injector()
+    supplied = ProviderOf(injector, str)
+    target = InstanceProvider(supplied) if wrap_in_instance_provider else supplied
+
+    with pytest.raises(Exception, match='ProviderOf cannot be bound to anything'):
+        injector.binder.bind(ProviderOf[str], to=target)
+
+
+def test_providerof_child_propagates_target_exception():
+    error = ValueError('child target failed')
+
+    def fail():
+        raise error
+
+    parent = Injector(lambda binder: binder.bind(str, to='parent'))
+    parent_provider = parent.get(ProviderOf[str])
+    child = parent.create_child_injector(lambda binder: binder.bind(str, to=fail))
+    child_provider = child.get(ProviderOf[str])
+
+    with pytest.raises(ValueError) as caught:
+        child_provider.get()
+    assert caught.value is error
+    assert parent_provider.get() == 'parent'
+    child.binder.bind(str, to='rebound')
+    assert child_provider.get() == 'rebound'
+
+
+@pytest.mark.parametrize('scope', [singleton, ProviderOfTestScope])
+def test_providerof_child_preserves_explicit_target_scopes(scope):
+    parent = Injector(lambda binder: binder.bind(EmptyClass, scope=scope))
+    parent_provider = parent.get(ProviderOf[EmptyClass])
+    child = parent.create_child_injector()
+    child_provider = child.get(ProviderOf[EmptyClass])
+
+    assert child_provider.get() is parent_provider.get()
+    assert child_provider.get() is child.get(EmptyClass)
+    child.binder.bind(EmptyClass, scope=scope)
+    assert child_provider.get() is child.get(EmptyClass)
+    assert child_provider.get() is not parent_provider.get()
+
+
+@pytest.mark.parametrize('parent_first', [True, False])
+def test_providerof_child_preserves_decorated_singleton_allocation(parent_first):
+    @singleton
+    class Shared:
+        @inject
+        def __init__(self, deferred: ProviderOf[str]):
+            self.deferred = deferred
+
+    parent = Injector(lambda binder: binder.bind(str, to='parent'))
+    if parent_first:
+        parent.get(ProviderOf[Shared]).get()
+    child = parent.create_child_injector(lambda binder: binder.bind(str, to='child'))
+    child_shared = child.get(ProviderOf[Shared]).get()
+
+    assert child_shared is parent.get(Shared)
+    assert child_shared.deferred.get() == 'parent'
+    assert child.get(ProviderOf[str]).get() == 'child'
+
+
+@pytest.mark.parametrize('builder_type', [AssistedBuilder, ClassAssistedBuilder])
+@pytest.mark.parametrize('auto_bind', [True, False])
+def test_providerof_change_preserves_child_assisted_builders(builder_type, auto_bind):
+    class Target:
+        @inject
+        def __init__(self, value: str):
+            self.value = value
+
+    parent = Injector(auto_bind=auto_bind)
+    parent.binder.bind(Target)
+    parent.binder.bind(str, to='parent')
+    parent_builder = parent.get(builder_type[Target])
+    child = parent.create_child_injector(lambda binder: binder.bind(str, to='child'), auto_bind=auto_bind)
+
+    assert child.get(builder_type[Target]).build().value == 'child'
+    assert parent_builder.build().value == 'parent'
+
+
 def test_special_interfaces_work_with_auto_bind_disabled():
     class InjectMe:
         pass
