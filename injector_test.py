@@ -1877,6 +1877,15 @@ def test_gets_multiple_bindings_with_inject_decorator() -> None:
     assert get_bindings(function) == {'a': int, 'b': str}
 
 
+@pytest.mark.parametrize(
+    'callable',
+    [object.__init__, object().__init__, len, list.append, [].append],
+    ids=['slot-wrapper', 'method-wrapper', 'builtin-function', 'method-descriptor', 'builtin-method'],
+)
+def test_get_bindings_for_unannotated_builtins(callable) -> None:
+    assert get_bindings(callable) == {}
+
+
 def test_only_gets_injectable_bindings_without_noninjectable_decorator() -> None:
     @inject
     @noninjectable('b')

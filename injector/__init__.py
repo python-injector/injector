@@ -1267,7 +1267,7 @@ class _NoReturnAnnotationProxy:
         # callable except for the annotations – we want to filter them.
         callable = object.__getattribute__(self, 'callable')
         if name == '__annotations__':
-            annotations = callable.__annotations__
+            annotations = getattr(callable, '__annotations__', {})
             noninjectables: Set[str] = getattr(callable, '__noninjectables__', set())
             return {
                 name: value
