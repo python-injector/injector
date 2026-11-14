@@ -38,6 +38,7 @@ from injector import (
     InvalidInterface,
     Module,
     NoInject,
+    Provider,
     ProviderOf,
     Scope,
     ScopeDecorator,
@@ -48,6 +49,7 @@ from injector import (
     inject,
     multiprovider,
     noninjectable,
+    noscope,
     provider,
     singleton,
     threadlocal,
@@ -921,6 +923,160 @@ def test_multibind_scopes_does_not_apply_to_the_type_globally() -> None:
     assert plugins[0] is not injector.get(PluginA)
     assert plugins[0] is not injector.get(Plugin)
     assert injector.get(PluginA) is not injector.get(PluginA)
+
+
+# Regression from issue #298 and maintainer draft PR #292.
+def test_multibind_respects_the_singleton_decorator() -> None:
+    @singleton
+    class SingletonPlugin(Plugin):
+        pass
+
+    def configure(binder: Binder) -> None:
+        binder.bind(Plugin, to=SingletonPlugin)
+        binder.multibind(List[Plugin], to=SingletonPlugin)
+        binder.multibind(List[Plugin], to=[SingletonPlugin])
+        binder.multibind(Dict[str, Plugin], to={'singleton1': SingletonPlugin, 'singleton2': SingletonPlugin})
+
+    injector = Injector([configure])
+    plugin_singleton = injector.get(Plugin)
+    plugins_list = injector.get(List[Plugin])
+    plugins_dict = injector.get(Dict[str, Plugin])
+
+    assert plugin_singleton is injector.get(Plugin)
+    assert plugins_list[0] is plugins_list[1]
+    assert plugins_dict['singleton1'] is plugins_dict['singleton2']
+
+
+@pytest.mark.parametrize('mapping', [False, True])
+def test_multibind_decorated_classes_preserve_binding_scope_and_identity(mapping):
+    @singleton
+    class SingletonPlugin(Plugin):
+        pass
+
+    @singleton
+    class OtherPlugin(Plugin):
+        pass
+
+    # Identical class names must not cause unrelated classes to share a cache.
+    same_name_plugin = singleton(type('SingletonPlugin', (Plugin,), {}))
+    interface = Dict[str, Plugin] if mapping else List[Plugin]
+    classes = [SingletonPlugin] * 6 + [PluginA] * 2 + [OtherPlugin, same_name_plugin]
+    scopes = [None, None, singleton, singleton, noscope, noscope, None, None, None, None]
+    bound_instance = SingletonPlugin()
+
+    def configure(binder):
+        binder.bind(SingletonPlugin, to=bound_instance)
+        for index, (cls, scope) in enumerate(zip(classes, scopes)):
+            to = {str(index): cls} if mapping else [cls]
+            binder.multibind(interface, to=to, scope=scope)
+
+    injector = Injector(configure, auto_bind=False)
+    first, second = injector.get(interface), injector.get(interface)
+    if mapping:
+        assert list(first) == list(second) == [str(i) for i in range(len(classes))]
+        first, second = list(first.values()), list(second.values())
+    assert len(first) == len(classes)
+    assert first[0] is first[1] is second[0] is second[1]
+    assert first[0] is not bound_instance
+    assert first[2] is second[2]
+    assert first[3] is second[3]
+    assert len({id(first[i]) for i in [0, 2, 3, 4, 5, 6, 7, 8, 9]}) == 9
+    for i in [4, 5, 6, 7]:
+        assert first[i] is not second[i]
+    other = Injector(configure, auto_bind=False).get(interface)
+    assert first[0] is not (other['0'] if mapping else other[0])
+
+
+@pytest.mark.parametrize('mapping', [False, True])
+def test_multibind_decorated_class_does_not_coalesce_providers_or_instances(mapping):
+    @singleton
+    class SingletonPlugin(Plugin):
+        pass
+
+    class PluginProvider(Provider):
+        def get(self, injector):
+            return SingletonPlugin()
+
+    interface = Dict[str, Plugin] if mapping else List[Plugin]
+    instance = SingletonPlugin()
+    values = [
+        SingletonPlugin,
+        PluginProvider(),
+        ClassProvider(SingletonPlugin),
+        lambda: SingletonPlugin(),
+        instance,
+    ]
+
+    def configure(binder):
+        for index, value in enumerate(values):
+            to = {str(index): value} if mapping else [value]
+            binder.multibind(interface, to=to)
+        for index in [5, 6]:
+            to = {str(index): PluginProvider()} if mapping else [PluginProvider()]
+            binder.multibind(interface, to=to, scope=singleton)
+
+    injector = Injector(configure)
+    first, second = injector.get(interface), injector.get(interface)
+    if mapping:
+        assert list(first) == list(second) == [str(i) for i in range(7)]
+        first, second = list(first.values()), list(second.values())
+    assert len({id(item) for item in first}) == 7
+    assert first[0] is second[0]
+    for i in [1, 2, 3]:
+        assert first[i] is not second[i]
+    assert first[4] is second[4] is instance
+    assert first[5] is second[5]
+    assert first[6] is second[6]
+
+
+@pytest.mark.parametrize('mapping', [False, True])
+def test_multibind_class_singletons_keep_custom_scopes_and_hierarchy(mapping):
+    class CustomScope(SingletonScope):
+        pass
+
+    custom = ScopeDecorator(CustomScope)
+
+    @singleton
+    class SingletonPlugin(Plugin):
+        pass
+
+    @custom
+    class CustomPlugin(Plugin):
+        pass
+
+    interface = Dict[str, Plugin] if mapping else List[Plugin]
+
+    def configure(binder):
+        for index, (cls, scope) in enumerate(
+            [
+                (SingletonPlugin, None),
+                (SingletonPlugin, None),
+                (SingletonPlugin, custom),
+                (SingletonPlugin, custom),
+                (CustomPlugin, None),
+                (CustomPlugin, None),
+            ]
+        ):
+            binder.multibind(interface, to={str(index): cls} if mapping else [cls], scope=scope)
+
+    def items(injector):
+        result = injector.get(interface)
+        return list(result.values()) if mapping else result
+
+    parent = Injector(configure)
+    first, second = items(parent), items(parent)
+    assert first[0] is first[1] is second[0]
+    assert len({id(first[i]) for i in [0, 2, 3, 4, 5]}) == 5
+    for i in [2, 3, 4, 5]:
+        assert first[i] is second[i]
+    inherited = items(parent.create_child_injector())
+    assert all(a is b for a, b in zip(first, inherited))
+    child = parent.create_child_injector(configure)
+    overridden, repeated = items(child), items(child)
+    assert overridden[0] is overridden[1] is repeated[0]
+    assert all(a is not b for a, b in zip(first, overridden))
+    sibling = items(parent.create_child_injector(configure))
+    assert all(a is not b for a, b in zip(overridden, sibling))
 
 
 def test_regular_bind_and_provider_dont_work_with_multibind():
