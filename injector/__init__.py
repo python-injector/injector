@@ -1532,6 +1532,17 @@ def noninjectable(*args: str) -> Callable[[CallableT], CallableT]:
     :func:`inject` and :func:`noninjectable`
     doesn't matter.
 
+    Like :func:`inject`, this decorator can be applied to a class to mark its
+    constructor parameters. When used with :func:`dataclasses.dataclass`, apply
+    it after the dataclass decorator has generated the constructor::
+
+        @inject
+        @noninjectable('user_id')
+        @dataclass
+        class SomeClass:
+            service: Service
+            user_id: int
+
     .. seealso::
 
         Generic type :data:`NoInject`
@@ -1543,6 +1554,41 @@ def noninjectable(*args: str) -> Callable[[CallableT], CallableT]:
     """
 
     def decorator(function: CallableT) -> CallableT:
+        if isinstance(function, type):
+            # Read without binding so static/class methods retain their descriptor semantics.
+            descriptor = inspect.getattr_static(function, '__init__')
+            if isinstance(descriptor, (staticmethod, classmethod)):
+                constructor: Any = descriptor.__func__
+            else:
+                constructor = descriptor
+            # PyPy also represents native constructors as functions, but they cannot be copied.
+            if (
+                isinstance(constructor, types.FunctionType)
+                and isinstance(constructor.__code__, types.CodeType)
+                and isinstance(constructor.__globals__, dict)
+            ):
+                # Keep metadata local to this class, even if its constructor is inherited.
+                copy = types.FunctionType(
+                    constructor.__code__,
+                    constructor.__globals__,
+                    constructor.__name__,
+                    constructor.__defaults__,
+                    constructor.__closure__,
+                )
+                functools.update_wrapper(copy, constructor)
+                copy.__kwdefaults__ = constructor.__kwdefaults__
+                constructor = copy
+            elif not args:
+                # Native constructors cannot store metadata; empty exclusions leave them unchanged.
+                return cast(CallableT, function)
+            constructor = decorator(constructor)
+            if isinstance(descriptor, staticmethod):
+                constructor = staticmethod(constructor)
+            elif isinstance(descriptor, classmethod):
+                constructor = classmethod(constructor)
+            cast(Any, function).__init__ = constructor
+            return cast(CallableT, function)
+
         argspec = inspect.getfullargspec(inspect.unwrap(function))
         for arg in args:
             if arg not in argspec.args and arg not in argspec.kwonlyargs:

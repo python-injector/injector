@@ -1524,6 +1524,236 @@ def test_can_create_instance_with_untyped_noninjectable_argument():
     assert parent.child2 == 'injected2'
 
 
+@pytest.mark.parametrize('use_dataclass', [False, True])
+@pytest.mark.parametrize('inject_first', [False, True])
+def test_class_noninjectable_excludes_constructor_parameters(use_dataclass, inject_first):
+    if use_dataclass:
+
+        @dataclass
+        class Parent:
+            dependency: EmptyClass
+            foo: int
+            bar: str
+
+    else:
+
+        class Parent:
+            def __init__(self, dependency: EmptyClass, foo: int, *, bar: str):
+                self.dependency = dependency
+                self.foo = foo
+                self.bar = bar
+
+    if inject_first:
+        Parent = noninjectable('foo')(inject(Parent))
+    else:
+        Parent = inject(noninjectable('foo')(Parent))
+    Parent = noninjectable('bar')(Parent)
+
+    assert get_bindings(Parent.__init__) == {'dependency': EmptyClass}
+    injector = Injector()
+    with pytest.raises(CallError, match='foo'):
+        injector.get(Parent)
+    with pytest.raises(CallError, match='bar'):
+        injector.create_object(Parent, additional_kwargs={'foo': 42})
+
+    parent = injector.create_object(Parent, additional_kwargs={'foo': 42, 'bar': 'provided'})
+    assert isinstance(parent.dependency, EmptyClass)
+    assert parent.foo == 42
+    assert parent.bar == 'provided'
+    assert Parent(EmptyClass(), 42, bar='provided').bar == 'provided'
+
+
+@pytest.mark.parametrize('exclude_on_parent', [False, True])
+def test_class_noninjectable_does_not_change_inherited_constructor(exclude_on_parent):
+    @inject
+    class Parent:
+        def __init__(self, dependency: EmptyClass, foo: int, *, bar: str):
+            self.dependency = dependency
+            self.foo = foo
+            self.bar = bar
+
+    if exclude_on_parent:
+        Parent = noninjectable('foo')(Parent)
+
+    class Child(Parent):
+        pass
+
+    class Sibling(Parent):
+        pass
+
+    parent_bindings = get_bindings(Parent.__init__)
+    Child = noninjectable('bar')(Child)
+
+    assert get_bindings(Parent.__init__) == parent_bindings
+    assert get_bindings(Sibling.__init__) == parent_bindings
+    assert get_bindings(Child.__init__) == {k: v for k, v in parent_bindings.items() if k != 'bar'}
+    injector = Injector()
+    with pytest.raises(CallError, match='bar'):
+        injector.create_object(Child, additional_kwargs={'foo': 42})
+    assert injector.create_object(Child, additional_kwargs={'foo': 42, 'bar': 'provided'}).bar == 'provided'
+    assert injector.create_object(Parent, additional_kwargs={'foo': 42}).bar == ''
+    assert injector.create_object(Sibling, additional_kwargs={'foo': 42}).bar == ''
+
+
+def test_class_noninjectable_preserves_explicit_injection_and_forward_references():
+    @noninjectable('foo')
+    class Parent:
+        def __init__(self, args: 'Inject[EmptyClass]', foo: Inject[int], *, label: str = 'manual'):
+            self.dependency = args
+            self.foo = foo
+            self.label = label
+
+    assert get_bindings(Parent.__init__) == {'args': EmptyClass}
+    injector = Injector()
+    with pytest.raises(CallError, match='foo'):
+        injector.get(Parent)
+    parent = injector.create_object(Parent, additional_kwargs={'foo': 42})
+    assert isinstance(parent.dependency, EmptyClass)
+    assert parent.foo == 42
+    assert parent.label == 'manual'
+
+
+def test_class_noninjectable_rejects_unknown_arguments_without_changing_constructor():
+    @dataclass
+    class Parent:
+        foo: int
+
+    constructor = Parent.__init__
+    with pytest.raises(UnknownArgument, match='missing'):
+        noninjectable('missing')(Parent)
+    assert Parent.__init__ is constructor
+
+
+@pytest.mark.parametrize('base', [object, list])
+def test_class_noninjectable_rejects_unknown_arguments_with_builtin_constructor(base):
+    class Child(base):
+        pass
+
+    constructor = Child.__init__
+    with pytest.raises(UnknownArgument, match='missing'):
+        noninjectable('missing')(Child)
+
+    assert Child.__init__ is constructor
+    assert '__init__' not in Child.__dict__
+    assert isinstance(Child(), Child)
+
+
+@pytest.mark.parametrize('base, arguments', [(object, ()), (list, ([1, 2],))])
+def test_class_noninjectable_empty_exclusions_preserve_builtin_constructor(base, arguments):
+    class Parent(base):
+        pass
+
+    class Child(Parent):
+        pass
+
+    class Sibling(Parent):
+        pass
+
+    constructor = base.__init__
+    snapshots = {cls: dict(vars(cls)) for cls in (base, Parent, Child, Sibling)}
+    for _ in range(2):
+        assert noninjectable()(Child) is Child
+        with pytest.raises(UnknownArgument, match='missing'):
+            noninjectable('missing')(Child)
+        for cls, snapshot in snapshots.items():
+            assert dict(vars(cls)) == snapshot
+            assert cls.__init__ is constructor
+            instance = cls(*arguments)
+            assert isinstance(instance, cls)
+            if base is list:
+                assert instance == [1, 2]
+
+    class Grandchild(Child):
+        pass
+
+    assert noninjectable()(Grandchild) is Grandchild
+    assert '__init__' not in vars(Grandchild)
+    assert Grandchild.__init__ is constructor
+    assert isinstance(Grandchild(*arguments), Grandchild)
+
+
+def test_class_noninjectable_preserves_constructor_closure_and_defaults():
+    class Base:
+        def __init__(self, foo):
+            self.foo = foo
+
+    @noninjectable('foo')
+    class Parent(Base):
+        def __init__(self, foo: int, label: str = 'manual', *, suffix: str = 'default'):
+            super().__init__(foo)
+            self.label = label
+            self.suffix = suffix
+
+    assert get_bindings(Parent.__init__) == {}
+    parent = Injector().create_object(Parent, additional_kwargs={'foo': 42})
+    assert parent.foo == 42
+    assert parent.label == 'manual'
+    assert parent.suffix == 'default'
+
+
+@pytest.mark.parametrize('descriptor_type', [staticmethod, classmethod])
+@pytest.mark.parametrize('inherit', [False, True])
+def test_class_noninjectable_preserves_constructor_descriptors(descriptor_type, inherit):
+    calls = []
+    if descriptor_type is staticmethod:
+
+        def constructor(marker: str, foo: int, *, bar: str = 'default'):
+            calls.append((marker, foo, bar))
+
+    else:
+
+        def constructor(cls, marker: str, foo: int, *, bar: str = 'default'):
+            calls.append((cls, marker, foo, bar))
+
+    original = inject(noninjectable('bar')(constructor))
+
+    class Parent:
+        __init__ = descriptor_type(original)
+
+    if inherit:
+
+        class Child(Parent):
+            pass
+
+    else:
+
+        class Child:
+            __init__ = descriptor_type(original)
+
+    class Sibling(Parent):
+        pass
+
+    descriptor = Parent.__dict__['__init__']
+    child_descriptor = Child.__dict__.get('__init__')
+    with pytest.raises(UnknownArgument, match='missing'):
+        noninjectable('missing')(Child)
+    assert Child.__dict__.get('__init__') is child_descriptor
+
+    assert noninjectable('foo')(Child) is Child
+    noninjectable('bar')(Child)
+    copied = Child.__dict__['__init__']
+    assert type(copied) is descriptor_type
+    assert copied.__func__ is not original
+    assert copied.__func__.__noninjectables__ == {'foo', 'bar'}
+    assert original.__noninjectables__ == {'bar'}
+    assert Parent.__dict__['__init__'] is descriptor
+    assert get_bindings(Parent.__init__) == {'marker': str, 'foo': int}
+    assert get_bindings(Sibling.__init__) == {'marker': str, 'foo': int}
+    assert get_bindings(Child.__init__) == {'marker': str}
+
+    class Grandchild(Child):
+        pass
+
+    for cls in (Parent, Child, Sibling, Grandchild):
+        cls('marker', 42)
+        expected = ('marker', 42, 'default')
+        if descriptor_type is classmethod:
+            expected = (cls,) + expected
+        assert calls[-1] == expected
+        cls('explicit', 43, bar='provided')
+        assert calls[-1][-3:] == ('explicit', 43, 'provided')
+
+
 def test_implicit_injection_fails_when_annotations_are_missing():
     class A:
         def __init__(self, n):
